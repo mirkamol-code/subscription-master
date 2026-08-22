@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: subscribe-master
+  datasource:
+    username: ${SPRING_DATASOURCE_USERNAME:mirkamol}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5222/subscription_master_db}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+  flyway.enabled: true
+  cache:
+    cache-names: exchange-rates
+    caffeine.spec: maximumSize=32,expireAfterWrite=24h
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME:-mirkamol.m.@gmail.com}
+    password: ${GMAIL_APP_PASSWORD:-wiaaqmjufspfikvh}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+app:
+  jwt:
+    secret: ${JWT_SECRET:secret-key-must-be-at-least-32-bytes}
+    access-token-minutes: 15
+    refresh-token-days: 30
+  seed:
+    enabled: true
+
+  cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
+  notifications:
+    log:
+      enabled: ${LOG_NOTIFICATIONS_ENABLED:true}
+    gmail:
+      enabled: ${GMAIL_NOTIFICATIONS_ENABLED:true}
+    gmail-from: ${GMAIL_FROM:}
+springdoc:
+  swagger-ui.path: /swagger-ui.html
+management:
+  health:
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,54 @@
+services:
+  subscription-master-service:
+    container_name: subscription-master
+    #      image: amigoscode/product-service:jibMaven
+    image: subscription-master:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://subscription-master-db:5432/subscription_master_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-mirkamol}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      SPRING_PROFILES_ACTIVE: dev
+      APP_SEED_ENABLED: true
+      APP_JWT_SECRET: ${JWT_SECRET:-secret-key-must-be-at-least-32-bytes}
+      APP_NOTIFICATIONS_LOG_ENABLED: ${LOG_NOTIFICATIONS_ENABLED:-true}
+      APP_NOTIFICATIONS_GMAIL_ENABLED: ${GMAIL_NOTIFICATIONS_ENABLED:-true}
+      APP_NOTIFICATIONS_GMAIL_FROM: ${GMAIL_FROM:-}
+      SPRING_MAIL_USERNAME: ${GMAIL_USERNAME:-mirkamol.m.a@gmail.com}
+      SPRING_MAIL_PASSWORD: ${GMAIL_APP_PASSWORD:-wiaaqmjufspfikvh}
+      MAIL_HEALTH_ENABLED: ${MAIL_HEALTH_ENABLED:-false}
+    depends_on:
+      subscription-master-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - subscribe-master-network
+  subscription-master-db:
+    container_name: subscription_master_db-postgres
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mirkamol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-subscription_master_db}
+    ports:
+      - "5222:5432"
+    restart: unless-stopped
+    volumes:
+      - subscription-master-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mirkamol} -d ${POSTGRES_DB:-subscription_master_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - subscribe-master-network
+
+networks:
+  subscribe-master-network:
+    driver: bridge
+
+volumes:
+  subscription-master-db:

@@ -1,0 +1,27 @@
+services:
+  db-local-postgres:
+    container_name: subscription_master_db-postgres-local
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mirkamol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-subscription_master_db}
+    ports:
+      - "5222:5432"
+    restart: unless-stopped
+    volumes:
+      - db-local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mirkamol} -d ${POSTGRES_DB:-subscription_master_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - subscribe-master-network
+
+networks:
+  subscribe-master-network:
+    driver: bridge
+
+volumes:
+  db-local:

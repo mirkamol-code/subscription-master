@@ -1,0 +1,38 @@
+package com.mirkamolcode.specification;
+
+import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.SubscriptionStatus;
+import com.mirkamolcode.entity.Subscription;
+
+import java.math.BigDecimal;
+
+import org.springframework.data.jpa.domain.Specification;
+
+public final class SubscriptionSpecifications {
+    private SubscriptionSpecifications() {
+    }
+
+    public static Specification<Subscription> ownedBy(Long userId) {
+        return (root, q, b) -> b.equal(root.get("user").get("id"), userId);
+    }
+
+    public static Specification<Subscription> visible() {
+        return (root, q, b) -> b.isFalse(root.get("isDeleted"));
+    }
+
+    public static Specification<Subscription> hasStatus(SubscriptionStatus status) {
+        return status == null ? Specification.unrestricted() : (root, q, b) -> b.equal(root.get("status"), status);
+    }
+
+    public static Specification<Subscription> hasCurrency(CurrencyCode currency) {
+        return currency == null ? Specification.unrestricted() : (root, q, b) -> b.equal(root.get("currency"), currency);
+    }
+
+    public static Specification<Subscription> priceAtLeast(BigDecimal value) {
+        return value == null ? Specification.unrestricted() : (root, q, b) -> b.greaterThanOrEqualTo(root.get("price"), value);
+    }
+
+    public static Specification<Subscription> priceAtMost(BigDecimal value) {
+        return value == null ? Specification.unrestricted() : (root, q, b) -> b.lessThanOrEqualTo(root.get("price"), value);
+    }
+}

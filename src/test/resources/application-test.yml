@@ -1,0 +1,25 @@
+spring:
+  task:
+    scheduling:
+      enabled: false
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  mail:
+    host: localhost
+    port: 2525
+
+app:
+  jwt:
+    secret: test-signing-secret-that-is-at-least-thirty-two-bytes-long
+    access-token-minutes: 15
+    refresh-token-days: 1
+  cbu:
+    base-url: http://localhost:9999
+  notifications:
+    log:
+      enabled: true
+    gmail:
+      enabled: false
+    gmail-from: mirkamol.m.a@gmail.com
