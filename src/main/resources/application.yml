@@ -18,6 +18,9 @@ spring:
   cache:
     cache-names: exchange-rates
     caffeine.spec: maximumSize=32,expireAfterWrite=24h
+  jackson:
+    mapper:
+      accept-case-insensitive-enums: true
   mail:
     host: smtp.gmail.com
     port: 587
@@ -36,6 +39,11 @@ app:
     refresh-token-days: 30
   seed:
     enabled: true
+  rate-limiting:
+    auth:
+      enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
+      max-failed-attempts: ${AUTH_RATE_LIMIT_MAX_ATTEMPTS:3}
+      block-duration-seconds: ${AUTH_RATE_LIMIT_BLOCK_SECONDS:60}
 
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
   notifications:

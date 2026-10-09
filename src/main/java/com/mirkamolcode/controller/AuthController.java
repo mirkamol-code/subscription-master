@@ -1,6 +1,7 @@
 package com.mirkamolcode.controller;
 
 import com.mirkamolcode.dto.AuthDtos.*;
+import com.mirkamolcode.dto.response.UserProfileResponse;
 import com.mirkamolcode.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,16 @@ public class AuthController {
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return service.refresh(request);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@Valid @RequestBody LogoutRequest request) {
+        service.logout(request);
+    }
+
+    @GetMapping("/me")
+    public UserProfileResponse me() {
+        return service.me();
     }
 }

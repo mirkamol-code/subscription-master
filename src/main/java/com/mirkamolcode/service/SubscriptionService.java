@@ -10,6 +10,8 @@ import com.mirkamolcode.repository.SubscriptionRepository;
 import com.mirkamolcode.specification.SubscriptionSpecifications;
 
 import java.math.BigDecimal;
+import java.util.EnumMap;
+import java.util.Map;
 
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Permission;
@@ -26,11 +28,16 @@ public class SubscriptionService {
     private final SubscriptionRepository repository;
     private final SubscriptionMapper mapper;
     private final CurrentUserService currentUser;
+    private final ExchangeRateService exchangeRateService;
 
-    public SubscriptionService(SubscriptionRepository repository, SubscriptionMapper mapper, CurrentUserService currentUser) {
+    public SubscriptionService(SubscriptionRepository repository,
+                               SubscriptionMapper mapper,
+                               CurrentUserService currentUser,
+                               ExchangeRateService exchangeRateService) {
         this.repository = repository;
         this.mapper = mapper;
         this.currentUser = currentUser;
+        this.exchangeRateService = exchangeRateService;
     }
 
     @Transactional
@@ -55,9 +62,26 @@ public class SubscriptionService {
                                            Pageable pageable) {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0)
             throw new IllegalArgumentException("minPrice must not exceed maxPrice");
-        Specification<Subscription> spec = SubscriptionSpecifications.visible().and(SubscriptionSpecifications.hasStatus(status)).and(SubscriptionSpecifications.hasCurrency(currency)).and(SubscriptionSpecifications.priceAtLeast(minPrice)).and(SubscriptionSpecifications.priceAtMost(maxPrice));
+
+        Specification<Subscription> spec = SubscriptionSpecifications.visible()
+                .and(SubscriptionSpecifications.hasStatus(status))
+                .and(SubscriptionSpecifications.hasCurrency(currency));
+
+        if (currency != null) {
+            spec = spec.and(SubscriptionSpecifications.priceAtLeast(minPrice))
+                    .and(SubscriptionSpecifications.priceAtMost(maxPrice));
+        } else if (minPrice != null || maxPrice != null) {
+            Map<CurrencyCode, BigDecimal> rates = new EnumMap<>(CurrencyCode.class);
+            for (CurrencyCode c : CurrencyCode.values()) {
+                rates.put(c, exchangeRateService.rateToUzs(c));
+            }
+            spec = spec.and(SubscriptionSpecifications.priceInUzsAtLeast(minPrice, rates))
+                    .and(SubscriptionSpecifications.priceInUzsAtMost(maxPrice, rates));
+        }
+
         if (!currentUser.hasPermission(Permission.SUBSCRIPTION_READ_ALL))
             spec = SubscriptionSpecifications.ownedBy(currentUser.requiredUser().getId()).and(spec);
+
         return repository.findAll(spec, pageable).map(mapper::toResponse);
     }
 

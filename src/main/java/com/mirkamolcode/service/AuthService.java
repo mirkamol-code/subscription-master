@@ -1,5 +1,6 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.dto.response.UserProfileResponse;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.ForbiddenException;
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,12 +30,18 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokens;
     private final PasswordEncoder passwords;
     private final JwtService jwt;
+    private final CurrentUserService currentUser;
 
-    public AuthService(UserRepository users, RefreshTokenRepository refreshTokens, PasswordEncoder passwords, JwtService jwt) {
+    public AuthService(UserRepository users,
+                       RefreshTokenRepository refreshTokens,
+                       PasswordEncoder passwords,
+                       JwtService jwt,
+                       CurrentUserService currentUser) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwords = passwords;
         this.jwt = jwt;
+        this.currentUser = currentUser;
     }
 
     public TokenResponse register(RegisterRequest request) {
@@ -68,6 +76,30 @@ public class AuthService {
             throw new ForbiddenException("Refresh token expired or revoked");
         stored.revoke();
         return issue(stored.getUser());
+    }
+
+    public void logout(LogoutRequest request) {
+        if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+            return;
+        }
+        String tokenHash = hash(request.refreshToken());
+        refreshTokens.findByTokenHash(tokenHash).ifPresent(RefreshToken::revoke);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse me() {
+        User user = currentUser.requiredUser();
+        List<String> roles = user.getRoles().stream()
+                .map(r -> "ROLE_" + r.name())
+                .sorted()
+                .toList();
+        return new UserProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                roles,
+                "UZS",
+                user.getCreatedAt()
+        );
     }
 
     private TokenResponse issue(User user) {

@@ -107,4 +107,45 @@ class AuthControllerIT extends AbstractTestConfig {
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("FORBIDDEN");
     }
+
+    @Test
+    void me_shouldReturnCurrentUserProfile_whenAuthenticated() {
+        TokenResponse tokens = register("me-user@example.com");
+
+        webTestClient.get()
+                .uri(API + "/auth/me")
+                .header("Authorization", "Bearer " + tokens.accessToken())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.email").isEqualTo("me-user@example.com")
+                .jsonPath("$.roles[0]").isEqualTo("ROLE_USER")
+                .jsonPath("$.baseCurrency").isEqualTo("UZS")
+                .jsonPath("$.createdAt").exists();
+    }
+
+    @Test
+    void me_shouldReturnUnauthorized_whenTokenIsMissing() {
+        webTestClient.get()
+                .uri(API + "/auth/me")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void logout_shouldRevokeRefreshToken_andPreventSubsequentRefresh() {
+        TokenResponse tokens = register("logout-user@example.com");
+
+        webTestClient.post()
+                .uri(API + "/auth/logout")
+                .bodyValue(new com.mirkamolcode.dto.AuthDtos.LogoutRequest(tokens.refreshToken()))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        webTestClient.post()
+                .uri(API + "/auth/refresh")
+                .bodyValue(new RefreshRequest(tokens.refreshToken()))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
 }

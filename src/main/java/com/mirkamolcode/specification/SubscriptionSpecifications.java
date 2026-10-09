@@ -5,7 +5,11 @@ import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.entity.Subscription;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Root;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class SubscriptionSpecifications {
@@ -34,5 +38,30 @@ public final class SubscriptionSpecifications {
 
     public static Specification<Subscription> priceAtMost(BigDecimal value) {
         return value == null ? Specification.unrestricted() : (root, q, b) -> b.lessThanOrEqualTo(root.get("price"), value);
+    }
+
+    public static Specification<Subscription> priceInUzsAtLeast(BigDecimal value, Map<CurrencyCode, BigDecimal> rates) {
+        if (value == null) return Specification.unrestricted();
+        return (root, q, b) -> b.greaterThanOrEqualTo(buildNormalizedPriceExpression(root, b, rates), value);
+    }
+
+    public static Specification<Subscription> priceInUzsAtMost(BigDecimal value, Map<CurrencyCode, BigDecimal> rates) {
+        if (value == null) return Specification.unrestricted();
+        return (root, q, b) -> b.lessThanOrEqualTo(buildNormalizedPriceExpression(root, b, rates), value);
+    }
+
+    private static Expression<BigDecimal> buildNormalizedPriceExpression(Root<Subscription> root, CriteriaBuilder b, Map<CurrencyCode, BigDecimal> rates) {
+        CriteriaBuilder.Case<BigDecimal> selectCase = b.<BigDecimal>selectCase();
+        if (rates != null) {
+            for (Map.Entry<CurrencyCode, BigDecimal> entry : rates.entrySet()) {
+                if (entry.getKey() != CurrencyCode.UZS && entry.getValue() != null) {
+                    selectCase = selectCase.when(
+                            b.equal(root.get("currency"), entry.getKey()),
+                            b.prod(root.get("price"), entry.getValue())
+                    );
+                }
+            }
+        }
+        return selectCase.otherwise(root.get("price"));
     }
 }

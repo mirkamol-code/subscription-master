@@ -171,6 +171,26 @@ class SubscriptionControllerIT extends AbstractTestConfig {
                 .jsonPath("$.content[0].name").isEqualTo("Zeta");
     }
 
+    @Test
+    void list_shouldSupportCaseInsensitiveEnumsAndCustomSortSyntax() {
+        String ownerAuthorization = bearer(register("owner-enums@example.com"));
+        createSubscription(ownerAuthorization, request("Service A", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("Service B", "20.00", CurrencyCode.USD));
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path(API + "/subscriptions")
+                        .queryParam("status", "active")
+                        .queryParam("currency", "usd")
+                        .queryParam("sort", "name,ASC")
+                        .build())
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalElements").isEqualTo(2)
+                .jsonPath("$.content[0].name").isEqualTo("Service A");
+    }
+
     private SubscriptionRequest request(String name, String price, CurrencyCode currency) {
         return new SubscriptionRequest(name, new BigDecimal(price), currency,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
