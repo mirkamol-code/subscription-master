@@ -42,6 +42,8 @@ class SubscriptionServiceTest {
     private SubscriptionMapper subscriptionMapper;
     @Mock
     private CurrentUserService currentUserService;
+    @Mock
+    private ExchangeRateService exchangeRateService;
     @InjectMocks
     private SubscriptionService underTest;
 
@@ -124,6 +126,27 @@ class SubscriptionServiceTest {
         // Then
         assertThat(result).isEmpty();
         verify(currentUserService, never()).requiredUser();
+    }
+
+    @Test
+    void list_shouldFetchExchangeRates_whenPriceFilterProvidedWithoutCurrency() {
+        // Given
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(true);
+        when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12850.00"));
+        when(exchangeRateService.rateToUzs(CurrencyCode.EUR)).thenReturn(new BigDecimal("13967.50"));
+        when(exchangeRateService.rateToUzs(CurrencyCode.UZS)).thenReturn(BigDecimal.ONE);
+        when(subscriptionRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(java.util.List.of(), pageable, 0));
+
+        // When
+        var result = underTest.list(null, null, new BigDecimal("10000"), new BigDecimal("500000"), pageable);
+
+        // Then
+        assertThat(result).isEmpty();
+        verify(exchangeRateService).rateToUzs(CurrencyCode.USD);
+        verify(exchangeRateService).rateToUzs(CurrencyCode.EUR);
+        verify(exchangeRateService).rateToUzs(CurrencyCode.UZS);
     }
 
     @Test
