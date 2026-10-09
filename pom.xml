@@ -130,6 +130,13 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- Rate limiting: token bucket algorithm -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+
         <!-- Prevent duplicate execution of scheduled jobs in multiple instances -->
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
