@@ -24,10 +24,12 @@ class AuthRateLimiterTest {
         // Attempt 3 fails -> blocked!
         limiter.recordFailure(ip);
         assertThat(limiter.isBlocked(ip)).isTrue();
+        assertThat(limiter.getBlockedUntil(ip)).isNotNull();
         assertThat(limiter.getRemainingBlockSeconds(ip)).isGreaterThan(0);
 
         // Another IP is not blocked
         assertThat(limiter.isBlocked("192.168.1.99")).isFalse();
+        assertThat(limiter.getBlockedUntil("192.168.1.99")).isNull();
     }
 
     @Test

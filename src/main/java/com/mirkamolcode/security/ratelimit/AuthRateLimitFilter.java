@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
 
 @Component
 public class AuthRateLimitFilter extends OncePerRequestFilter {
@@ -44,14 +45,18 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
         if (rateLimiter.isBlocked(clientIp)) {
             long remainingSeconds = rateLimiter.getRemainingBlockSeconds(clientIp);
+            Instant blockedUntil = rateLimiter.getBlockedUntil(clientIp);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", String.valueOf(remainingSeconds));
+            response.setHeader("X-RateLimit-Retry-After-Seconds", String.valueOf(remainingSeconds));
+            if (blockedUntil != null) {
+                response.setHeader("X-RateLimit-Blocked-Until", blockedUntil.toString());
+            }
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            ErrorResponse error = ErrorResponse.of(
-                    HttpStatus.TOO_MANY_REQUESTS.value(),
-                    "TOO_MANY_REQUESTS",
-                    "Too Many Requests",
-                    "Too many failed attempts. You are temporarily blocked for " + remainingSeconds + " seconds."
+            ErrorResponse error = ErrorResponse.rateLimited(
+                    remainingSeconds,
+                    blockedUntil,
+                    "Too many failed attempts. You are temporarily blocked. Please wait " + remainingSeconds + " seconds before trying again."
             );
             objectMapper.writeValue(response.getOutputStream(), error);
             return;

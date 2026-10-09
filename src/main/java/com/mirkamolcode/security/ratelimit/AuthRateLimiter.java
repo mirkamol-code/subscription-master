@@ -54,6 +54,11 @@ public class AuthRateLimiter {
         return false;
     }
 
+    public Instant getBlockedUntil(String key) {
+        if (key == null) return null;
+        return blockedCache.getIfPresent(key);
+    }
+
     public long getRemainingBlockSeconds(String key) {
         if (key == null) return blockDurationSeconds;
         Instant blockedUntil = blockedCache.getIfPresent(key);

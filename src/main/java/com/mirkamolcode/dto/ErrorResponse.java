@@ -14,7 +14,10 @@ public record ErrorResponse(
         String error,
         String message,
         Map<String, String> fields,
-        List<FieldErrorItem> fieldErrors
+        List<FieldErrorItem> fieldErrors,
+        Long retryAfterSeconds,
+        Instant blockedUntil,
+        Boolean blocked
 ) {
     public record FieldErrorItem(String field, String message) {
     }
@@ -27,7 +30,10 @@ public record ErrorResponse(
                 "Validation Failed",
                 message != null ? message : "Invalid input fields",
                 fields,
-                fieldErrors
+                fieldErrors,
+                null,
+                null,
+                null
         );
     }
 
@@ -39,7 +45,25 @@ public record ErrorResponse(
                 error,
                 message,
                 null,
+                null,
+                null,
+                null,
                 null
+        );
+    }
+
+    public static ErrorResponse rateLimited(long retryAfterSeconds, Instant blockedUntil, String message) {
+        return new ErrorResponse(
+                Instant.now(),
+                429,
+                "TOO_MANY_REQUESTS",
+                "Too Many Requests",
+                message,
+                null,
+                null,
+                retryAfterSeconds,
+                blockedUntil,
+                true
         );
     }
 }
