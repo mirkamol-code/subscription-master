@@ -8,7 +8,6 @@ import com.mirkamolcode.entity.ExchangeRate;
 import com.mirkamolcode.repository.ExchangeRateRepository;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -22,6 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ExchangeRateService {
+    private static final Map<CurrencyCode, BigDecimal> DEFAULT_RATES = Map.of(
+            CurrencyCode.USD, new BigDecimal("12850.00"),
+            CurrencyCode.EUR, new BigDecimal("13967.50"),
+            CurrencyCode.UZS, new BigDecimal("1.00")
+    );
+
     private final CbuRateClient client;
     private final ExchangeRateRepository rates;
 
@@ -33,7 +38,7 @@ public class ExchangeRateService {
     @Cacheable(cacheNames = "exchange-rates", key = "#currency.name()")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public BigDecimal rateToUzs(CurrencyCode currency) {
-        if (currency == CurrencyCode.UZS) return BigDecimal.ONE;
+        if (currency == CurrencyCode.UZS) return new BigDecimal("1.00");
         try {
             CbuRate rate = client.find(currency);
             return rates.findByCurrencyAndRateDate(currency, rate.effectiveDate())
@@ -56,9 +61,17 @@ public class ExchangeRateService {
 
     public ExchangeRatesResponse getCurrentRates() {
         Map<String, BigDecimal> ratesMap = new LinkedHashMap<>();
-        ratesMap.put(CurrencyCode.USD.name(), rateToUzs(CurrencyCode.USD));
-        ratesMap.put(CurrencyCode.EUR.name(), rateToUzs(CurrencyCode.EUR));
-        ratesMap.put(CurrencyCode.UZS.name(), BigDecimal.ONE.setScale(2, RoundingMode.HALF_UP));
+        for (CurrencyCode currency : CurrencyCode.values()) {
+            BigDecimal rate;
+            try {
+                rate = rateToUzs(currency);
+            } catch (Exception ex) {
+                rate = rates.findFirstByCurrencyOrderByRateDateDesc(currency)
+                        .map(ExchangeRate::getRateToUzs)
+                        .orElseGet(() -> DEFAULT_RATES.getOrDefault(currency, new BigDecimal("1.00")));
+            }
+            ratesMap.put(currency.name(), rate);
+        }
 
         Instant updatedAt = rates.findAll().stream()
                 .map(ExchangeRate::getUpdatedAt)
