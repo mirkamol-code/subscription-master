@@ -1,5 +1,6 @@
 package com.mirkamolcode.dto;
 
+import com.mirkamolcode.dto.response.UserProfileResponse;
 import jakarta.validation.constraints.*;
 
 public final class AuthDtos {
@@ -14,6 +15,9 @@ public final class AuthDtos {
     }
 
     public record RefreshRequest(@NotBlank String refreshToken) {
+    }
+
+    public record LogoutRequest(@NotBlank String refreshToken) {
     }
 
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresInSeconds) {

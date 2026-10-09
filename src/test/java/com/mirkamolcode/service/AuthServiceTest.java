@@ -37,6 +37,8 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtService jwtService;
+    @Mock
+    private CurrentUserService currentUserService;
     @InjectMocks
     private AuthService underTest;
 
@@ -161,6 +163,39 @@ class AuthServiceTest {
         assertThatThrownBy(() -> underTest.refresh(new RefreshRequest("expired-token")))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Refresh token expired or revoked");
+    }
+
+    @Test
+    void logout_shouldRevokeExistingRefreshToken() {
+        // Given
+        User user = user("person@example.com");
+        RefreshToken stored = new RefreshToken(user, "hash", Instant.now().plusSeconds(3600));
+        when(refreshTokenRepository.findByTokenHash(any(String.class))).thenReturn(Optional.of(stored));
+
+        // When
+        underTest.logout(new com.mirkamolcode.dto.AuthDtos.LogoutRequest("valid-refresh-token"));
+
+        // Then
+        assertThat(stored.isRevoked()).isTrue();
+    }
+
+    @Test
+    void me_shouldReturnCurrentUserProfile() {
+        // Given
+        User user = user("person@example.com");
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "id", 104L);
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "createdAt", Instant.parse("2026-01-15T10:00:00Z"));
+        when(currentUserService.requiredUser()).thenReturn(user);
+
+        // When
+        var result = underTest.me();
+
+        // Then
+        assertThat(result.id()).isEqualTo(104L);
+        assertThat(result.email()).isEqualTo("person@example.com");
+        assertThat(result.roles()).containsExactly("ROLE_USER");
+        assertThat(result.baseCurrency()).isEqualTo("UZS");
+        assertThat(result.createdAt()).isEqualTo(Instant.parse("2026-01-15T10:00:00Z"));
     }
 
     private void stubIssuedTokens() {
