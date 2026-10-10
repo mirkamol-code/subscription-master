@@ -58,6 +58,10 @@ public class Subscription extends AuditableEntity {
     public Subscription() {}
 
     public Subscription(User user, String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionStatus status, SubscriptionCategory category, LocalDate startDate) {
+        this(user, name, price, currency, frequency, status, category, startDate, frequency.addTo(startDate));
+    }
+
+    public Subscription(User user, String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionStatus status, SubscriptionCategory category, LocalDate startDate, LocalDate nextPaymentDate) {
         this.user = user;
         this.name = name;
         this.price = price;
@@ -66,7 +70,7 @@ public class Subscription extends AuditableEntity {
         this.status = status;
         this.category = category;
         this.startDate = startDate;
-        this.nextPaymentDate = frequency.addTo(startDate);
+        this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : frequency.addTo(startDate);
     }
 
     public void update(String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionStatus status, SubscriptionCategory category, LocalDate startDate) {

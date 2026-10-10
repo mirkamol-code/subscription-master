@@ -11,6 +11,8 @@ spring:
     port: 2525
 
 app:
+  seed:
+    enabled: false
   jwt:
     secret: test-signing-secret-that-is-at-least-thirty-two-bytes-long
     access-token-minutes: 15
