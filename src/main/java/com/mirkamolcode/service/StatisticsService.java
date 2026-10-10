@@ -17,7 +17,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 @Service
 @Transactional(readOnly = true)
 public class StatisticsService {
@@ -34,13 +33,34 @@ public class StatisticsService {
     }
 
     public SpendingSummary mySummary() {
-        List<Subscription> items = activeFor(currentUser.requiredUser().getId());
+        return mySummary(null, null);
+    }
+
+    /** TASK-04: support year & month for specific month spending summary */
+    public SpendingSummary mySummary(Integer year, Integer month) {
+        Long userId = currentUser.requiredUser().getId();
+        List<Subscription> items = activeFor(userId);
+
+        if (year != null && month != null) {
+            if (month < 1 || month > 12) {
+                throw new IllegalArgumentException("month must be between 1 and 12");
+            }
+            LocalDate monthEnd = YearMonth.of(year, month).atEndOfMonth();
+            items = items.stream()
+                    .filter(s -> !s.getStartDate().isAfter(monthEnd))
+                    .toList();
+        }
+
         List<Cost> costs = items.stream().map(this::monthlyCost).toList();
         BigDecimal total = sum(costs.stream().map(Cost::amount).toList());
         SubscriptionCost highest = costs.stream().max(Comparator.comparing(Cost::amount)).map(c -> new SubscriptionCost(c.subscription().getId(), c.subscription().getName(), c.amount())).orElse(null);
         Map<SubscriptionCategory, BigDecimal> grouped = costs.stream().collect(Collectors.groupingBy(c -> c.subscription().getCategory(), Collectors.reducing(BigDecimal.ZERO, Cost::amount, BigDecimal::add)));
-        List<CategoryCost> categories = grouped.entrySet().stream().map(e -> new CategoryCost(e.getKey(), scale(e.getValue()))).sorted(Comparator.comparing(CategoryCost::category)).toList();
-        return new SpendingSummary(scale(total), "UZS", highest, categories);
+        List<CategoryCost> categories = grouped.entrySet().stream()
+                .map(e -> new CategoryCost(e.getKey(), scale(e.getValue()), "UZS"))
+                .sorted(Comparator.comparing(CategoryCost::category))
+                .toList();
+
+        return new SpendingSummary(scale(total), "UZS", highest, categories, year, month);
     }
 
     public List<MonthlyCost> monthlyDynamics(int months) {

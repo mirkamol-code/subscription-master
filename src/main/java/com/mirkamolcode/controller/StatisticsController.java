@@ -18,10 +18,18 @@ public class StatisticsController {
         this.service = service;
     }
 
-    @GetMapping("/summary")
+    /**
+     * TASK-04 & TASK-06:
+     * GET /statistics/summary or /statistics/spending-summary
+     * Optional ?year=2026&month=10 for specific month
+     */
+    @GetMapping({"/summary", "/spending-summary"})
     @PreAuthorize("hasAuthority('STATISTICS_READ_OWN')")
-    public SpendingSummary summary() {
-        return service.mySummary();
+    public SpendingSummary summary(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        return service.mySummary(year, month);
     }
 
     @GetMapping("/monthly-dynamics")

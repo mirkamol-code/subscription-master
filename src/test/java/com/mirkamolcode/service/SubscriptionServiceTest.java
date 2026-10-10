@@ -39,6 +39,8 @@ class SubscriptionServiceTest {
     @Mock
     private SubscriptionRepository subscriptionRepository;
     @Mock
+    private com.mirkamolcode.repository.PaymentHistoryRepository paymentHistoryRepository;
+    @Mock
     private SubscriptionMapper subscriptionMapper;
     @Mock
     private CurrentUserService currentUserService;
@@ -233,6 +235,113 @@ class SubscriptionServiceTest {
         assertThat(subscription.isDeleted()).isTrue();
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         verify(subscriptionRepository, never()).delete(any(Subscription.class));
+    }
+
+    @Test
+    void pause_shouldChangeStatusToPaused() {
+        Subscription subscription = subscription(owner, "Netflix");
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
+
+        SubscriptionResponse result = underTest.pause(7L);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAUSED);
+    }
+
+    @Test
+    void pause_shouldThrowWhenAlreadyPaused() {
+        Subscription subscription = subscription(owner, "Netflix");
+        subscription.pause();
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+
+        assertThatThrownBy(() -> underTest.pause(7L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already paused");
+    }
+
+    @Test
+    void resume_shouldChangeStatusToActive() {
+        Subscription subscription = subscription(owner, "Netflix");
+        subscription.pause();
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
+
+        SubscriptionResponse result = underTest.resume(7L);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
+    void upcoming_shouldReturnActiveSubscriptionsWithinDays() {
+        Subscription subscription = subscription(owner, "Netflix");
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(java.util.List.of(subscription));
+        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
+
+        java.util.List<SubscriptionResponse> results = underTest.upcoming(7);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).name()).isEqualTo("Netflix");
+    }
+
+    @Test
+    void getHistory_shouldReturnPaymentHistory() {
+        Subscription subscription = subscription(owner, "Netflix");
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+
+        com.mirkamolcode.entity.PaymentHistory payment = new com.mirkamolcode.entity.PaymentHistory(
+                subscription, LocalDate.now().minusMonths(1), new BigDecimal("12.99"), CurrencyCode.USD, new BigDecimal("12850.00")
+        );
+        when(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(7L))
+                .thenReturn(java.util.List.of(payment));
+
+        java.util.List<com.mirkamolcode.dto.response.PaymentHistoryResponse> history = underTest.getHistory(7L);
+
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).amount()).isEqualByComparingTo("12.99");
+        assertThat(history.get(0).currency()).isEqualTo(CurrencyCode.USD);
+    }
+
+    @Test
+    void listAll_shouldReturnUnpagedList() {
+        Subscription subscription = subscription(owner, "Netflix");
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(java.util.List.of(subscription));
+        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
+
+        java.util.List<SubscriptionResponse> results = underTest.listAll(
+                SubscriptionStatus.ACTIVE, CurrencyCode.USD, SubscriptionCategory.ENTERTAINMENT, "Net", null, null, null, null
+        );
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).name()).isEqualTo("Netflix");
+    }
+
+    @Test
+    void calendar_shouldGroupSubscriptionsByDayAndCalculateCost() {
+        Subscription subscription = subscription(owner, "Netflix");
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(java.util.List.of(subscription));
+        when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12850.00"));
+        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
+
+        com.mirkamolcode.dto.response.CalendarResponse cal = underTest.calendar(2026, 10);
+
+        assertThat(cal.year()).isEqualTo(2026);
+        assertThat(cal.month()).isEqualTo(10);
+        assertThat(cal.currency()).isEqualTo("UZS");
+        assertThat(cal.days()).hasSize(1);
     }
 
     private User user(Long id, String email) {
