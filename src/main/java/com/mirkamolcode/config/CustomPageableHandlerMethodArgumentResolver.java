@@ -20,10 +20,22 @@ public class CustomPageableHandlerMethodArgumentResolver extends PageableHandler
                                     ModelAndViewContainer mavContainer,
                                     NativeWebRequest webRequest,
                                     WebDataBinderFactory binderFactory) {
-        Pageable pageable = super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);
+        String unpagedParam = webRequest.getParameter("unpaged");
+        String sizeParam = webRequest.getParameter("size");
+        boolean isUnpaged = "true".equalsIgnoreCase(unpagedParam) || "-1".equals(sizeParam);
+
         String[] sortParams = webRequest.getParameterValues("sort");
+        Sort sort = Sort.unsorted();
         if (sortParams != null && sortParams.length > 0) {
-            Sort sort = CustomSortHandlerMethodArgumentResolver.parseSort(sortParams);
+            sort = CustomSortHandlerMethodArgumentResolver.parseSort(sortParams);
+        }
+
+        if (isUnpaged) {
+            return sort.isSorted() ? Pageable.unpaged(sort) : Pageable.unpaged();
+        }
+
+        Pageable pageable = super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);
+        if (sort.isSorted()) {
             return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
         }
         return pageable;

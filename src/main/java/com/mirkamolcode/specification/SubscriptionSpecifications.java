@@ -1,10 +1,12 @@
 package com.mirkamolcode.specification;
 
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.entity.Subscription;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Map;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -30,6 +32,28 @@ public final class SubscriptionSpecifications {
 
     public static Specification<Subscription> hasCurrency(CurrencyCode currency) {
         return currency == null ? Specification.unrestricted() : (root, q, b) -> b.equal(root.get("currency"), currency);
+    }
+
+    /** TASK-02: case-insensitive category filter */
+    public static Specification<Subscription> hasCategory(SubscriptionCategory category) {
+        return category == null ? Specification.unrestricted() : (root, q, b) -> b.equal(root.get("category"), category);
+    }
+
+    /** TASK-01: case-insensitive LIKE search on name */
+    public static Specification<Subscription> nameContains(String name) {
+        if (name == null || name.isBlank()) return Specification.unrestricted();
+        String pattern = "%" + name.trim().toLowerCase() + "%";
+        return (root, q, b) -> b.like(b.lower(root.get("name")), pattern);
+    }
+
+    /** TASK-05: nextPaymentDate >= from */
+    public static Specification<Subscription> nextPaymentDateFrom(LocalDate from) {
+        return from == null ? Specification.unrestricted() : (root, q, b) -> b.greaterThanOrEqualTo(root.get("nextPaymentDate"), from);
+    }
+
+    /** TASK-05: nextPaymentDate <= to */
+    public static Specification<Subscription> nextPaymentDateTo(LocalDate to) {
+        return to == null ? Specification.unrestricted() : (root, q, b) -> b.lessThanOrEqualTo(root.get("nextPaymentDate"), to);
     }
 
     public static Specification<Subscription> priceAtLeast(BigDecimal value) {

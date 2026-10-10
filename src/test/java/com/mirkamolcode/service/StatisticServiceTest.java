@@ -69,6 +69,22 @@ class StatisticServiceTest {
         assertThat(result.byCategory()).hasSize(2);
         assertThat(result.byCategory()).extracting(category -> category.category())
                 .containsExactly(SubscriptionCategory.ENTERTAINMENT, SubscriptionCategory.PRODUCTIVITY);
+        assertThat(result.byCategory().get(0).currency()).isEqualTo("UZS");
+    }
+
+    @Test
+    void mySummary_withYearAndMonth_shouldFilterSubscriptionsAndSetYearMonth() {
+        Subscription entertainment = subscription("Netflix", "10", SubscriptionCategory.ENTERTAINMENT);
+        when(currentUserService.requiredUser()).thenReturn(user);
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(entertainment));
+        when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12500"));
+
+        var result = underTest.mySummary(2026, 10);
+
+        assertThat(result.year()).isEqualTo(2026);
+        assertThat(result.month()).isEqualTo(10);
+        assertThat(result.monthlyTotalUzs()).isEqualByComparingTo("125000.00");
+        assertThat(result.byCategory().get(0).currency()).isEqualTo("UZS");
     }
 
     @Test
