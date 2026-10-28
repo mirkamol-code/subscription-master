@@ -1,5 +1,6 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.config.CustomPageableHandlerMethodArgumentResolver;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Permission;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -109,7 +111,8 @@ public class SubscriptionService {
             throw new IllegalArgumentException("minPrice must not exceed maxPrice");
 
         Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
-        return repository.findAll(spec).stream().map(mapper::toResponse).toList();
+        Pageable firstRows = PageRequest.of(0, CustomPageableHandlerMethodArgumentResolver.MAX_UNPAGED_SIZE);
+        return repository.findAll(spec, firstRows).stream().map(mapper::toResponse).toList();
     }
 
     public SubscriptionResponse get(Long id) {

@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -338,17 +339,22 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void listAll_shouldReturnUnpagedList() {
+    void listAll_shouldReturnAtMostMaxUnpagedSizeRows() {
         Subscription subscription = subscription(owner, "Netflix");
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
         when(currentUserService.requiredUser()).thenReturn(owner);
-        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(java.util.List.of(subscription));
+        when(subscriptionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(subscription)));
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         java.util.List<SubscriptionResponse> results = underTest.listAll(
                 SubscriptionStatus.ACTIVE, CurrencyCode.USD, SubscriptionCategory.ENTERTAINMENT, "Net", null, null, null, null
         );
 
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(subscriptionRepository).findAll(any(Specification.class), pageable.capture());
+        assertThat(pageable.getValue().getPageNumber()).isZero();
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(1000);
         assertThat(results).hasSize(1);
         assertThat(results.get(0).name()).isEqualTo("Netflix");
     }
