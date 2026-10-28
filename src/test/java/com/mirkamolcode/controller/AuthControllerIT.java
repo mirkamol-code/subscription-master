@@ -142,7 +142,12 @@ class AuthControllerIT extends AbstractTestConfig {
         webTestClient.get()
                 .uri(API + "/auth/me")
                 .exchange()
-                .expectStatus().isUnauthorized();
+                .expectStatus().isUnauthorized()
+                .expectHeader().contentTypeCompatibleWith("application/json")
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(401)
+                .jsonPath("$.errorCode").isEqualTo("UNAUTHORIZED")
+                .jsonPath("$.message").isEqualTo("Authentication required");
     }
 
     @Test
