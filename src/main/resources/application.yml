@@ -46,7 +46,7 @@ app:
     access-token-minutes: 15
     refresh-token-days: 30
   seed:
-    enabled: ${APP_SEED_ENABLED:true}
+    enabled: ${APP_SEED_ENABLED:false}
   rate-limiting:
     auth:
       enabled: ${AUTH_RATE_LIMIT_ENABLED:true}

@@ -416,6 +416,8 @@ Important application properties include:
 | `app.rate-limiting.auth.block-duration-seconds` | Rate-limit block duration |
 | `app.seed.enabled` | Controls demo-data initialization |
 | `app.cbu.base-url` | CBU exchange-rate API URL |
+| `app.cbu.connect-timeout` | Max time to connect to CBU (default `2s`) |
+| `app.cbu.read-timeout` | Max time to wait for a CBU response (default `3s`) |
 
 Seed data can create 200 demonstration subscriptions. Keep it disabled in production unless intentionally required. Production secrets, SMTP credentials, and database credentials should be supplied securely rather than committed to source control.
 
