@@ -40,8 +40,12 @@ public final class SubscriptionSpecifications {
 
     public static Specification<Subscription> nameContains(String name) {
         if (name == null || name.isBlank()) return Specification.unrestricted();
-        String pattern = "%" + name.trim().toLowerCase() + "%";
-        return (root, q, b) -> b.like(b.lower(root.get("name")), pattern);
+        String escaped = name.trim().toLowerCase()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        String pattern = "%" + escaped + "%";
+        return (root, q, b) -> b.like(b.lower(root.get("name")), pattern, '\\');
     }
 
     public static Specification<Subscription> nextPaymentDateFrom(LocalDate from) {

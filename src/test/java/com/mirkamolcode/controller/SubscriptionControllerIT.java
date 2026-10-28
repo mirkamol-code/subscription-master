@@ -191,6 +191,37 @@ class SubscriptionControllerIT extends AbstractTestConfig {
                 .jsonPath("$.content[0].name").isEqualTo("Service A");
     }
 
+    @Test
+    void listAll_shouldTreatPercentAndUnderscoreInNameAsLiteralCharacters() {
+        String ownerAuthorization = bearer(register("owner-wildcards@example.com"));
+        createSubscription(ownerAuthorization, request("100% Fitness", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("My_Box", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("MyXBox", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("Netflix", "10.00", CurrencyCode.USD));
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path(API + "/subscriptions/all")
+                        .queryParam("name", "{name}")
+                        .build("%"))
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].name").isEqualTo("100% Fitness");
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path(API + "/subscriptions/all")
+                        .queryParam("name", "{name}")
+                        .build("y_b"))
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].name").isEqualTo("My_Box");
+    }
+
     private SubscriptionRequest request(String name, String price, CurrencyCode currency) {
         return new SubscriptionRequest(name, new BigDecimal(price), currency,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
