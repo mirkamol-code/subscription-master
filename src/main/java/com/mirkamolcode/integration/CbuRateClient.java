@@ -4,9 +4,11 @@ import com.mirkamolcode.dto.CbuRate;
 import com.mirkamolcode.model.CurrencyCode;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
+import java.time.Duration;
 import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -15,9 +17,14 @@ public class CbuRateClient {
     private final RestClient client;
 
     public CbuRateClient(RestClient.Builder builder,
-                         @Value("${app.cbu.base-url}") String url
+                         @Value("${app.cbu.base-url}") String url,
+                         @Value("${app.cbu.connect-timeout}") Duration connectTimeout,
+                         @Value("${app.cbu.read-timeout}") Duration readTimeout
     ) {
-        this.client = builder.baseUrl(url).build();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(connectTimeout);
+        requestFactory.setReadTimeout(readTimeout);
+        this.client = builder.baseUrl(url).requestFactory(requestFactory).build();
     }
 
     @CircuitBreaker(name = "cbuRates", fallbackMethod = "unavailable")

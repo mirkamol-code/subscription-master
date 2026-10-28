@@ -54,6 +54,8 @@ app:
       block-duration-seconds: ${AUTH_RATE_LIMIT_BLOCK_SECONDS:60}
 
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
+  cbu.connect-timeout: 2s
+  cbu.read-timeout: 3s
   notifications:
     log:
       enabled: ${LOG_NOTIFICATIONS_ENABLED:true}

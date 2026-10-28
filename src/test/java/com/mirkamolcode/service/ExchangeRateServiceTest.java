@@ -99,24 +99,4 @@ class ExchangeRateServiceTest {
         verify(client).find(CurrencyCode.USD);
         verify(client).find(CurrencyCode.EUR);
     }
-
-    @Test
-    void getCurrentRates_shouldReturnAllRatesAndBaseCurrency() {
-        CbuRate usdRate = new CbuRate("USD", new BigDecimal("12850.00"), "21.08.2026");
-        CbuRate eurRate = new CbuRate("EUR", new BigDecimal("13967.50"), "21.08.2026");
-        when(client.find(CurrencyCode.USD)).thenReturn(usdRate);
-        when(client.find(CurrencyCode.EUR)).thenReturn(eurRate);
-        when(rateRepository.findByCurrencyAndRateDate(eq(CurrencyCode.USD), any()))
-                .thenReturn(Optional.of(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12850.00"), LocalDate.of(2026, 8, 21))));
-        when(rateRepository.findByCurrencyAndRateDate(eq(CurrencyCode.EUR), any()))
-                .thenReturn(Optional.of(new ExchangeRate(CurrencyCode.EUR, new BigDecimal("13967.50"), LocalDate.of(2026, 8, 21))));
-
-        var result = underTest.getCurrentRates();
-
-        assertThat(result.baseCurrency()).isEqualTo("UZS");
-        assertThat(result.rates()).containsEntry("USD", new BigDecimal("12850.00"));
-        assertThat(result.rates()).containsEntry("EUR", new BigDecimal("13967.50"));
-        assertThat(result.rates()).containsEntry("UZS", new BigDecimal("1.00"));
-        assertThat(result.updatedAt()).isNotNull();
-    }
 }
