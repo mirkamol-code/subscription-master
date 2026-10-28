@@ -1,7 +1,7 @@
 package com.mirkamolcode.controller;
 
 import com.mirkamolcode.dto.response.ExchangeRatesResponse;
-import com.mirkamolcode.service.ExchangeRateService;
+import com.mirkamolcode.service.CurrencyRatesService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class CurrencyControllerTest {
 
     @Mock
-    private ExchangeRateService exchangeRateService;
+    private CurrencyRatesService currencyRatesService;
 
     @InjectMocks
     private CurrencyController underTest;
@@ -33,7 +33,7 @@ class CurrencyControllerTest {
                 Map.of("USD", new BigDecimal("12850.00"), "EUR", new BigDecimal("13967.50"), "UZS", BigDecimal.ONE),
                 now
         );
-        when(exchangeRateService.getCurrentRates()).thenReturn(response);
+        when(currencyRatesService.getCurrentRates()).thenReturn(response);
 
         ExchangeRatesResponse result = underTest.getRates();
 
@@ -42,6 +42,6 @@ class CurrencyControllerTest {
         assertThat(result.rates()).containsEntry("EUR", new BigDecimal("13967.50"));
         assertThat(result.rates()).containsEntry("UZS", BigDecimal.ONE);
         assertThat(result.updatedAt()).isEqualTo(now);
-        verify(exchangeRateService).getCurrentRates();
+        verify(currencyRatesService).getCurrentRates();
     }
 }

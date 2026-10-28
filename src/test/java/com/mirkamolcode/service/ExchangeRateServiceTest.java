@@ -2,17 +2,19 @@ package com.mirkamolcode.service;
 
 import com.mirkamolcode.dto.CbuRate;
 import com.mirkamolcode.entity.ExchangeRate;
+import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
 import com.mirkamolcode.integration.CbuRateClient;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.repository.ExchangeRateRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,8 +27,12 @@ class ExchangeRateServiceTest {
     private CbuRateClient client;
     @Mock
     private ExchangeRateRepository rateRepository;
-    @InjectMocks
     private ExchangeRateService underTest;
+
+    @BeforeEach
+    void setUp() {
+        underTest = new ExchangeRateService(client, rateRepository, new ConcurrentMapCacheManager(ExchangeRateService.CACHE_NAME));
+    }
 
     @Test
     void rateToUzs_shouldReturnOne_withoutExternalCallForBaseCurrency() {
@@ -83,7 +89,7 @@ class ExchangeRateServiceTest {
         when(rateRepository.findFirstByCurrencyOrderByRateDateDesc(CurrencyCode.USD)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> underTest.rateToUzs(CurrencyCode.USD))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ExchangeRatesUnavailableException.class)
                 .hasMessage("No cached exchange rate available for USD");
     }
 
@@ -98,25 +104,5 @@ class ExchangeRateServiceTest {
 
         verify(client).find(CurrencyCode.USD);
         verify(client).find(CurrencyCode.EUR);
-    }
-
-    @Test
-    void getCurrentRates_shouldReturnAllRatesAndBaseCurrency() {
-        CbuRate usdRate = new CbuRate("USD", new BigDecimal("12850.00"), "21.08.2026");
-        CbuRate eurRate = new CbuRate("EUR", new BigDecimal("13967.50"), "21.08.2026");
-        when(client.find(CurrencyCode.USD)).thenReturn(usdRate);
-        when(client.find(CurrencyCode.EUR)).thenReturn(eurRate);
-        when(rateRepository.findByCurrencyAndRateDate(eq(CurrencyCode.USD), any()))
-                .thenReturn(Optional.of(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12850.00"), LocalDate.of(2026, 8, 21))));
-        when(rateRepository.findByCurrencyAndRateDate(eq(CurrencyCode.EUR), any()))
-                .thenReturn(Optional.of(new ExchangeRate(CurrencyCode.EUR, new BigDecimal("13967.50"), LocalDate.of(2026, 8, 21))));
-
-        var result = underTest.getCurrentRates();
-
-        assertThat(result.baseCurrency()).isEqualTo("UZS");
-        assertThat(result.rates()).containsEntry("USD", new BigDecimal("12850.00"));
-        assertThat(result.rates()).containsEntry("EUR", new BigDecimal("13967.50"));
-        assertThat(result.rates()).containsEntry("UZS", new BigDecimal("1.00"));
-        assertThat(result.updatedAt()).isNotNull();
     }
 }

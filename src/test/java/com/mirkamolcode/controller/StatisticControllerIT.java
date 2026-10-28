@@ -3,6 +3,7 @@ package com.mirkamolcode.controller;
 import com.mirkamolcode.AbstractTestConfig;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
+import com.mirkamolcode.entity.ExchangeRate;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.model.BillingFrequency;
@@ -77,6 +78,44 @@ class StatisticControllerIT extends AbstractTestConfig {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
+    @Test
+    void summary_shouldUseLastStoredRate_whenCbuIsUnreachable() {
+        // given CBU is unreachable in the test profile and a USD rate was stored earlier
+        exchangeRateRepository.save(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12000.00"), LocalDate.of(2026, 10, 27)));
+        String authorization = bearer(register("owner-usd@example.com"));
+        createSubscription(authorization, new SubscriptionRequest("USD service", new BigDecimal("2.00"), CurrencyCode.USD,
+                BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
+                SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10)));
+
+        // when / then
+        webTestClient.get()
+                .uri(API + "/statistics/summary")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.monthlyTotalUzs").isEqualTo(24000.0);
+    }
+
+    @Test
+    void summary_shouldReturnServiceUnavailable_whenCbuIsUnreachableAndNoRateIsStored() {
+        // given CBU is unreachable in the test profile and no USD rate was ever stored
+        String authorization = bearer(register("owner-no-rate@example.com"));
+        createSubscription(authorization, new SubscriptionRequest("USD service", new BigDecimal("2.00"), CurrencyCode.USD,
+                BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
+                SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10)));
+
+        // when / then
+        webTestClient.get()
+                .uri(API + "/statistics/summary")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("EXCHANGE_RATES_UNAVAILABLE")
+                .jsonPath("$.message").isEqualTo("Exchange rates temporarily unavailable");
     }
 
     private SubscriptionRequest request(String name, String price) {

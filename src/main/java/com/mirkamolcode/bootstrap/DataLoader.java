@@ -1,6 +1,5 @@
 package com.mirkamolcode.bootstrap;
 
-import com.mirkamolcode.entity.ExchangeRate;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
@@ -9,7 +8,6 @@ import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
-import com.mirkamolcode.repository.ExchangeRateRepository;
 import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
 import com.mirkamolcode.repository.UserRepository;
@@ -36,7 +34,6 @@ public class DataLoader implements ApplicationRunner {
     private final UserRepository users;
     private final PaymentHistoryRepository historyRepository;
     private final SubscriptionRepository subscriptions;
-    private final ExchangeRateRepository exchangeRates;
     private final PasswordEncoder passwordEncoder;
 
     private record SubscriptionSeed(
@@ -256,20 +253,16 @@ public class DataLoader implements ApplicationRunner {
     public DataLoader(UserRepository users,
                       PaymentHistoryRepository historyRepository,
                       SubscriptionRepository subscriptions,
-                      ExchangeRateRepository exchangeRates,
                       PasswordEncoder passwordEncoder) {
         this.users = users;
         this.historyRepository = historyRepository;
         this.subscriptions = subscriptions;
-        this.exchangeRates = exchangeRates;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        seedExchangeRates();
-
         User admin = users.findByEmailIgnoreCase("admin@subscribemaster.local")
                 .orElseGet(() -> users.save(new User(
                         "admin@subscribemaster.local",
@@ -316,16 +309,6 @@ public class DataLoader implements ApplicationRunner {
         }
 
         log.info("Successfully seeded {} subscriptions and historical payments.", count);
-    }
-
-    private void seedExchangeRates() {
-        LocalDate today = LocalDate.now();
-        if (exchangeRates.findFirstByCurrencyOrderByRateDateDesc(CurrencyCode.USD).isEmpty()) {
-            exchangeRates.save(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12850.000000"), today));
-        }
-        if (exchangeRates.findFirstByCurrencyOrderByRateDateDesc(CurrencyCode.EUR).isEmpty()) {
-            exchangeRates.save(new ExchangeRate(CurrencyCode.EUR, new BigDecimal("13967.500000"), today));
-        }
     }
 
     private void seedPaymentHistoryFor(Subscription sub, LocalDate today) {

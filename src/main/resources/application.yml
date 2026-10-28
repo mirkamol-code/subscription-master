@@ -2,6 +2,7 @@ server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
+  forward-headers-strategy: native
 
 spring:
   application:
@@ -46,7 +47,7 @@ app:
     access-token-minutes: 15
     refresh-token-days: 30
   seed:
-    enabled: ${APP_SEED_ENABLED:true}
+    enabled: ${APP_SEED_ENABLED:false}
   rate-limiting:
     auth:
       enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
@@ -54,6 +55,8 @@ app:
       block-duration-seconds: ${AUTH_RATE_LIMIT_BLOCK_SECONDS:60}
 
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
+  cbu.connect-timeout: 2s
+  cbu.read-timeout: 3s
   notifications:
     log:
       enabled: ${LOG_NOTIFICATIONS_ENABLED:true}
@@ -70,3 +73,12 @@ management:
     web:
       exposure:
         include: health,info
+resilience4j:
+  circuitbreaker:
+    instances:
+      cbuRates:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 1
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
