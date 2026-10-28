@@ -41,7 +41,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        String clientIp = resolveClientIp(request);
+        String clientIp = request.getRemoteAddr();
 
         if (rateLimiter.isBlocked(clientIp)) {
             long remainingSeconds = rateLimiter.getRemainingBlockSeconds(clientIp);
@@ -75,18 +75,6 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             rateLimiter.recordFailure(clientIp);
             throw ex;
         }
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return xRealIp.trim();
-        }
-        return request.getRemoteAddr();
     }
 
     private static class StatusExposingResponseWrapper extends HttpServletResponseWrapper {
