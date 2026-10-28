@@ -11,23 +11,19 @@ class AuthRateLimiterTest {
         AuthRateLimiter limiter = new AuthRateLimiter(true, 3, 60);
         String ip = "192.168.1.50";
 
-        
         limiter.recordFailure(ip);
         assertThat(limiter.isBlocked(ip)).isFalse();
         assertThat(limiter.getFailedAttempts(ip)).isEqualTo(1);
 
-        
         limiter.recordFailure(ip);
         assertThat(limiter.isBlocked(ip)).isFalse();
         assertThat(limiter.getFailedAttempts(ip)).isEqualTo(2);
 
-        
         limiter.recordFailure(ip);
         assertThat(limiter.isBlocked(ip)).isTrue();
         assertThat(limiter.getBlockedUntil(ip)).isNotNull();
         assertThat(limiter.getRemainingBlockSeconds(ip)).isGreaterThan(0);
 
-        
         assertThat(limiter.isBlocked("192.168.1.99")).isFalse();
         assertThat(limiter.getBlockedUntil("192.168.1.99")).isNull();
     }
@@ -41,12 +37,10 @@ class AuthRateLimiterTest {
         limiter.recordFailure(ip);
         assertThat(limiter.getFailedAttempts(ip)).isEqualTo(2);
 
-        
         limiter.recordSuccess(ip);
         assertThat(limiter.getFailedAttempts(ip)).isEqualTo(0);
         assertThat(limiter.isBlocked(ip)).isFalse();
 
-        
         limiter.recordFailure(ip);
         assertThat(limiter.isBlocked(ip)).isFalse();
         assertThat(limiter.getFailedAttempts(ip)).isEqualTo(1);

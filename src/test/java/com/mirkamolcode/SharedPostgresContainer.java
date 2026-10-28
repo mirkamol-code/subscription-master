@@ -49,7 +49,6 @@ public class SharedPostgresContainer extends PostgreSQLContainer {
         return sharedPostgresContainer;
     }
 
-    
     private static void ensureDatabaseExists(SharedPostgresContainer container) {
         String adminUrl = String.format(
                 "jdbc:postgresql://%s:%d/postgres",

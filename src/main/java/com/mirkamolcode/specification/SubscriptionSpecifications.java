@@ -34,24 +34,24 @@ public final class SubscriptionSpecifications {
         return currency == null ? Specification.unrestricted() : (root, q, b) -> b.equal(root.get("currency"), currency);
     }
 
-    
     public static Specification<Subscription> hasCategory(SubscriptionCategory category) {
         return category == null ? Specification.unrestricted() : (root, q, b) -> b.equal(root.get("category"), category);
     }
 
-    
     public static Specification<Subscription> nameContains(String name) {
         if (name == null || name.isBlank()) return Specification.unrestricted();
-        String pattern = "%" + name.trim().toLowerCase() + "%";
-        return (root, q, b) -> b.like(b.lower(root.get("name")), pattern);
+        String escaped = name.trim().toLowerCase()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        String pattern = "%" + escaped + "%";
+        return (root, q, b) -> b.like(b.lower(root.get("name")), pattern, '\\');
     }
 
-    
     public static Specification<Subscription> nextPaymentDateFrom(LocalDate from) {
         return from == null ? Specification.unrestricted() : (root, q, b) -> b.greaterThanOrEqualTo(root.get("nextPaymentDate"), from);
     }
 
-    
     public static Specification<Subscription> nextPaymentDateTo(LocalDate to) {
         return to == null ? Specification.unrestricted() : (root, q, b) -> b.lessThanOrEqualTo(root.get("nextPaymentDate"), to);
     }

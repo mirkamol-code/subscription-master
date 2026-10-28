@@ -44,17 +44,14 @@ class AuthServiceTest {
 
     @Test
     void register_shouldNormalizeEmailAndIssueTokens_whenRequestIsValid() {
-        
         RegisterRequest request = new RegisterRequest(" Person@Example.COM ", "a-long-enough-password");
         when(userRepository.existsByEmailIgnoreCase(request.email())).thenReturn(false);
         when(passwordEncoder.encode(request.password())).thenReturn("bcrypt-hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         stubIssuedTokens();
 
-        
         var result = underTest.register(request);
 
-        
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getEmail()).isEqualTo("person@example.com");
@@ -68,11 +65,9 @@ class AuthServiceTest {
 
     @Test
     void register_shouldThrowConflict_whenEmailAlreadyExists() {
-        
         RegisterRequest request = new RegisterRequest("person@example.com", "a-long-enough-password");
         when(userRepository.existsByEmailIgnoreCase(request.email())).thenReturn(true);
 
-        
         assertThatThrownBy(() -> underTest.register(request))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Email is already registered");
@@ -82,17 +77,14 @@ class AuthServiceTest {
 
     @Test
     void login_shouldIssueTokens_whenCredentialsAreValid() {
-        
         User user = user("person@example.com");
         LoginRequest request = new LoginRequest(user.getEmail(), "a-long-enough-password");
         when(userRepository.findByEmailIgnoreCase(request.email())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(request.password(), user.getPasswordHash())).thenReturn(true);
         stubIssuedTokens();
 
-        
         var result = underTest.login(request);
 
-        
         assertThat(result.tokenType()).isEqualTo("Bearer");
         assertThat(result.expiresInSeconds()).isEqualTo(900);
         verify(refreshTokenRepository).save(any(RefreshToken.class));
@@ -100,11 +92,9 @@ class AuthServiceTest {
 
     @Test
     void login_shouldRejectInvalidCredentials_withoutRevealingWhetherUserExists() {
-        
         LoginRequest missingUser = new LoginRequest("missing@example.com", "wrong-password");
         when(userRepository.findByEmailIgnoreCase(missingUser.email())).thenReturn(Optional.empty());
 
-        
         assertThatThrownBy(() -> underTest.login(missingUser))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Invalid credentials");
@@ -122,17 +112,14 @@ class AuthServiceTest {
 
     @Test
     void refresh_shouldRotateToken_whenRefreshTokenIsValid() {
-        
         User user = user("person@example.com");
         RefreshToken stored = new RefreshToken(user, "stored-hash", Instant.now().plusSeconds(3600));
         when(jwtService.isRefreshToken("old-refresh-token")).thenReturn(true);
         when(refreshTokenRepository.findByTokenHash(any(String.class))).thenReturn(Optional.of(stored));
         stubIssuedTokens();
 
-        
         var result = underTest.refresh(new RefreshRequest("old-refresh-token"));
 
-        
         assertThat(stored.isRevoked()).isTrue();
         assertThat(result.refreshToken()).isEqualTo("refresh-token");
         verify(refreshTokenRepository).save(any(RefreshToken.class));
@@ -140,10 +127,8 @@ class AuthServiceTest {
 
     @Test
     void refresh_shouldRejectInvalidRevokedAndExpiredTokens() {
-        
         when(jwtService.isRefreshToken("not-refresh")).thenReturn(false);
 
-        
         assertThatThrownBy(() -> underTest.refresh(new RefreshRequest("not-refresh")))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Invalid refresh token");
@@ -167,30 +152,24 @@ class AuthServiceTest {
 
     @Test
     void logout_shouldRevokeExistingRefreshToken() {
-        
         User user = user("person@example.com");
         RefreshToken stored = new RefreshToken(user, "hash", Instant.now().plusSeconds(3600));
         when(refreshTokenRepository.findByTokenHash(any(String.class))).thenReturn(Optional.of(stored));
 
-        
         underTest.logout(new com.mirkamolcode.dto.AuthDtos.LogoutRequest("valid-refresh-token"));
 
-        
         assertThat(stored.isRevoked()).isTrue();
     }
 
     @Test
     void me_shouldReturnCurrentUserProfile() {
-        
         User user = user("person@example.com");
         org.springframework.test.util.ReflectionTestUtils.setField(user, "id", 104L);
         org.springframework.test.util.ReflectionTestUtils.setField(user, "createdAt", Instant.parse("2026-01-15T10:00:00Z"));
         when(currentUserService.requiredUser()).thenReturn(user);
 
-        
         var result = underTest.me();
 
-        
         assertThat(result.id()).isEqualTo(104L);
         assertThat(result.email()).isEqualTo("person@example.com");
         assertThat(result.roles()).containsExactly("ROLE_USER");

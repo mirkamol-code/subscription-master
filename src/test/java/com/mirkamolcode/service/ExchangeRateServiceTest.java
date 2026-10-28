@@ -36,34 +36,28 @@ class ExchangeRateServiceTest {
 
     @Test
     void rateToUzs_shouldReusePersistedRate_whenEffectiveDateAlreadyExists() {
-        
         CbuRate cbuRate = new CbuRate("USD", new BigDecimal("12500"), "21.08.2026");
         ExchangeRate persisted = new ExchangeRate(CurrencyCode.USD, new BigDecimal("12490"), LocalDate.of(2026, 8, 21));
         when(client.find(CurrencyCode.USD)).thenReturn(cbuRate);
         when(rateRepository.findByCurrencyAndRateDate(CurrencyCode.USD, LocalDate.of(2026, 8, 21)))
                 .thenReturn(Optional.of(persisted));
 
-        
         BigDecimal result = underTest.rateToUzs(CurrencyCode.USD);
 
-        
         assertThat(result).isEqualByComparingTo("12490");
         verify(rateRepository, never()).save(any());
     }
 
     @Test
     void rateToUzs_shouldPersistRate_whenExternalRateIsNew() {
-        
         CbuRate cbuRate = new CbuRate("EUR", new BigDecimal("14500"), "21.08.2026");
         when(client.find(CurrencyCode.EUR)).thenReturn(cbuRate);
         when(rateRepository.findByCurrencyAndRateDate(CurrencyCode.EUR, LocalDate.of(2026, 8, 21)))
                 .thenReturn(Optional.empty());
         when(rateRepository.save(any(ExchangeRate.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        
         BigDecimal result = underTest.rateToUzs(CurrencyCode.EUR);
 
-        
         assertThat(result).isEqualByComparingTo("14500");
         verify(rateRepository).save(argThat(rate ->
                 rate.getCurrency() == CurrencyCode.EUR
@@ -72,27 +66,22 @@ class ExchangeRateServiceTest {
 
     @Test
     void rateToUzs_shouldUseLatestPersistedRate_whenExternalApiFails() {
-        
         when(client.find(CurrencyCode.USD)).thenThrow(
                 new CbuRateClient.ExchangeRateUnavailableException(new RuntimeException("CBU unavailable")));
         when(rateRepository.findFirstByCurrencyOrderByRateDateDesc(CurrencyCode.USD))
                 .thenReturn(Optional.of(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12345"), LocalDate.now())));
 
-        
         BigDecimal result = underTest.rateToUzs(CurrencyCode.USD);
 
-        
         assertThat(result).isEqualByComparingTo("12345");
     }
 
     @Test
     void rateToUzs_shouldFailClearly_whenExternalAndPersistedRatesAreUnavailable() {
-        
         when(client.find(CurrencyCode.USD)).thenThrow(
                 new CbuRateClient.ExchangeRateUnavailableException(new RuntimeException("CBU unavailable")));
         when(rateRepository.findFirstByCurrencyOrderByRateDateDesc(CurrencyCode.USD)).thenReturn(Optional.empty());
 
-        
         assertThatThrownBy(() -> underTest.rateToUzs(CurrencyCode.USD))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("No cached exchange rate available for USD");
@@ -100,23 +89,19 @@ class ExchangeRateServiceTest {
 
     @Test
     void refreshDailyRates_shouldRefreshEveryNonBaseCurrency() {
-        
         when(client.find(CurrencyCode.USD)).thenReturn(new CbuRate("USD", BigDecimal.TEN, "21.08.2026"));
         when(client.find(CurrencyCode.EUR)).thenReturn(new CbuRate("EUR", BigDecimal.TEN, "21.08.2026"));
         when(rateRepository.findByCurrencyAndRateDate(any(), any())).thenReturn(Optional.of(
                 new ExchangeRate(CurrencyCode.USD, BigDecimal.TEN, LocalDate.of(2026, 8, 21))));
 
-        
         underTest.refreshDailyRates();
 
-        
         verify(client).find(CurrencyCode.USD);
         verify(client).find(CurrencyCode.EUR);
     }
 
     @Test
     void getCurrentRates_shouldReturnAllRatesAndBaseCurrency() {
-        
         CbuRate usdRate = new CbuRate("USD", new BigDecimal("12850.00"), "21.08.2026");
         CbuRate eurRate = new CbuRate("EUR", new BigDecimal("13967.50"), "21.08.2026");
         when(client.find(CurrencyCode.USD)).thenReturn(usdRate);
@@ -126,10 +111,8 @@ class ExchangeRateServiceTest {
         when(rateRepository.findByCurrencyAndRateDate(eq(CurrencyCode.EUR), any()))
                 .thenReturn(Optional.of(new ExchangeRate(CurrencyCode.EUR, new BigDecimal("13967.50"), LocalDate.of(2026, 8, 21))));
 
-        
         var result = underTest.getCurrentRates();
 
-        
         assertThat(result.baseCurrency()).isEqualTo("UZS");
         assertThat(result.rates()).containsEntry("USD", new BigDecimal("12850.00"));
         assertThat(result.rates()).containsEntry("EUR", new BigDecimal("13967.50"));

@@ -53,17 +53,14 @@ class StatisticServiceTest {
 
     @Test
     void mySummary_shouldAggregateActiveSubscriptionsAndSelectMostExpensive() {
-        
         Subscription entertainment = subscription("Netflix", "10", SubscriptionCategory.ENTERTAINMENT);
         Subscription productivity = subscription("Notion", "20", SubscriptionCategory.PRODUCTIVITY);
         when(currentUserService.requiredUser()).thenReturn(user);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(entertainment, productivity));
         when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12500"));
 
-        
         var result = underTest.mySummary();
 
-        
         assertThat(result.monthlyTotalUzs()).isEqualByComparingTo("375000.00");
         assertThat(result.mostExpensive().subscriptionName()).isEqualTo("Notion");
         assertThat(result.byCategory()).hasSize(2);
@@ -85,6 +82,13 @@ class StatisticServiceTest {
         assertThat(result.month()).isEqualTo(10);
         assertThat(result.monthlyTotalUzs()).isEqualByComparingTo("125000.00");
         assertThat(result.byCategory().get(0).currency()).isEqualTo("UZS");
+    }
+
+    @Test
+    void mySummary_shouldRejectYearOutsideSupportedRange() {
+        assertThatThrownBy(() -> underTest.mySummary(1999, 10))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("year must be between 2000 and 2100");
     }
 
     @Test
@@ -110,7 +114,6 @@ class StatisticServiceTest {
 
     @Test
     void monthlyDynamics_shouldSumOnlyCurrentUsersPaymentHistory() {
-        
         Subscription subscription = subscription("Netflix", "10", SubscriptionCategory.ENTERTAINMENT);
         PaymentHistory first = new PaymentHistory(subscription, LocalDate.now(), new BigDecimal("10"), CurrencyCode.USD, new BigDecimal("12500"));
         PaymentHistory second = new PaymentHistory(subscription, LocalDate.now(), new BigDecimal("5"), CurrencyCode.USD, new BigDecimal("12500"));
@@ -118,27 +121,22 @@ class StatisticServiceTest {
         when(paymentHistoryRepository.findBySubscriptionUserIdAndPaymentDateBetween(eq(1L), any(), any()))
                 .thenReturn(List.of(first, second));
 
-        
         var result = underTest.monthlyDynamics(1);
 
-        
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().costUzs()).isEqualByComparingTo("187500.00");
     }
 
     @Test
     void serviceUsage_shouldGroupAndSortVisibleSubscriptions() {
-        
         when(subscriptionRepository.findAll(any(Specification.class), eq(Sort.by("name"))))
                 .thenReturn(List.of(
                         subscription("Netflix", "10", SubscriptionCategory.ENTERTAINMENT),
                         subscription("Netflix", "11", SubscriptionCategory.ENTERTAINMENT),
                         subscription("Notion", "20", SubscriptionCategory.PRODUCTIVITY)));
 
-        
         List<AdminUsage> result = underTest.serviceUsage();
 
-        
         assertThat(result).containsExactly(
                 new AdminUsage("Netflix", 2),
                 new AdminUsage("Notion", 1));

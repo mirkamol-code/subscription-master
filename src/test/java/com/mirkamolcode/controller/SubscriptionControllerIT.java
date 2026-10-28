@@ -111,6 +111,48 @@ class SubscriptionControllerIT extends AbstractTestConfig {
     }
 
     @Test
+    void user_shouldNotPauseResumeOrReadHistoryOfAnotherUsersSubscription() {
+        String ownerAuthorization = bearer(register("owner-actions@example.com"));
+        String otherAuthorization = bearer(register("other-actions@example.com"));
+        SubscriptionResponse ownerSubscription = createSubscription(
+                ownerAuthorization, request("Owner only", "9.99", CurrencyCode.USD));
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/pause", ownerSubscription.id())
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/resume", ownerSubscription.id())
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/{id}/history", ownerSubscription.id())
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/all")
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(0);
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/{id}", ownerSubscription.id())
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("ACTIVE");
+    }
+
+    @Test
     void admin_shouldListReadUpdateAndDeleteSubscriptionsAcrossUsers() {
         String ownerAuthorization = bearer(register("owner@example.com"));
         SubscriptionResponse subscription = createSubscription(
@@ -189,6 +231,80 @@ class SubscriptionControllerIT extends AbstractTestConfig {
                 .expectBody()
                 .jsonPath("$.totalElements").isEqualTo(2)
                 .jsonPath("$.content[0].name").isEqualTo("Service A");
+    }
+
+    @Test
+    void listAll_shouldTreatPercentAndUnderscoreInNameAsLiteralCharacters() {
+        String ownerAuthorization = bearer(register("owner-wildcards@example.com"));
+        createSubscription(ownerAuthorization, request("100% Fitness", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("My_Box", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("MyXBox", "10.00", CurrencyCode.USD));
+        createSubscription(ownerAuthorization, request("Netflix", "10.00", CurrencyCode.USD));
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path(API + "/subscriptions/all")
+                        .queryParam("name", "{name}")
+                        .build("%"))
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].name").isEqualTo("100% Fitness");
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path(API + "/subscriptions/all")
+                        .queryParam("name", "{name}")
+                        .build("y_b"))
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].name").isEqualTo("My_Box");
+    }
+
+    @Test
+    void pauseAndResume_shouldReturnConflict_whenSubscriptionIsInWrongState() {
+        String authorization = bearer(register("owner-conflict@example.com"));
+        SubscriptionResponse subscription = createSubscription(authorization, request("Netflix", "12.99", CurrencyCode.USD));
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/resume", subscription.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("CONFLICT");
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/pause", subscription.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("PAUSED");
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/pause", subscription.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("CONFLICT");
+    }
+
+    @Test
+    void calendar_shouldReturnBadRequest_whenYearIsOutsideSupportedRange() {
+        String authorization = bearer(register("owner-calendar@example.com"));
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/calendar?year=1999&month=10")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST");
     }
 
     private SubscriptionRequest request(String name, String price, CurrencyCode currency) {

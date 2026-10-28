@@ -4,6 +4,7 @@ import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
+import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.mapper.SubscriptionMapper;
 import com.mirkamolcode.model.BillingFrequency;
@@ -26,6 +27,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -62,15 +65,12 @@ class SubscriptionServiceTest {
 
     @Test
     void create_shouldSaveSubscriptionForCurrentUser_andReturnMappedResponse() {
-        
         when(currentUserService.requiredUser()).thenReturn(owner);
         when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(subscriptionMapper.toResponse(any(Subscription.class))).thenAnswer(invocation -> response(invocation.getArgument(0)));
 
-        
         SubscriptionResponse result = underTest.create(request);
 
-        
         ArgumentCaptor<Subscription> captor = ArgumentCaptor.forClass(Subscription.class);
         verify(subscriptionRepository).save(captor.capture());
         assertThat(captor.getValue().getUser()).isSameAs(owner);
@@ -97,7 +97,6 @@ class SubscriptionServiceTest {
 
     @Test
     void list_shouldReturnMappedOwnerSubscriptions_whenUserHasOwnPermission() {
-        
         Subscription subscription = subscription(owner, "Netflix");
         PageRequest pageable = PageRequest.of(0, 20);
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
@@ -106,33 +105,27 @@ class SubscriptionServiceTest {
                 .thenReturn(new PageImpl<>(java.util.List.of(subscription), pageable, 1));
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
-        
         var result = underTest.list(SubscriptionStatus.ACTIVE, CurrencyCode.USD, null, null, pageable);
 
-        
         assertThat(result.getContent()).extracting(SubscriptionResponse::name).containsExactly("Netflix");
         verify(currentUserService).requiredUser();
     }
 
     @Test
     void list_shouldNotResolveOwner_whenUserHasReadAllPermission() {
-        
         PageRequest pageable = PageRequest.of(0, 20);
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(true);
         when(subscriptionRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(java.util.List.of(), pageable, 0));
 
-        
         var result = underTest.list(null, null, null, null, pageable);
 
-        
         assertThat(result).isEmpty();
         verify(currentUserService, never()).requiredUser();
     }
 
     @Test
     void list_shouldFetchExchangeRates_whenPriceFilterProvidedWithoutCurrency() {
-        
         PageRequest pageable = PageRequest.of(0, 20);
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(true);
         when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12850.00"));
@@ -141,10 +134,8 @@ class SubscriptionServiceTest {
         when(subscriptionRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(java.util.List.of(), pageable, 0));
 
-        
         var result = underTest.list(null, null, new BigDecimal("10000"), new BigDecimal("500000"), pageable);
 
-        
         assertThat(result).isEmpty();
         verify(exchangeRateService).rateToUzs(CurrencyCode.USD);
         verify(exchangeRateService).rateToUzs(CurrencyCode.EUR);
@@ -153,17 +144,14 @@ class SubscriptionServiceTest {
 
     @Test
     void get_shouldReturnSubscription_whenCurrentUserOwnsIt() {
-        
         Subscription subscription = subscription(owner, "Netflix");
         when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
         when(currentUserService.requiredUser()).thenReturn(owner);
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
-        
         SubscriptionResponse result = underTest.get(7L);
 
-        
         assertThat(result.name()).isEqualTo("Netflix");
     }
 
@@ -188,33 +176,27 @@ class SubscriptionServiceTest {
 
     @Test
     void get_shouldAllowAnotherUsersSubscription_whenUserHasReadAllPermission() {
-        
         Subscription subscription = subscription(other, "Private");
         when(subscriptionRepository.findById(9L)).thenReturn(Optional.of(subscription));
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(true);
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
-        
         SubscriptionResponse result = underTest.get(9L);
 
-        
         assertThat(result.name()).isEqualTo("Private");
         verify(currentUserService, never()).requiredUser();
     }
 
     @Test
     void update_shouldModifyOwnedSubscription_andReturnMappedResponse() {
-        
         Subscription subscription = subscription(owner, "Old name");
         when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
         when(currentUserService.requiredUser()).thenReturn(owner);
         when(subscriptionMapper.toResponse(subscription)).thenAnswer(invocation -> response(subscription));
 
-        
         SubscriptionResponse result = underTest.update(7L, request("New name", "19.99"));
 
-        
         assertThat(subscription.getName()).isEqualTo("New name");
         assertThat(subscription.getPrice()).isEqualByComparingTo("19.99");
         assertThat(result.name()).isEqualTo("New name");
@@ -222,16 +204,13 @@ class SubscriptionServiceTest {
 
     @Test
     void delete_shouldSoftDeleteOwnedSubscription() {
-        
         Subscription subscription = subscription(owner, "Netflix");
         when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_DELETE_ALL)).thenReturn(false);
         when(currentUserService.requiredUser()).thenReturn(owner);
 
-        
         underTest.delete(7L);
 
-        
         assertThat(subscription.isDeleted()).isTrue();
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         verify(subscriptionRepository, never()).delete(any(Subscription.class));
@@ -240,9 +219,7 @@ class SubscriptionServiceTest {
     @Test
     void pause_shouldChangeStatusToPaused() {
         Subscription subscription = subscription(owner, "Netflix");
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         SubscriptionResponse result = underTest.pause(7L);
@@ -254,12 +231,10 @@ class SubscriptionServiceTest {
     void pause_shouldThrowWhenAlreadyPaused() {
         Subscription subscription = subscription(owner, "Netflix");
         subscription.pause();
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
 
         assertThatThrownBy(() -> underTest.pause(7L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("already paused");
     }
 
@@ -267,14 +242,44 @@ class SubscriptionServiceTest {
     void resume_shouldChangeStatusToActive() {
         Subscription subscription = subscription(owner, "Netflix");
         subscription.pause();
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         SubscriptionResponse result = underTest.resume(7L);
 
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
+    void resume_shouldThrowWhenAlreadyActive() {
+        Subscription subscription = subscription(owner, "Netflix");
+        givenOwnerCanUpdate(subscription);
+
+        assertThatThrownBy(() -> underTest.resume(7L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("already active");
+    }
+
+    @Test
+    void pause_shouldThrowWhenCancelled() {
+        Subscription subscription = subscription(owner, "Netflix", SubscriptionStatus.CANCELLED);
+        givenOwnerCanUpdate(subscription);
+
+        assertThatThrownBy(() -> underTest.pause(7L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Only active subscriptions can be paused");
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
+    void resume_shouldThrowWhenCancelled() {
+        Subscription subscription = subscription(owner, "Netflix", SubscriptionStatus.CANCELLED);
+        givenOwnerCanUpdate(subscription);
+
+        assertThatThrownBy(() -> underTest.resume(7L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Only paused subscriptions can be resumed");
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
     }
 
     @Test
@@ -312,19 +317,32 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void listAll_shouldReturnUnpagedList() {
+    void listAll_shouldReturnAtMostMaxUnpagedSizeRows() {
         Subscription subscription = subscription(owner, "Netflix");
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
         when(currentUserService.requiredUser()).thenReturn(owner);
-        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(java.util.List.of(subscription));
+        when(subscriptionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(subscription)));
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         java.util.List<SubscriptionResponse> results = underTest.listAll(
                 SubscriptionStatus.ACTIVE, CurrencyCode.USD, SubscriptionCategory.ENTERTAINMENT, "Net", null, null, null, null
         );
 
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(subscriptionRepository).findAll(any(Specification.class), pageable.capture());
+        assertThat(pageable.getValue().getPageNumber()).isZero();
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(1000);
+        assertThat(pageable.getValue().getSort()).isEqualTo(Sort.by("nextPaymentDate", "id"));
         assertThat(results).hasSize(1);
         assertThat(results.get(0).name()).isEqualTo("Netflix");
+    }
+
+    @Test
+    void calendar_shouldRejectYearOutsideSupportedRange() {
+        assertThatThrownBy(() -> underTest.calendar(1_000_000_000, 10))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("year must be between 2000 and 2100");
     }
 
     @Test
@@ -351,11 +369,21 @@ class SubscriptionServiceTest {
     }
 
     private Subscription subscription(User user, String name) {
+        return subscription(user, name, SubscriptionStatus.ACTIVE);
+    }
+
+    private Subscription subscription(User user, String name, SubscriptionStatus status) {
         Subscription subscription = new Subscription(user, name, new BigDecimal("12.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
+                BillingFrequency.MONTHLY, status,
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10));
         ReflectionTestUtils.setField(subscription, "id", 7L);
         return subscription;
+    }
+
+    private void givenOwnerCanUpdate(Subscription subscription) {
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
     }
 
     private Subscription subscription(BillingFrequency frequency, LocalDate startDate) {

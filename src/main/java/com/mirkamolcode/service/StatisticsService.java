@@ -36,15 +36,17 @@ public class StatisticsService {
         return mySummary(null, null);
     }
 
-    
     public SpendingSummary mySummary(Integer year, Integer month) {
+        boolean forMonth = year != null && month != null;
+        if (forMonth) {
+            PeriodValidation.requireSupportedYear(year);
+            PeriodValidation.requireValidMonth(month);
+        }
+
         Long userId = currentUser.requiredUser().getId();
         List<Subscription> items = activeFor(userId);
 
-        if (year != null && month != null) {
-            if (month < 1 || month > 12) {
-                throw new IllegalArgumentException("month must be between 1 and 12");
-            }
+        if (forMonth) {
             LocalDate monthEnd = YearMonth.of(year, month).atEndOfMonth();
             items = items.stream()
                     .filter(s -> !s.getStartDate().isAfter(monthEnd))

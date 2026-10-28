@@ -46,17 +46,14 @@ class PaymentServiceTest {
 
     @Test
     void notifyDuePayments_shouldNotifyEveryActiveSubscriptionDueInTwoDays() {
-        
         Subscription first = subscription("Netflix", LocalDate.now().plusDays(2));
         Subscription second = subscription("GitHub", LocalDate.now().plusDays(2));
         when(subscriptionRepository.findByIsDeletedFalseAndStatusAndNextPaymentDate(
                 SubscriptionStatus.ACTIVE, LocalDate.now().plusDays(2)))
                 .thenReturn(List.of(first, second));
 
-        
         underTest.notifyDuePayments();
 
-        
         verify(notificationService).paymentDueSoon(first);
         verify(notificationService).paymentDueSoon(second);
         verify(secondNotificationService).paymentDueSoon(first);
@@ -76,17 +73,14 @@ class PaymentServiceTest {
 
     @Test
     void recordDuePayments_shouldPersistRateSnapshotAndAdvanceBillingDate() {
-        
         LocalDate dueDate = LocalDate.now().minusDays(1);
         Subscription subscription = subscription("Netflix", dueDate);
         when(subscriptionRepository.findByIsDeletedFalseAndStatusAndNextPaymentDateLessThanEqual(
                 SubscriptionStatus.ACTIVE, LocalDate.now())).thenReturn(List.of(subscription));
         when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12500"));
 
-        
         underTest.recordDuePayments();
 
-        
         ArgumentCaptor<PaymentHistory> captor = ArgumentCaptor.forClass(PaymentHistory.class);
         verify(paymentHistoryRepository).save(captor.capture());
         assertThat(captor.getValue().getPaymentDate()).isEqualTo(dueDate);

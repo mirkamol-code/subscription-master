@@ -41,7 +41,6 @@ public class SubscriptionController {
         return service.create(request);
     }
 
-    
     @GetMapping
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public Page<SubscriptionResponse> list(
@@ -57,7 +56,6 @@ public class SubscriptionController {
         return service.list(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, pageable);
     }
 
-    
     @GetMapping("/all")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public List<SubscriptionResponse> listAll(
@@ -72,7 +70,6 @@ public class SubscriptionController {
         return service.listAll(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
     }
 
-    
     @GetMapping("/upcoming")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public List<SubscriptionResponse> upcoming(
@@ -80,7 +77,6 @@ public class SubscriptionController {
         return service.upcoming(days);
     }
 
-    
     @GetMapping("/calendar")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public CalendarResponse calendar(
@@ -108,21 +104,18 @@ public class SubscriptionController {
         service.delete(id);
     }
 
-    
     @PostMapping("/{id}/pause")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
     public SubscriptionResponse pause(@PathVariable Long id) {
         return service.pause(id);
     }
 
-    
     @PostMapping("/{id}/resume")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
     public SubscriptionResponse resume(@PathVariable Long id) {
         return service.resume(id);
     }
 
-    
     @GetMapping("/{id}/history")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public List<PaymentHistoryResponse> history(@PathVariable Long id) {

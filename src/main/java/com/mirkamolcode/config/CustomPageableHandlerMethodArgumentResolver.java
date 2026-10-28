@@ -1,5 +1,6 @@
 package com.mirkamolcode.config;
 
+import com.mirkamolcode.model.QueryLimits;
 import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +32,7 @@ public class CustomPageableHandlerMethodArgumentResolver extends PageableHandler
         }
 
         if (isUnpaged) {
-            return sort.isSorted() ? Pageable.unpaged(sort) : Pageable.unpaged();
+            return PageRequest.of(0, QueryLimits.MAX_UNPAGED_ROWS, sort);
         }
 
         Pageable pageable = super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);

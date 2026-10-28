@@ -53,15 +53,12 @@ class ReportServiceTest {
 
     @Test
     void csv_shouldExportOwnedActiveSubscriptionsWithAnnualCost() {
-        
         when(currentUserService.requiredUser()).thenReturn(user);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(subscription));
         when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12500"));
 
-        
         String csv = new String(underTest.csv(), StandardCharsets.UTF_8);
 
-        
         assertThat(csv).contains("Subscription,Monthly price,Base currency equivalent,Annual cost UZS");
         assertThat(csv).contains("\"Netflix, Premium\",10 USD,125000.00,1500000.00");
     }
@@ -79,15 +76,12 @@ class ReportServiceTest {
 
     @Test
     void xlsx_shouldGenerateReadableWorkbookWithCalculatedValues() throws Exception {
-        
         when(currentUserService.requiredUser()).thenReturn(user);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(subscription));
         when(exchangeRateService.rateToUzs(CurrencyCode.USD)).thenReturn(new BigDecimal("12500"));
 
-        
         byte[] bytes = underTest.xlsx();
 
-        
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
             var sheet = workbook.getSheetAt(0);
             assertThat(sheet.getRow(0).getCell(0).getStringCellValue()).isEqualTo("Subscription");

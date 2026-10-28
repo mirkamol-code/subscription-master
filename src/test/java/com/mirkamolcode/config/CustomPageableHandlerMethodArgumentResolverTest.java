@@ -19,7 +19,7 @@ class CustomPageableHandlerMethodArgumentResolverTest {
     void dummyMethod(Pageable pageable) {}
 
     @Test
-    void resolveArgument_whenUnpagedTrue_shouldReturnUnpaged() throws Exception {
+    void resolveArgument_whenUnpagedTrue_shouldCapAtMaxUnpagedSize() throws Exception {
         Method method = getClass().getDeclaredMethod("dummyMethod", Pageable.class);
         MethodParameter parameter = new MethodParameter(method, 0);
 
@@ -29,11 +29,12 @@ class CustomPageableHandlerMethodArgumentResolverTest {
 
         Pageable result = underTest.resolveArgument(parameter, null, webRequest, null);
 
-        assertThat(result.isUnpaged()).isTrue();
+        assertThat(result.getPageNumber()).isZero();
+        assertThat(result.getPageSize()).isEqualTo(1000);
     }
 
     @Test
-    void resolveArgument_whenSizeMinusOne_shouldReturnUnpaged() throws Exception {
+    void resolveArgument_whenSizeMinusOne_shouldCapAtMaxUnpagedSize() throws Exception {
         Method method = getClass().getDeclaredMethod("dummyMethod", Pageable.class);
         MethodParameter parameter = new MethodParameter(method, 0);
 
@@ -43,11 +44,12 @@ class CustomPageableHandlerMethodArgumentResolverTest {
 
         Pageable result = underTest.resolveArgument(parameter, null, webRequest, null);
 
-        assertThat(result.isUnpaged()).isTrue();
+        assertThat(result.getPageNumber()).isZero();
+        assertThat(result.getPageSize()).isEqualTo(1000);
     }
 
     @Test
-    void resolveArgument_whenUnpagedWithSort_shouldPreserveSort() throws Exception {
+    void resolveArgument_whenUnpagedWithSort_shouldCapAndPreserveSort() throws Exception {
         Method method = getClass().getDeclaredMethod("dummyMethod", Pageable.class);
         MethodParameter parameter = new MethodParameter(method, 0);
 
@@ -58,7 +60,8 @@ class CustomPageableHandlerMethodArgumentResolverTest {
 
         Pageable result = underTest.resolveArgument(parameter, null, webRequest, null);
 
-        assertThat(result.isUnpaged()).isTrue();
+        assertThat(result.getPageNumber()).isZero();
+        assertThat(result.getPageSize()).isEqualTo(1000);
         assertThat(result.getSort().getOrderFor("price")).isNotNull();
         assertThat(result.getSort().getOrderFor("price").getDirection()).isEqualTo(Sort.Direction.DESC);
     }

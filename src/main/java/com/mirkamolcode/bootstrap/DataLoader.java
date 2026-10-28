@@ -309,7 +309,6 @@ public class DataLoader implements ApplicationRunner {
                     nextPaymentDate
             ));
 
-            
             if (count < 30) {
                 seedPaymentHistoryFor(sub, today);
             }

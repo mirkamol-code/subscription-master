@@ -24,8 +24,11 @@ import java.util.stream.Collectors;
 
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Permission;
+import com.mirkamolcode.model.QueryLimits;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,7 +77,6 @@ public class SubscriptionService {
         return list(status, currency, null, null, null, null, minPrice, maxPrice, pageable);
     }
 
-    
     public Page<SubscriptionResponse> list(SubscriptionStatus status,
                                            CurrencyCode currency,
                                            SubscriptionCategory category,
@@ -91,7 +93,6 @@ public class SubscriptionService {
         return repository.findAll(spec, pageable).map(mapper::toResponse);
     }
 
-    
     public List<SubscriptionResponse> listAll(SubscriptionStatus status,
                                               CurrencyCode currency,
                                               SubscriptionCategory category,
@@ -104,7 +105,8 @@ public class SubscriptionService {
             throw new IllegalArgumentException("minPrice must not exceed maxPrice");
 
         Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
-        return repository.findAll(spec).stream().map(mapper::toResponse).toList();
+        Pageable cappedPage = PageRequest.of(0, QueryLimits.MAX_UNPAGED_ROWS, Sort.by("nextPaymentDate", "id"));
+        return repository.findAll(spec, cappedPage).stream().map(mapper::toResponse).toList();
     }
 
     public SubscriptionResponse get(Long id) {
@@ -123,27 +125,20 @@ public class SubscriptionService {
         requiredAccessible(id, Permission.SUBSCRIPTION_DELETE_ALL).markDeleted();
     }
 
-    
     @Transactional
     public SubscriptionResponse pause(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        if (subscription.getStatus() == SubscriptionStatus.PAUSED)
-            throw new IllegalArgumentException("Subscription is already paused");
         subscription.pause();
         return mapper.toResponse(subscription);
     }
 
-    
     @Transactional
     public SubscriptionResponse resume(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        if (subscription.getStatus() == SubscriptionStatus.ACTIVE)
-            throw new IllegalArgumentException("Subscription is already active");
         subscription.resume();
         return mapper.toResponse(subscription);
     }
 
-    
     public List<PaymentHistoryResponse> getHistory(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_READ_ALL);
         return paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription.getId())
@@ -152,7 +147,6 @@ public class SubscriptionService {
                 .toList();
     }
 
-    
     public List<SubscriptionResponse> upcoming(int days) {
         if (days < 1 || days > 365)
             throw new IllegalArgumentException("days must be between 1 and 365");
@@ -171,10 +165,9 @@ public class SubscriptionService {
         return repository.findAll(spec).stream().map(mapper::toResponse).toList();
     }
 
-    
     public CalendarResponse calendar(int year, int month) {
-        if (month < 1 || month > 12)
-            throw new IllegalArgumentException("month must be between 1 and 12");
+        PeriodValidation.requireSupportedYear(year);
+        PeriodValidation.requireValidMonth(month);
 
         LocalDate from = LocalDate.of(year, month, 1);
         LocalDate to = YearMonth.of(year, month).atEndOfMonth();
@@ -212,10 +205,6 @@ public class SubscriptionService {
         totalMonthCost = totalMonthCost.setScale(2, RoundingMode.HALF_UP);
         return new CalendarResponse(year, month, totalMonthCost, "UZS", days);
     }
-
-    
-    
-    
 
     private Specification<Subscription> buildSpec(SubscriptionStatus status,
                                                    CurrencyCode currency,

@@ -70,7 +70,6 @@ public record ErrorResponse(
         );
     }
 
-    
     public static ErrorResponse rateLimited(long retryAfterSeconds, Instant blockedUntil, String message) {
         return new ErrorResponse(
                 Instant.now(),

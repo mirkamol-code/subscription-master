@@ -18,7 +18,6 @@ public class StatisticsController {
         this.service = service;
     }
 
-    
     @GetMapping({"/summary", "/spending-summary"})
     @PreAuthorize("hasAuthority('STATISTICS_READ_OWN')")
     public SpendingSummary summary(
