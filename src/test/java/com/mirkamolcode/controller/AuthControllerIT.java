@@ -53,7 +53,7 @@ class AuthControllerIT extends AbstractTestConfig {
     }
 
     @Test
-    void login_shouldReturnTokensForValidCredentials_andForbiddenForInvalidCredentials() {
+    void login_shouldReturnTokensForValidCredentials_andUnauthorizedForInvalidCredentials() {
         register("person@example.com");
 
         webTestClient.post()
@@ -68,9 +68,10 @@ class AuthControllerIT extends AbstractTestConfig {
                 .uri(API + "/auth/login")
                 .bodyValue(new LoginRequest("person@example.com", "wrong-password"))
                 .exchange()
-                .expectStatus().isForbidden()
+                .expectStatus().isUnauthorized()
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("FORBIDDEN");
+                .jsonPath("$.errorCode").isEqualTo("INVALID_CREDENTIALS")
+                .jsonPath("$.message").isEqualTo("Invalid credentials");
     }
 
     @Test
@@ -93,18 +94,20 @@ class AuthControllerIT extends AbstractTestConfig {
                 .uri(API + "/auth/refresh")
                 .bodyValue(new RefreshRequest(tokens.refreshToken()))
                 .exchange()
-                .expectStatus().isForbidden();
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("INVALID_CREDENTIALS");
     }
 
     @Test
-    void refresh_shouldReturnForbidden_whenTokenIsMalformed() {
+    void refresh_shouldReturnUnauthorized_whenTokenIsMalformed() {
         webTestClient.post()
                 .uri(API + "/auth/refresh")
                 .bodyValue(new RefreshRequest("not-a-jwt"))
                 .exchange()
-                .expectStatus().isForbidden()
+                .expectStatus().isUnauthorized()
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("FORBIDDEN");
+                .jsonPath("$.errorCode").isEqualTo("INVALID_CREDENTIALS");
     }
 
     @Test
@@ -145,6 +148,8 @@ class AuthControllerIT extends AbstractTestConfig {
                 .uri(API + "/auth/refresh")
                 .bodyValue(new RefreshRequest(tokens.refreshToken()))
                 .exchange()
-                .expectStatus().isForbidden();
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("INVALID_CREDENTIALS");
     }
 }

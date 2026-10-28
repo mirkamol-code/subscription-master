@@ -6,7 +6,7 @@ import com.mirkamolcode.dto.AuthDtos.RegisterRequest;
 import com.mirkamolcode.entity.RefreshToken;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.exception.ConflictException;
-import com.mirkamolcode.exception.ForbiddenException;
+import com.mirkamolcode.exception.UnauthorizedException;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.repository.RefreshTokenRepository;
 import com.mirkamolcode.repository.UserRepository;
@@ -96,7 +96,7 @@ class AuthServiceTest {
         when(userRepository.findByEmailIgnoreCase(missingUser.email())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> underTest.login(missingUser))
-                .isInstanceOf(ForbiddenException.class)
+                .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Invalid credentials");
 
         User user = user("person@example.com");
@@ -105,7 +105,7 @@ class AuthServiceTest {
         when(passwordEncoder.matches(wrongPassword.password(), user.getPasswordHash())).thenReturn(false);
 
         assertThatThrownBy(() -> underTest.login(wrongPassword))
-                .isInstanceOf(ForbiddenException.class)
+                .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Invalid credentials");
         verify(refreshTokenRepository, never()).save(any());
     }
@@ -130,7 +130,7 @@ class AuthServiceTest {
         when(jwtService.isRefreshToken("not-refresh")).thenReturn(false);
 
         assertThatThrownBy(() -> underTest.refresh(new RefreshRequest("not-refresh")))
-                .isInstanceOf(ForbiddenException.class)
+                .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Invalid refresh token");
 
         User user = user("person@example.com");
@@ -139,14 +139,14 @@ class AuthServiceTest {
         when(jwtService.isRefreshToken("revoked-token")).thenReturn(true);
         when(refreshTokenRepository.findByTokenHash(any(String.class))).thenReturn(Optional.of(revoked));
         assertThatThrownBy(() -> underTest.refresh(new RefreshRequest("revoked-token")))
-                .isInstanceOf(ForbiddenException.class)
+                .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Refresh token expired or revoked");
 
         RefreshToken expired = new RefreshToken(user, "hash", Instant.now().minusSeconds(1));
         when(jwtService.isRefreshToken("expired-token")).thenReturn(true);
         when(refreshTokenRepository.findByTokenHash(any(String.class))).thenReturn(Optional.of(expired));
         assertThatThrownBy(() -> underTest.refresh(new RefreshRequest("expired-token")))
-                .isInstanceOf(ForbiddenException.class)
+                .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Refresh token expired or revoked");
     }
 

@@ -3,7 +3,7 @@ package com.mirkamolcode.service;
 import com.mirkamolcode.dto.response.UserProfileResponse;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.exception.ConflictException;
-import com.mirkamolcode.exception.ForbiddenException;
+import com.mirkamolcode.exception.UnauthorizedException;
 import com.mirkamolcode.entity.RefreshToken;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.repository.RefreshTokenRepository;
@@ -59,21 +59,21 @@ public class AuthService {
     public TokenResponse login(LoginRequest request) {
         User user = users.findByEmailIgnoreCase(request.email())
                 .orElseThrow(
-                        () -> new ForbiddenException("Invalid credentials"));
+                        () -> new UnauthorizedException("Invalid credentials"));
         if (!passwords.matches(request.password(), user.getPasswordHash()))
-            throw new ForbiddenException("Invalid credentials");
+            throw new UnauthorizedException("Invalid credentials");
         return issue(user);
     }
 
     public TokenResponse refresh(RefreshRequest request) {
         if (!jwt.isRefreshToken(request.refreshToken()))
-            throw new ForbiddenException("Invalid refresh token");
+            throw new UnauthorizedException("Invalid refresh token");
 
         RefreshToken stored = refreshTokens.findByTokenHash(hash(request.refreshToken()))
-                .orElseThrow(() -> new ForbiddenException("Invalid refresh token"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (stored.isRevoked() || stored.getExpiresAt().isBefore(Instant.now()))
-            throw new ForbiddenException("Refresh token expired or revoked");
+            throw new UnauthorizedException("Refresh token expired or revoked");
         stored.revoke();
         return issue(stored.getUser());
     }

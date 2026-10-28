@@ -29,6 +29,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), "NOT_FOUND", "Not Found", e.getMessage()));
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> unauthorized(UnauthorizedException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS", "Unauthorized", e.getMessage()));
+    }
+
     @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> forbidden(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
