@@ -360,6 +360,13 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void calendar_shouldRejectYearOutsideSupportedRange() {
+        assertThatThrownBy(() -> underTest.calendar(1_000_000_000, 10))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("year must be between 2000 and 2100");
+    }
+
+    @Test
     void calendar_shouldGroupSubscriptionsByDayAndCalculateCost() {
         Subscription subscription = subscription(owner, "Netflix");
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);

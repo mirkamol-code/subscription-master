@@ -88,6 +88,13 @@ class StatisticServiceTest {
     }
 
     @Test
+    void mySummary_shouldRejectYearOutsideSupportedRange() {
+        assertThatThrownBy(() -> underTest.mySummary(1999, 10))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("year must be between 2000 and 2100");
+    }
+
+    @Test
     void mySummary_shouldReturnZeroAndNoMostExpensive_whenUserHasNoActiveSubscriptions() {
         when(currentUserService.requiredUser()).thenReturn(user);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of());

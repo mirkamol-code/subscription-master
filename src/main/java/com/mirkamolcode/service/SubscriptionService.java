@@ -185,6 +185,8 @@ public class SubscriptionService {
 
     /** TASK-04: Calendar view with pre-converted costs in UZS */
     public CalendarResponse calendar(int year, int month) {
+        if (year < 2000 || year > 2100)
+            throw new IllegalArgumentException("year must be between 2000 and 2100");
         if (month < 1 || month > 12)
             throw new IllegalArgumentException("month must be between 1 and 12");
 
