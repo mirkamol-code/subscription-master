@@ -27,17 +27,17 @@ public class CbuRateClient {
         this.client = builder.baseUrl(url).requestFactory(requestFactory).build();
     }
 
-    @CircuitBreaker(name = "cbuRates", fallbackMethod = "unavailable")
     public CbuRate[] fetchRates() {
         CbuRate[] rates = client.get().retrieve().body(CbuRate[].class);
         if (rates == null) throw new IllegalStateException("CBU returned no rates");
         return rates;
     }
 
-    private CbuRate[] unavailable(Throwable failure) {
+    private CbuRate unavailable(CurrencyCode currency, Throwable failure) {
         throw new ExchangeRateUnavailableException(failure);
     }
 
+    @CircuitBreaker(name = "cbuRates", fallbackMethod = "unavailable")
     public CbuRate find(CurrencyCode currency) {
         return Arrays.stream(fetchRates())
                 .filter(r -> currency.name().equals(r.code()))
