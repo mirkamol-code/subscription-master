@@ -4,6 +4,7 @@ import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
+import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.mapper.SubscriptionMapper;
 import com.mirkamolcode.model.BillingFrequency;
@@ -260,7 +261,7 @@ class SubscriptionServiceTest {
         when(currentUserService.requiredUser()).thenReturn(owner);
 
         assertThatThrownBy(() -> underTest.pause(7L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("already paused");
     }
 
@@ -279,6 +280,18 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void resume_shouldThrowWhenAlreadyActive() {
+        Subscription subscription = subscription(owner, "Netflix");
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+
+        assertThatThrownBy(() -> underTest.resume(7L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("already active");
+    }
+
+    @Test
     void pause_shouldThrowWhenCancelled() {
         Subscription subscription = cancelledSubscription();
         when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
@@ -286,7 +299,7 @@ class SubscriptionServiceTest {
         when(currentUserService.requiredUser()).thenReturn(owner);
 
         assertThatThrownBy(() -> underTest.pause(7L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Only active subscriptions can be paused");
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
     }
@@ -299,7 +312,7 @@ class SubscriptionServiceTest {
         when(currentUserService.requiredUser()).thenReturn(owner);
 
         assertThatThrownBy(() -> underTest.resume(7L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Only paused subscriptions can be resumed");
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
     }

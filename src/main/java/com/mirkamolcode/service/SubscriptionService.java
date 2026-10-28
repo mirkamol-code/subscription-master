@@ -7,6 +7,7 @@ import com.mirkamolcode.dto.response.PaymentHistoryResponse;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.mapper.SubscriptionMapper;
+import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
@@ -136,9 +137,9 @@ public class SubscriptionService {
     public SubscriptionResponse pause(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (subscription.getStatus() == SubscriptionStatus.PAUSED)
-            throw new IllegalArgumentException("Subscription is already paused");
+            throw new ConflictException("Subscription is already paused");
         if (subscription.getStatus() != SubscriptionStatus.ACTIVE)
-            throw new IllegalArgumentException("Only active subscriptions can be paused");
+            throw new ConflictException("Only active subscriptions can be paused");
         subscription.pause();
         return mapper.toResponse(subscription);
     }
@@ -148,9 +149,9 @@ public class SubscriptionService {
     public SubscriptionResponse resume(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (subscription.getStatus() == SubscriptionStatus.ACTIVE)
-            throw new IllegalArgumentException("Subscription is already active");
+            throw new ConflictException("Subscription is already active");
         if (subscription.getStatus() != SubscriptionStatus.PAUSED)
-            throw new IllegalArgumentException("Only paused subscriptions can be resumed");
+            throw new ConflictException("Only paused subscriptions can be resumed");
         subscription.resume();
         return mapper.toResponse(subscription);
     }
