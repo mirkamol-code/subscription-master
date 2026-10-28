@@ -6,6 +6,7 @@ import com.mirkamolcode.dto.response.PaymentHistoryResponse;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.mapper.SubscriptionMapper;
+import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
@@ -116,7 +117,10 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponse update(Long id, SubscriptionRequest request) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        if (request.version() != null && request.version() != subscription.getVersion())
+            throw new ConflictException("Subscription was changed by someone else");
         subscription.update(request.name(), request.price(), request.currency(), request.frequency(), request.status(), request.category(), request.startDate());
+        repository.flush();
         return mapper.toResponse(subscription);
     }
 

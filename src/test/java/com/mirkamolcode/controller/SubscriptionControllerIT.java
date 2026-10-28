@@ -10,6 +10,7 @@ import com.mirkamolcode.model.SubscriptionStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 class SubscriptionControllerIT extends AbstractTestConfig {
 
@@ -305,6 +306,48 @@ class SubscriptionControllerIT extends AbstractTestConfig {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
+    @Test
+    void update_shouldRejectAStaleVersion_andKeepTheNewerEdit() {
+        String authorization = bearer(register("editor@example.com"));
+        SubscriptionResponse created = createSubscription(authorization, request("Netflix", "10.00", CurrencyCode.USD));
+
+        // two edits in a row, each sending the version the previous response returned
+        SubscriptionResponse firstEdit = update(authorization, created.id(), withVersion(request("Netflix Premium", "15.99", CurrencyCode.USD), created.version()))
+                .expectStatus().isOk()
+                .expectBody(SubscriptionResponse.class)
+                .returnResult()
+                .getResponseBody();
+        update(authorization, created.id(), withVersion(request("Netflix Family", "22.99", CurrencyCode.USD), firstEdit.version()))
+                .expectStatus().isOk();
+
+        // an edit made from the original, now stale, copy
+        update(authorization, created.id(), withVersion(request("Stale edit", "1.00", CurrencyCode.USD), created.version()))
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("CONFLICT");
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/{id}", created.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.name").isEqualTo("Netflix Family");
+    }
+
+    private WebTestClient.ResponseSpec update(String authorization, Long id, SubscriptionRequest request) {
+        return webTestClient.put()
+                .uri(API + "/subscriptions/{id}", id)
+                .header("Authorization", authorization)
+                .bodyValue(request)
+                .exchange();
+    }
+
+    private SubscriptionRequest withVersion(SubscriptionRequest request, long version) {
+        return new SubscriptionRequest(request.name(), request.price(), request.currency(), request.frequency(),
+                request.status(), request.category(), request.startDate(), version);
     }
 
     private SubscriptionRequest request(String name, String price, CurrencyCode currency) {

@@ -14,6 +14,11 @@ public record SubscriptionRequest(
         @NotNull @DecimalMin(value = "0.01") @Digits(integer = 15, fraction = 4) BigDecimal price,
         @NotNull CurrencyCode currency, @NotNull BillingFrequency frequency,
         @NotNull SubscriptionStatus status, @NotNull SubscriptionCategory category,
-        @NotNull @PastOrPresent LocalDate startDate
+        @NotNull @PastOrPresent LocalDate startDate,
+        Long version
 ) {
+    public SubscriptionRequest(String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency,
+                               SubscriptionStatus status, SubscriptionCategory category, LocalDate startDate) {
+        this(name, price, currency, frequency, status, category, startDate, null);
+    }
 }
