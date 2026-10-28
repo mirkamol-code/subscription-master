@@ -19,7 +19,6 @@ public class SharedPostgresContainer extends PostgreSQLContainer {
 
     private static volatile SharedPostgresContainer sharedPostgresContainer;
 
-
     public SharedPostgresContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
         this.withReuse(true)

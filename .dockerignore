@@ -1,0 +1,30 @@
+# Version control
+.git
+.gitignore
+
+# IDE / OS
+.idea
+*.iml
+.DS_Store
+*.swp
+
+# Maven build output (the builder stage re-compiles inside Docker)
+target/
+
+# Local env & secrets
+.env
+*.env
+*.env.local
+
+# Docker files (not needed inside image)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Docs
+README.md
+*.md
+
+# Test output / coverage reports
+**/surefire-reports/
+**/jacoco/

@@ -1,1351 +1,446 @@
 # Subscription Master
 
-A production-oriented **subscription management backend API** built with **Java 21 and Spring Boot 3**.
+<p align="center">
+  <img src="https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.4.1-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Spring_Security-JWT-6DB33F?logo=springsecurity&logoColor=white" alt="Spring Security and JWT" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/AWS-EC2-232F3E?logo=amazonaws&logoColor=white" alt="AWS EC2" />
+  <img src="https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?logo=githubactions&logoColor=white" alt="GitHub Actions CI/CD" />
+</p>
 
-Subscription Master helps users manage recurring paid subscriptions such as Netflix, Spotify, ChatGPT, Adobe, YouTube Premium, and similar services in one place.
+<p align="center">
+  <a href="https://subscriptionmaster.app/api/swagger-ui/index.html">
+    <img src="https://img.shields.io/badge/Swagger-Explore_API-85EA2D?logo=swagger&logoColor=black" alt="Explore API" />
+  </a>
+  <a href="https://subscriptionmaster.app/api/actuator/health">
+    <img src="https://img.shields.io/badge/Live_API-Production-brightgreen" alt="Live API" />
+  </a>
+  <a href="https://github.com/mirkamol-code/sub-master">
+    <img src="https://img.shields.io/badge/GitHub-Source_Code-181717?logo=github&logoColor=white" alt="Source code" />
+  </a>
+</p>
 
-The system tracks subscription costs and renewal dates, automatically calculates the next payment date, converts expenses to **UZS** using official **Central Bank of Uzbekistan (CBU)** exchange rates, sends upcoming-payment reminders, generates statistics, and exports annual spending reports.
+**A Java backend API for managing subscriptions, tracking recurring expenses, and understanding spending in Uzbek soum (UZS).**
 
-The project was developed as a **Junior / Junior+ Backend Developer Take-Home Assignment** with emphasis on clean architecture, security, database consistency, external API integration, scheduling, testing, and production deployment.
+Subscription Master brings recurring payments for services such as Netflix, Spotify, ChatGPT Plus, Adobe Creative Cloud, JetBrains, and AWS into one place. It helps users manage subscription lifecycles, anticipate upcoming renewals, compare costs across currencies, analyze spending, and export financial reports.
 
----
+Built with **Java 21, Spring Boot 3, and PostgreSQL**, the project demonstrates backend engineering practices including stateless authentication, data ownership, dynamic querying, external API resilience, scheduled processing, integration testing, and automated deployment.
 
-## 🌐 Live Application
+## Live Demo
 
-### Production API
+| Resource | Link |
+|---|---|
+| Production website | [subscriptionmaster.app](https://subscriptionmaster.app) |
+| Interactive API documentation | [Swagger UI](https://subscriptionmaster.app/api/swagger-ui/index.html) |
+| OpenAPI specification | [OpenAPI JSON](https://subscriptionmaster.app/api/v3/api-docs) |
+| Health check | [API Health](https://subscriptionmaster.app/api/actuator/health) |
+| Source code | [GitHub Repository](https://github.com/mirkamol-code/sub-master) |
 
-https://subscriptionmaster.app
+**Quick start:** Open Swagger UI, register an account, authorize with the returned access token, and start exploring the API.
 
-### Swagger UI
+> All application endpoints are served under the `/api` context path.
 
-https://subscriptionmaster.app/swagger-ui/index.html
+## At a Glance
 
-### OpenAPI
+- **Language:** Java 21
+- **Framework:** Spring Boot 3.4.1, Spring Security 6
+- **Database:** PostgreSQL 16
+- **Authentication:** JWT access tokens and persistent refresh tokens
+- **Data access:** Spring Data JPA, Specifications, Criteria API
+- **External integration:** Central Bank of Uzbekistan (CBU) exchange rates
+- **Resilience and caching:** Resilience4j, Caffeine
+- **Scheduling:** Spring Scheduler and ShedLock
+- **Testing:** JUnit, integration tests, Testcontainers
+- **Deployment:** Docker, Nginx, HTTPS, AWS EC2, GitHub Actions
 
-https://subscriptionmaster.app/v3/api-docs
+## What Problem Does It Solve?
 
-### Health Check
+Recurring subscriptions can be difficult to manage when they have different billing cycles, currencies, and renewal dates.
 
-https://subscriptionmaster.app/actuator/health
+Users need to know:
 
-> The production application is deployed on **AWS EC2** using **Docker, PostgreSQL, Nginx, and HTTPS**.
+- **How much am I spending?** Understand monthly commitments and estimated annual costs.
+- **What is renewing soon?** Identify upcoming payment dates before they arrive.
+- **What do foreign-currency subscriptions actually cost?** Compare expenses in UZS using exchange rates from the CBU.
+- **What have I paid historically?** Preserve payment records when a subscription is paused, canceled, or removed from active management.
 
----
+Subscription Master addresses these needs through a centralized subscription API, automated renewal processing, financial analytics, notifications, and exportable reports.
 
-# 🎯 Project Objective
+## Core Features
 
-Users often subscribe to multiple paid services and lose visibility into:
+### 1. Authentication and Authorization
 
-* how much they spend every month;
-* when the next payment will occur;
-* how much subscriptions cost in a single base currency;
-* how exchange-rate changes affect their expenses;
-* which services consume the most money.
+Built with Spring Security and JWT-based authentication.
 
-Subscription Master solves this by consolidating subscriptions into one backend system and providing:
+- User registration and login with BCrypt password hashing.
+- Short-lived access tokens with a configurable 15-minute lifetime.
+- Persistent refresh-token management backed by PostgreSQL.
+- Token refresh and logout endpoints.
+- Authenticated user profile through `/api/auth/me`.
+- Role-based access control for `USER` and `ADMIN`.
+- Subscription ownership checks to prevent users from accessing other users’ data.
+- Login rate limiting after repeated failed authentication attempts.
 
-* secure user authentication;
-* user-isolated subscription management;
-* automated recurring-payment calculations;
-* CBU currency conversion;
-* payment reminders;
-* spending statistics;
-* annual CSV/XLSX reports.
+The authentication rate limiter uses an in-memory Caffeine store. In a multi-instance deployment, a shared store would be needed to enforce a single rate-limit state across all instances.
 
----
+### 2. Subscription Lifecycle Management
 
-# ✨ Features
+Users can create, update, search, pause, resume, and delete subscriptions.
 
-## 🔐 Authentication & Authorization
+**Supported billing frequencies:** weekly, monthly, and annually.
 
-The API uses **Spring Security + JWT**.
+**Supported statuses:** `ACTIVE`, `PAUSED`, and `CANCELLED`.
 
-Implemented security features include:
+Subscriptions can be categorized as entertainment, productivity, AI tools, cloud services, utilities, education, gaming, or other.
 
-* User registration
-* User login
-* JWT access tokens
-* Refresh tokens
-* BCrypt password hashing
-* Stateless authentication
-* Permission-based authorization
-* User-level resource ownership verification
-* USER and ADMIN access levels
+Additional capabilities include:
+- Automatic next-payment date calculation.
+- Pause and resume workflows.
+- Soft deletion to preserve historical records and relationships.
+- Payment history containing original amounts, currencies, converted UZS values, and applied exchange rates.
+- Upcoming renewal queries for a configurable number of days.
+- Calendar data grouped by payment date, with daily and monthly expense totals.
+- Unpaged subscription retrieval for calendar and other frontend use cases.
 
-A user cannot access another user's subscriptions simply by knowing their IDs.
+### 3. Advanced Search, Filtering, and Pagination
 
-Authorization is verified in the application layer in addition to authentication.
+The API supports combining multiple filters in a single request.
 
----
+| Filter | Example |
+|---|---|
+| Status | `status=ACTIVE` |
+| Currency | `currency=USD` |
+| Category | `category=AI_TOOLS` |
+| Name search | `name=net` |
+| Payment-date range | `nextPaymentDateFrom=2026-10-01&nextPaymentDateTo=2026-10-31` |
+| Minimum price | `minPrice=100000` |
+| Maximum price | `maxPrice=500000` |
 
-## 💳 Subscription Management
+Name and category searches are case-insensitive. Price-range filtering normalizes supported currencies to UZS so that subscriptions in different currencies can be compared.
 
-Users can:
-
-* Create subscriptions
-* View their subscriptions
-* View a subscription by ID
-* Update subscriptions
-* Delete subscriptions
-* Filter subscriptions
-* Sort subscriptions
-* Use pagination
-
-A subscription contains information such as:
-
-* Name
-* Price
-* Currency
-* Category
-* Start date
-* Billing frequency
-* Status
-* Next payment date
-
-### Supported currencies
-
-```text
-USD
-UZS
-EUR
-```
-
-### Billing frequencies
-
-```text
-WEEKLY
-MONTHLY
-ANNUAL
-```
-
-The application automatically calculates `nextPaymentDate` based on the subscription's billing frequency.
-
-### Subscription statuses
-
-```text
-ACTIVE
-PAUSED
-CANCELLED
-```
-
----
-
-## 🗑 Soft Delete
-
-Subscriptions are not physically removed from the database.
-
-Instead:
-
-```text
-is_deleted = true
-```
-
-This preserves historical financial information such as previous payments and reports.
-
-Deleted subscriptions are excluded from normal user queries.
-
----
-
-## 📄 Pagination & Filtering
-
-The subscription API supports Spring `Pageable` and dynamic filtering.
-
-Filtering is implemented using the **JPA Specification API**, rather than Native SQL.
-
-Supported filters include:
-
-```text
-status
-currency
-minPrice
-maxPrice
-page
-size
-sort
-```
-
-Example:
+Dynamic queries use Spring Data JPA `Specification` and the Criteria API rather than native SQL.
 
 ```http
-GET /subscriptions?status=ACTIVE&currency=USD&minPrice=5&maxPrice=100&page=0&size=20&sort=nextPaymentDate,asc
+GET /api/subscriptions?page=0&size=10&sort=nextPaymentDate,asc
 ```
 
----
+An unpaged option is also available for use cases that require the complete filtered collection.
 
-## 💰 Payment History
+### 4. Currency Conversion and External API Resilience
 
-When a subscription payment becomes due, the application records the payment in a separate `PaymentHistory` table.
+The application integrates with the [Central Bank of Uzbekistan's exchange-rate API](https://cbu.uz/uz/arkhiv-kursov-valyut/json/).
 
-Payment history preserves:
+Key implementation details:
 
-* subscription information;
-* payment amount;
-* currency;
-* exchange-rate snapshot;
-* payment date.
+- Converts USD and EUR subscription expenses to UZS.
+- Caches exchange rates with Caffeine for 24 hours.
+- Stores exchange-rate records in PostgreSQL.
+- Uses Resilience4j Circuit Breaker to handle external service failures.
+- Falls back to the most recently persisted rate when available.
+- Defines configurable fallback values for cold-start scenarios.
+- Exposes exchange rates and their update timestamp through `/api/currencies/rates`.
 
-This means historical financial information remains available even if the subscription is later cancelled or deleted.
+This design reduces repeated external requests and allows the application to continue operating during temporary CBU API outages.
 
----
+**Important:** Fallback rates are a last-resort availability mechanism, not a guarantee of current market rates. Their freshness and configuration should be considered when interpreting financial calculations.
 
-# 💱 Currency Conversion
+### 5. Scheduled Jobs and Payment Processing
 
-Subscription Master integrates with the official **Central Bank of Uzbekistan** exchange-rate API.
+Scheduled tasks automate renewal reminders, simulated payment processing, and currency-rate updates.
 
-The application converts subscription expenses into the base currency:
+| Schedule | Task |
+|---|---|
+| 09:00 daily | Find subscriptions due in two days and trigger reminders |
+| 00:05 daily | Process overdue subscriptions, record simulated payments, and advance billing dates |
+| 00:10 daily | Refresh and persist currency rates |
+
+All schedules use the `Asia/Tashkent` timezone.
+
+ShedLock coordinates scheduled execution through PostgreSQL, helping prevent multiple application instances from running the same scheduled job simultaneously.
+
+**Payment processing is simulated.** The application records payment-history entries; it does not charge real bank cards.
+
+### 6. Notifications
+
+The notification layer uses the Strategy Pattern behind a `NotificationService` interface.
+
+- `LogNotificationService` — records reminder messages through structured logging.
+- `GmailNotifier` — sends email reminders through Gmail SMTP using JavaMailSender and TLS.
+
+This abstraction allows additional notification channels to be introduced without coupling subscription-processing logic to a specific delivery mechanism.
+
+### 7. Analytics and Financial Reports
+
+The reporting API provides information that users can use to understand recurring expenses.
+
+**Spending analytics**
+- Estimated monthly spending in UZS.
+- Most expensive subscription.
+- Expense breakdown by category.
+- Monthly spending trends over the previous 6 or 12 months.
+
+**Export formats**
+- CSV reports generated using Java file and stream handling.
+- Excel reports generated with Apache POI, including styled headers, auto-sized columns, and total formulas.
+
+The API also provides an admin-only service-usage ranking across the platform.
+
+## API Overview
+
+All endpoint URLs below include the `/api` context path.
+
+### Authentication
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register a user |
+| `POST` | `/api/auth/login` | Authenticate and obtain tokens |
+| `POST` | `/api/auth/refresh` | Obtain a new access token |
+| `POST` | `/api/auth/logout` | Revoke a refresh token |
+| `GET` | `/api/auth/me` | Retrieve the current user profile |
+
+### Subscriptions
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/subscriptions` | Create a subscription |
+| `GET` | `/api/subscriptions` | List subscriptions with filters and pagination |
+| `GET` | `/api/subscriptions/all` | Retrieve filtered subscriptions without pagination |
+| `GET` | `/api/subscriptions/{id}` | Retrieve subscription details |
+| `PUT` | `/api/subscriptions/{id}` | Update a subscription |
+| `DELETE` | `/api/subscriptions/{id}` | Soft-delete a subscription |
+| `POST` | `/api/subscriptions/{id}/pause` | Pause a subscription |
+| `POST` | `/api/subscriptions/{id}/resume` | Resume a subscription |
+| `GET` | `/api/subscriptions/{id}/history` | Retrieve payment history |
+| `GET` | `/api/subscriptions/upcoming` | Find upcoming renewals |
+| `GET` | `/api/subscriptions/calendar` | Retrieve monthly calendar data |
+
+### Statistics, Currency, Reports, and Administration
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/statistics/summary` | Spending summary and category breakdown |
+| `GET` | `/api/statistics/monthly-dynamics` | Monthly spending trends |
+| `GET` | `/api/currencies/rates` | Current exchange rates |
+| `GET` | `/api/reports/annual.csv` | Export an annual CSV report |
+| `GET` | `/api/reports/annual.xlsx` | Export an annual Excel report |
+| `GET` | `/api/admin/statistics/service-usage` | Platform-wide service usage statistics; admin only |
+
+For request schemas, response examples, and interactive testing, use [Swagger UI](https://subscriptionmaster.app/api/swagger-ui/index.html).
+
+## Engineering Decisions
+
+The project emphasizes maintainability, data integrity, and clear separation of responsibilities.
+
+| Area | Implementation |
+|---|---|
+| Dependency management | Constructor injection instead of field injection |
+| DTOs | Java records where appropriate |
+| Object mapping | MapStruct |
+| Database evolution | Versioned Flyway migrations |
+| Query composition | JPA Specifications and Criteria API |
+| Entity fetching | Lazy relationships to limit unnecessary data loading |
+| Concurrent updates | Optimistic locking using `@Version` |
+| Auditing | Creation and modification timestamps through Spring Data JPA auditing |
+| Transactions | Read-only transactions for query operations and transactional writes |
+| Error handling | Centralized exception handling with consistent JSON responses |
+| Scheduling | ShedLock-backed coordination through PostgreSQL |
+| External services | Caching, circuit breaking, and persisted fallback data |
+| Deployment | Docker-based deployment with automated GitHub Actions workflows |
+
+The implementation deliberately avoids Lombok and field injection, favoring explicit Java code and constructor-based dependency management.
+
+## Architecture
+
+At a high level, the application separates API handling, business logic, persistence, and external integrations.
 
 ```text
-UZS
+API Client / Frontend
+        |
+        v
+   Nginx + HTTPS
+        |
+        v
+Spring Boot REST API
+        |
+        +---- Spring Security / JWT
+        |
+        +---- Subscription & Payment Services
+        |
+        +---- Statistics & Report Services
+        |
+        +---- Currency Rate Integration
+        |
+        v
+ Spring Data JPA
+        |
+        v
+    PostgreSQL
+        |
+        +---- Subscription and user data
+        +---- Payment history and exchange rates
+        +---- ShedLock coordination
 ```
 
-The system stores rates using the interpretation:
-
-```text
-1 foreign currency = N UZS
-```
-
-For example:
-
-```text
-1 USD = 12,500 UZS
-```
-
----
-
-## ⚡ Exchange Rate Caching
-
-Exchange rates are cached using:
-
-```text
-Spring Cache
-Caffeine
-```
-
-Rates are refreshed periodically instead of calling the CBU API for every request.
-
-This reduces:
-
-* unnecessary network traffic;
-* latency;
-* external API load.
-
----
-
-## 🛡 External API Resilience
-
-CBU API communication is protected using **Resilience4j**.
-
-The integration includes resilience mechanisms such as:
-
-* Circuit Breaker
-* Retry
-* Timeout handling
-* Fallback behavior
-
-If the CBU service is temporarily unavailable, the system can use the last available cached exchange rate instead of failing the complete request.
-
----
-
-# ⏰ Scheduled Jobs
-
-The application performs recurring background tasks using Spring Scheduling.
-
-## Payment Processing
-
-A scheduled job processes subscriptions whose payments are due.
-
-When a payment becomes due, the system:
-
-1. Records a `PaymentHistory` entry
-2. Stores the exchange rate used for the payment
-3. Advances `nextPaymentDate`
-4. Keeps the subscription active for the next billing period
-
-The payment-processing job currently runs at:
-
-```text
-00:05 Asia/Tashkent
-```
-
----
-
-## Payment Reminders
-
-Every day at:
-
-```text
-09:00 Asia/Tashkent
-```
-
-the application checks whether users have payments due in **2 days**.
-
-If a payment is approaching, a notification is generated.
-
----
-
-## 🔒 ShedLock
-
-Scheduled jobs are protected with **ShedLock**.
-
-This prevents the same job from executing multiple times if the application is deployed across multiple instances.
-
-Example:
-
-```text
-Instance A ─┐
-            ├── Database Lock ──> Scheduler executes once
-Instance B ─┘
-```
-
----
-
-# 🔔 Notification Strategy
-
-Notifications use a strategy-based design.
-
-Available notification mechanisms include:
-
-```text
-Log Notification
-Email Notification
-```
-
-This allows notification channels to be changed without modifying the main scheduling logic.
-
-By default, reminders can simply be written to the application log.
-
-Optional Gmail SMTP support is also available.
-
----
-
-# 📧 Gmail Notifications
-
-To enable Gmail notifications, configure:
-
-```bash
-GMAIL_NOTIFICATIONS_ENABLED=true
-GMAIL_USERNAME=your-email@gmail.com
-GMAIL_APP_PASSWORD=your-google-app-password
-GMAIL_FROM=your-email@gmail.com
-```
-
-Google requires an **App Password** when two-step verification is enabled.
-
-The application uses:
-
-```text
-SMTP Host: smtp.gmail.com
-Port: 587
-Security: STARTTLS
-```
-
-Log notifications can be controlled with:
-
-```bash
-LOG_NOTIFICATIONS_ENABLED=true
-```
-
----
-
-# 📊 Statistics API
-
-The application provides personal spending statistics.
-
-Users can retrieve:
-
-* Total subscription spending
-* Monthly subscription costs
-* Most expensive subscription
-* Spending converted into UZS
-* Monthly spending dynamics
-
-Monthly dynamics can be requested for a number of previous months.
-
-For example:
-
-```http
-GET /statistics/monthly-dynamics?months=12
-```
-
-The response is designed to be usable by a frontend chart or dashboard.
-
----
-
-# 👑 Admin Statistics
-
-Administrators can access system-wide statistics.
-
-For example:
-
-```http
-GET /admin/statistics/service-usage
-```
-
-This allows analysis of subscription-service usage across users.
-
-Admin endpoints require elevated authorization permissions.
-
----
-
-# 📁 Report Export
-
-Users can export annual subscription-cost analysis.
-
-Supported formats:
-
-```text
-CSV
-XLSX
-```
-
-The Excel report is generated using **Apache POI**.
-
-Reports contain financial information such as:
-
-* Subscription name
-* Monthly equivalent price
-* Base-currency equivalent
-* Annual subscription cost
-
-Available endpoints:
-
-```http
-GET /reports/annual.csv
-GET /reports/annual.xlsx
-```
-
----
-
-# 🏗 Architecture
-
-The project follows a layered Spring Boot architecture:
-
-```text
-Client
-   │
-   ▼
-Controller
-   │
-   ▼
-Service
-   │
-   ▼
-Repository
-   │
-   ▼
-PostgreSQL
-```
-
-Business logic is kept out of controllers.
-
-A simplified project structure:
-
-```text
-src/main/java
-│
-├── config
-├── controller
-├── domain
-│   ├── entity
-│   └── enum
-├── dto
-│   ├── request
-│   └── response
-├── exception
-├── integration
-├── mapper
-├── repository
-│   └── specification
-├── scheduler
-├── security
-└── service
-```
-
----
-
-# 🧠 Architectural Decisions
-
-## Layered Architecture
-
-The application separates responsibilities between:
-
-```text
-Controller → Service → Repository → Entity
-```
-
-Controllers handle HTTP requests.
-
-Services contain business logic.
-
-Repositories handle persistence.
-
----
-
-## DTO Mapping
-
-Entities are not directly exposed through the REST API.
-
-DTO ↔ Entity mapping is handled using:
-
-```text
-MapStruct
-```
-
----
-
-## Constructor Injection
-
-The project avoids field injection.
-
-Dependencies are provided through constructor injection.
-
----
-
-## Lazy Relationships
-
-Entity relationships use lazy loading where appropriate to avoid unnecessary database queries and reduce the risk of N+1 problems.
-
----
-
-## Database Migrations
-
-Database schema changes are managed using:
-
-```text
-Flyway
-```
-
-Flyway runs migrations automatically when the application starts.
-
----
-
-## Transactions
-
-Money-related database operations use Spring transactions so that related operations succeed or fail as one unit.
-
-This prevents partially saved financial state.
-
----
-
-## Optimistic Locking
-
-Optimistic locking is used where appropriate to reduce the risk of concurrent requests overwriting each other's data.
-
----
-
-## Global Exception Handling
-
-The application uses centralized exception handling with:
-
-```text
-@RestControllerAdvice
-```
-
-Instead of exposing Java stack traces, the API returns structured JSON errors.
-
----
-
-# 🛠 Tech Stack
-
-| Area                       | Technology                  |
-| -------------------------- | --------------------------- |
-| Language                   | Java 21                     |
-| Framework                  | Spring Boot 3.5.5           |
-| REST                       | Spring MVC                  |
-| Persistence                | Spring Data JPA / Hibernate |
-| Database                   | PostgreSQL                  |
-| Database Migration         | Flyway                      |
-| Security                   | Spring Security             |
-| Authentication             | JWT / JJWT                  |
-| Password Hashing           | BCrypt                      |
-| Mapping                    | MapStruct                   |
-| Validation                 | Jakarta Validation          |
-| Currency API               | Central Bank of Uzbekistan  |
-| Cache                      | Spring Cache + Caffeine     |
-| Resilience                 | Resilience4j                |
-| Scheduling                 | Spring Scheduling           |
-| Distributed Scheduler Lock | ShedLock                    |
-| Email                      | Spring Mail                 |
-| Excel Export               | Apache POI                  |
-| API Docs                   | Springdoc OpenAPI / Swagger |
-| Monitoring                 | Spring Boot Actuator        |
-| Testing                    | JUnit 5                     |
-| Mocking                    | Mockito                     |
-| Assertions                 | AssertJ                     |
-| Integration Testing        | Testcontainers              |
-| API Testing                | WebTestClient               |
-| Containerization           | Docker / Docker Compose     |
-| Deployment                 | AWS EC2                     |
-| Reverse Proxy              | Nginx                       |
-
----
-
-# 🚀 API Endpoints
-
-Production base URL:
-
-```text
-https://subscriptionmaster.app
-```
-
-Protected endpoints require:
-
-```http
-Authorization: Bearer <access-token>
-```
-
----
-
-## Authentication Controller
-
-| Method | Endpoint         | Description                  | Access |
-| ------ | ---------------- | ---------------------------- | ------ |
-| `POST` | `/auth/register` | Register a new user          | Public |
-| `POST` | `/auth/login`    | Login and obtain JWT tokens  | Public |
-| `POST` | `/auth/refresh`  | Refresh expired access token | Public |
-
----
-
-## Subscription Controller
-
-| Method   | Endpoint              | Description               | Access        |
-| -------- | --------------------- | ------------------------- | ------------- |
-| `POST`   | `/subscriptions`      | Create subscription       | Authenticated |
-| `GET`    | `/subscriptions`      | List/filter subscriptions | Authenticated |
-| `GET`    | `/subscriptions/{id}` | Get subscription by ID    | Owner / Admin |
-| `PUT`    | `/subscriptions/{id}` | Update subscription       | Owner / Admin |
-| `DELETE` | `/subscriptions/{id}` | Soft-delete subscription  | Owner / Admin |
-
----
-
-## Statistics Controller
-
-| Method | Endpoint                       | Description               |
-| ------ | ------------------------------ | ------------------------- |
-| `GET`  | `/statistics/summary`          | Personal spending summary |
-| `GET`  | `/statistics/monthly-dynamics` | Monthly spending dynamics |
-
-Example:
-
-```http
-GET /statistics/monthly-dynamics?months=6
-```
-
----
-
-## Report Controller
-
-| Method | Endpoint               | Description                |
-| ------ | ---------------------- | -------------------------- |
-| `GET`  | `/reports/annual.csv`  | Export annual CSV report   |
-| `GET`  | `/reports/annual.xlsx` | Export annual Excel report |
-
----
-
-## Admin Controller
-
-| Method | Endpoint                          | Description                          |
-| ------ | --------------------------------- | ------------------------------------ |
-| `GET`  | `/admin/statistics/service-usage` | System-wide service usage statistics |
-
----
-
-# 📚 Swagger / OpenAPI
-
-The easiest way to test the project is through Swagger UI.
-
-Open:
-
-```text
-https://subscriptionmaster.app/swagger-ui/index.html
-```
-
-OpenAPI JSON:
-
-```text
-https://subscriptionmaster.app/v3/api-docs
-```
-
----
-
-# 🧪 How to Use the Live Application
-
-## 1. Open Swagger
-
-Visit:
-
-```text
-https://subscriptionmaster.app/swagger-ui/index.html
-```
-
-You will see all available controllers and endpoints.
-
----
-
-## 2. Register an Account
-
-Open:
-
-```text
-POST /auth/register
-```
-
-Click:
-
-```text
-Try it out
-```
-
-Enter the request body required by Swagger.
-
-Example structure:
+Scheduled processing and email notifications complement the request-response API. Caffeine provides application-level caching, while PostgreSQL stores durable business data and coordination records.
+
+## Technology Stack
+
+| Category | Technologies |
+|---|---|
+| Language and framework | Java 21, Spring Boot 3.4.1 |
+| Web and security | Spring MVC, Spring Security 6, JJWT 0.12.6, BCrypt |
+| Database | PostgreSQL 16, Spring Data JPA, Hibernate |
+| Migrations | Flyway |
+| Mapping | MapStruct 1.6.3 |
+| Caching | Spring Cache, Caffeine |
+| Resilience | Resilience4j Circuit Breaker |
+| Scheduling | Spring Scheduler, ShedLock 6.2.0 |
+| Financial exports | Apache POI 5.3.0 |
+| API documentation | Springdoc OpenAPI / Swagger UI 2.8.3 |
+| Testing | JUnit, Testcontainers, PostgreSQL integration tests |
+| Containerization | Docker, Docker Compose, Jib |
+| Deployment | Nginx, TLS, AWS EC2, GitHub Actions |
+
+## Getting Started
+
+### Option 1: Try the Live API
+
+1. Open [Swagger UI](https://subscriptionmaster.app/api/swagger-ui/index.html).
+2. Execute `POST /auth/register` to create an account.
+3. Copy the `accessToken` from the response.
+4. Select **Authorize** in Swagger UI and enter the token in the format required by the displayed security scheme.
+5. Create and manage subscriptions, then explore statistics, renewals, and reports.
+
+Example registration request:
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "StrongPassword123!"
+  "username": "developer",
+  "email": "dev@example.com",
+  "password": "Password123!"
 }
 ```
 
-Then click:
-
-```text
-Execute
-```
-
-A successful request creates your user account.
-
----
-
-## 3. Login
-
-Use:
-
-```text
-POST /auth/login
-```
-
-Provide the email and password you registered with.
-
-Example:
+Example subscription request:
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "StrongPassword123!"
+  "name": "ChatGPT Plus",
+  "price": 20.00,
+  "currency": "USD",
+  "frequency": "MONTHLY",
+  "status": "ACTIVE",
+  "category": "AI_TOOLS",
+  "startDate": "2026-10-01"
 }
 ```
 
-The API returns authentication information including an access token and refresh token.
+Check the schemas in Swagger UI if the API's required fields differ from these examples.
 
-Copy the **access token**.
+### Option 2: Run with Docker Compose
 
----
+**Prerequisites:** Docker 24 or later and Docker Compose v2.
 
-## 4. Authorize Swagger
-
-At the top of Swagger UI, click:
-
-```text
-Authorize
-```
-
-Enter your token.
-
-Depending on the Swagger security configuration, enter either:
-
-```text
-Bearer YOUR_ACCESS_TOKEN
-```
-
-or simply:
-
-```text
-YOUR_ACCESS_TOKEN
-```
-
-Swagger will then send the token with protected requests.
-
----
-
-## 5. Create a Subscription
-
-Open:
-
-```text
-POST /subscriptions
-```
-
-Click **Try it out** and create a subscription using the request schema shown by Swagger.
-
-A subscription includes values such as:
-
-```text
-name
-price
-currency
-startDate
-billingFrequency
-category
-```
-
-For example, you could create:
-
-```text
-Name: Netflix
-Price: 9.99
-Currency: USD
-Billing frequency: MONTHLY
-Status: ACTIVE
-```
-
-The system automatically calculates the next payment date according to the billing frequency.
-
----
-
-## 6. View Your Subscriptions
-
-Use:
-
-```http
-GET /subscriptions
-```
-
-The API only returns subscriptions you are authorized to see.
-
-You can also filter the results.
-
-Example:
-
-```http
-GET /subscriptions?status=ACTIVE&currency=USD
-```
-
----
-
-## 7. Use Pagination
-
-Example:
-
-```http
-GET /subscriptions?page=0&size=10
-```
-
-Sort by next payment date:
-
-```http
-GET /subscriptions?page=0&size=10&sort=nextPaymentDate,asc
-```
-
----
-
-## 8. Filter by Price
-
-Example:
-
-```http
-GET /subscriptions?minPrice=5&maxPrice=50
-```
-
-Filters can be combined:
-
-```http
-GET /subscriptions?status=ACTIVE&currency=USD&minPrice=5&maxPrice=50&page=0&size=10
-```
-
----
-
-## 9. Update a Subscription
-
-Use:
-
-```http
-PUT /subscriptions/{id}
-```
-
-For example:
-
-```http
-PUT /subscriptions/1
-```
-
-Users can update only subscriptions they are authorized to manage.
-
----
-
-## 10. Delete a Subscription
-
-Use:
-
-```http
-DELETE /subscriptions/{id}
-```
-
-For example:
-
-```http
-DELETE /subscriptions/1
-```
-
-The subscription is **soft deleted**, meaning its database record is preserved for financial history.
-
----
-
-## 11. View Spending Statistics
-
-Use:
-
-```http
-GET /statistics/summary
-```
-
-For monthly spending dynamics:
-
-```http
-GET /statistics/monthly-dynamics?months=6
-```
-
-or:
-
-```http
-GET /statistics/monthly-dynamics?months=12
-```
-
----
-
-## 12. Download Annual Reports
-
-CSV:
-
-```text
-https://subscriptionmaster.app/reports/annual.csv
-```
-
-Excel:
-
-```text
-https://subscriptionmaster.app/reports/annual.xlsx
-```
-
-These endpoints require authentication.
-
-If using Swagger, authorize first and execute the endpoint from the Swagger interface.
-
----
-
-## 13. Refresh an Access Token
-
-When your access token expires, you do not need to log in again.
-
-Use:
-
-```http
-POST /auth/refresh
-```
-
-and send the refresh token obtained during authentication.
-
-The server returns a new access token.
-
----
-
-# 🐳 Running Locally
-
-## Prerequisites
-
-Install:
-
-* Java 21
-* Maven
-* Docker
-* Docker Compose
-* Git
-
----
-
-## 1. Clone the Repository
+Clone the repository:
 
 ```bash
-git clone https://github.com/mirkamol-code/subscription-master.git
-cd subscription-master
+git clone https://github.com/mirkamol-code/sub-master.git
+cd sub-master
 ```
 
----
+Create a `.env` file in the project root:
 
-## 2. Generate a JWT Secret
+```env
+POSTGRES_DB=subscription_master_db
+POSTGRES_USER=mirkamol
+POSTGRES_PASSWORD=change-this-local-password
+JWT_SECRET=replace-with-a-random-secret-of-at-least-32-bytes
+APP_SEED_ENABLED=true
+```
 
-Generate a secure secret:
+These are local development examples. Use strong, unique credentials and externally managed secrets for deployment.
+
+Start the application and its configured services:
 
 ```bash
-openssl rand -base64 48
+docker compose up --build -d
 ```
 
-Copy the generated value.
+Verify the application:
 
----
+- Health check: `http://localhost:8080/api/actuator/health`
+- Swagger UI: `http://localhost:8080/api/swagger-ui/index.html`
+- PostgreSQL: `localhost:5222` if using the supplied port mapping.
 
-## 3. Start with Docker Compose
+Check the Docker Compose configuration for the actual port mappings and required environment variables.
 
-The easiest way to run the complete system is:
+### Option 3: Run for Development
+
+Start PostgreSQL with the database-only Compose configuration:
 
 ```bash
-JWT_SECRET='your-secure-secret-at-least-32-bytes' docker compose up --build
+docker compose -f docker-compose-db-only.yml up -d
 ```
 
-Docker Compose starts:
-
-```text
-Spring Boot application
-        +
-PostgreSQL database
-```
-
-The application becomes available at:
-
-```text
-http://localhost:8080
-```
-
-Swagger:
-
-```text
-http://localhost:8080/swagger-ui/index.html
-```
-
-Health:
-
-```text
-http://localhost:8080/actuator/health
-```
-
----
-
-## 4. Run in Background
+Run Spring Boot using Maven:
 
 ```bash
-JWT_SECRET='your-secure-secret-at-least-32-bytes' docker compose up -d --build
+./mvnw spring-boot:run
 ```
 
-Check running containers:
+Alternatively, run `SubscribeMasterApplication.java` from IntelliJ IDEA.
+
+Run the test suite:
 
 ```bash
-docker compose ps
+./mvnw clean verify
 ```
 
-View logs:
+The integration tests use Testcontainers to verify behavior against PostgreSQL rather than relying exclusively on an in-memory database.
+
+## Configuration
+
+Important application properties include:
+
+| Property | Purpose |
+|---|---|
+| `server.servlet.context-path` | Application URL prefix, configured as `/api` |
+| `spring.datasource.url` | PostgreSQL connection URL |
+| `app.jwt.secret` | JWT signing secret |
+| `app.jwt.access-token-minutes` | Access-token lifetime |
+| `app.jwt.refresh-token-days` | Refresh-token lifetime |
+| `app.rate-limiting.auth.max-failed-attempts` | Failed login attempts before blocking |
+| `app.rate-limiting.auth.block-duration-seconds` | Rate-limit block duration |
+| `app.seed.enabled` | Controls demo-data initialization |
+| `app.cbu.base-url` | CBU exchange-rate API URL |
+
+Seed data can create 200 demonstration subscriptions. Keep it disabled in production unless intentionally required. Production secrets, SMTP credentials, and database credentials should be supplied securely rather than committed to source control.
+
+## Testing
+
+The project contains **25 test classes** across unit and integration testing.
+
+**Unit tests** cover services responsible for authentication, subscription management, exchange rates, payments, notifications, statistics, reporting, and rate limiting.
+
+**Integration tests** cover authentication, subscriptions, currencies, reports, statistics, and admin endpoints. They exercise the API with PostgreSQL through Testcontainers and verify areas such as security filters, JWT validation, database behavior, and HTTP responses.
+
+Run all tests with:
 
 ```bash
-docker compose logs -f
+./mvnw clean verify
 ```
 
-Stop the project:
+## Deployment
 
-```bash
-docker compose down
-```
+The backend is deployed to AWS EC2 with Docker-based infrastructure, Nginx handling HTTPS traffic, and GitHub Actions automating deployment.
 
----
+The deployment setup is designed to keep application configuration outside the codebase and provide health-check endpoints for operational visibility.
 
-# 💻 Local Development Without Running the App Container
+## Project Scope
 
-You can run PostgreSQL through Docker and the Spring Boot application directly from IntelliJ or Maven.
+Subscription Master is a portfolio project built to demonstrate backend engineering practices using a practical financial-management use case.
 
-Start PostgreSQL:
-
-```bash
-docker compose -f docker-compose-db-only.yml up -d db-local-postgres
-```
-
-Run the application:
-
-```bash
-SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run
-```
-
-Then open:
-
-```text
-http://localhost:8080/swagger-ui/index.html
-```
-
----
-
-# ⚙️ Environment Variables
-
-Important production environment variables include:
-
-```text
-POSTGRES_USER
-POSTGRES_PASSWORD
-POSTGRES_DB
-
-JWT_SECRET
-
-LOG_NOTIFICATIONS_ENABLED
-
-GMAIL_NOTIFICATIONS_ENABLED
-GMAIL_USERNAME
-GMAIL_APP_PASSWORD
-GMAIL_FROM
-
-MAIL_HEALTH_ENABLED
-```
-
-Example:
-
-```bash
-export POSTGRES_USER=mirkamol
-export POSTGRES_PASSWORD=strong-database-password
-export POSTGRES_DB=subscription_master_db
-
-export JWT_SECRET="$(openssl rand -base64 48)"
-
-export GMAIL_NOTIFICATIONS_ENABLED=false
-```
-
-Then:
-
-```bash
-docker compose up --build
-```
-
-> Do not commit real database passwords, Gmail App Passwords, or JWT secrets to Git.
-
----
-
-# 🗄 Database
-
-The project uses:
-
-```text
-PostgreSQL
-```
-
-Database migrations are managed by:
-
-```text
-Flyway
-```
-
-Flyway applies migrations automatically during application startup.
-
-Docker Compose also creates a persistent PostgreSQL volume so data survives container restarts.
-
----
-
-# 🧪 Automated Tests
-
-The project contains both **unit tests** and **integration tests**.
-
-Run all tests:
-
-```bash
-mvn test
-```
-
-Docker must be running because integration tests use Testcontainers.
-
----
-
-## Unit Testing
-
-Unit tests use:
-
-```text
-JUnit 5
-Mockito
-AssertJ
-```
-
-They test business logic in isolation.
-
----
-
-## Integration Testing
-
-Integration tests use:
-
-```text
-Spring Boot Test
-WebTestClient
-Testcontainers
-PostgreSQL
-```
-
-Testcontainers automatically launches an isolated PostgreSQL instance.
-
-You do not need to manually create a test database.
-
-The integration tests validate functionality including:
-
-* Authentication
-* JWT authorization
-* Subscription CRUD
-* User ownership
-* Filtering
-* Validation
-* Role restrictions
-* Reports
-* Soft deletion
-
----
-
-# ❤️ Actuator Health Check
-
-Check application health:
-
-### Production
-
-```text
-https://subscriptionmaster.app/actuator/health
-```
-
-### Local
-
-```text
-http://localhost:8080/actuator/health
-```
-
----
-
-# 🔐 Security Design
-
-The project follows several security principles:
-
-* Passwords are hashed using BCrypt
-* JWT authentication is stateless
-* Access and refresh tokens are separated
-* Resource IDs do not bypass ownership checks
-* Users can manage only authorized resources
-* Admin functionality requires elevated permissions
-* Production secrets are supplied externally
-* Sensitive configuration should not be committed to Git
-
----
-
-# 🚀 Production Deployment
-
-The current production architecture is:
-
-```text
-                       Internet
-                           │
-                           │ HTTPS
-                           ▼
-                    ┌─────────────┐
-                    │    Nginx    │
-                    │ Reverse     │
-                    │ Proxy       │
-                    └──────┬──────┘
-                           │
-                           ▼
-                 ┌───────────────────┐
-                 │ Subscription      │
-                 │ Master            │
-                 │ Spring Boot       │
-                 └────────┬──────────┘
-                          │
-                ┌─────────┴─────────┐
-                ▼                   ▼
-        ┌──────────────┐     ┌──────────────┐
-        │ PostgreSQL   │     │ CBU API      │
-        │              │     │ Exchange     │
-        │              │     │ Rates        │
-        └──────────────┘     └──────────────┘
-```
-
-Infrastructure:
-
-```text
-AWS EC2
-Docker
-Docker Compose
-PostgreSQL
-Nginx
-HTTPS
-```
-
----
-
-# ✅ Assignment Requirements Coverage
-
-| Requirement                     | Implementation      |
-| ------------------------------- | ------------------- |
-| JWT authentication              | ✅                   |
-| Registration/login              | ✅                   |
-| Refresh token                   | ✅                   |
-| BCrypt passwords                | ✅                   |
-| User subscription isolation     | ✅                   |
-| Subscription CRUD               | ✅                   |
-| Automatic next payment date     | ✅                   |
-| Weekly/monthly/annual billing   | ✅                   |
-| Pagination                      | ✅                   |
-| Filtering                       | ✅ JPA Specification |
-| Soft delete                     | ✅                   |
-| Payment history                 | ✅                   |
-| CBU exchange-rate integration   | ✅                   |
-| UZS conversion                  | ✅                   |
-| Caffeine caching                | ✅                   |
-| Resilience4j fallback           | ✅                   |
-| Scheduled reminders             | ✅                   |
-| Log/email notification strategy | ✅                   |
-| ShedLock                        | ✅                   |
-| CSV export                      | ✅                   |
-| XLSX export                     | ✅ Apache POI        |
-| Statistics API                  | ✅                   |
-| Admin statistics                | ✅                   |
-| PostgreSQL                      | ✅                   |
-| Flyway migrations               | ✅                   |
-| MapStruct                       | ✅                   |
-| Swagger/OpenAPI                 | ✅                   |
-| Docker Compose                  | ✅                   |
-| Unit tests                      | ✅                   |
-| Integration tests               | ✅ Testcontainers    |
-| Global exception handling       | ✅                   |
-| Production deployment           | ✅ AWS EC2           |
-
----
-
-# 🔗 Useful Links
-
-| Resource                      | URL                                                  |
-| ----------------------------- | ---------------------------------------------------- |
-| 🌐 Production API             | https://subscriptionmaster.app                       |
-| 📖 Swagger UI                 | https://subscriptionmaster.app/swagger-ui/index.html |
-| 📄 OpenAPI JSON               | https://subscriptionmaster.app/v3/api-docs           |
-| ❤️ Health Check               | https://subscriptionmaster.app/actuator/health       |
-| 💻 GitHub Repository          | https://github.com/mirkamol-code/subscription-master |
-| 💱 Central Bank of Uzbekistan | https://cbu.uz                                       |
-
----
-
-# 👨‍💻 Author
-
-**Mirkamol**
-
-Backend Java Developer
-
-Technologies demonstrated in this project:
-
-```text
-Java
-Spring Boot
-Spring Security
-JWT
-PostgreSQL
-Flyway
-Docker
-AWS
-Nginx
-Testcontainers
-Resilience4j
-Caffeine
-ShedLock
-MapStruct
-```
-
----
-
-# 📌 Repository
-
-https://github.com/mirkamol-code/subscription-master
+Its current scope includes subscription management, simulated payments, exchange-rate conversion, notifications, analytics, and report exports. It is not a payment processor and does not directly charge bank cards.

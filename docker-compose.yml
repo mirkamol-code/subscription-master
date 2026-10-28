@@ -1,40 +1,50 @@
 services:
-  subscription-master-service:
+  app:
     container_name: subscription-master
-    #      image: amigoscode/product-service:jibMaven
     image: subscription-master:latest
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://subscription-master-db:5432/subscription_master_db
+      # ── Database (points to the "db" service on the Docker network) ──
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-subscription_master_db}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-mirkamol}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      SPRING_PROFILES_ACTIVE: dev
-      APP_SEED_ENABLED: true
-      APP_JWT_SECRET: ${JWT_SECRET:-secret-key-must-be-at-least-32-bytes}
-      APP_NOTIFICATIONS_LOG_ENABLED: ${LOG_NOTIFICATIONS_ENABLED:-true}
-      APP_NOTIFICATIONS_GMAIL_ENABLED: ${GMAIL_NOTIFICATIONS_ENABLED:-true}
-      APP_NOTIFICATIONS_GMAIL_FROM: ${GMAIL_FROM:-}
-      SPRING_MAIL_USERNAME: ${GMAIL_USERNAME:-mirkamol.m.a@gmail.com}
-      SPRING_MAIL_PASSWORD: ${GMAIL_APP_PASSWORD:-wiaaqmjufspfikvh}
+      # ── App settings ──
+      APP_SEED_ENABLED: ${APP_SEED_ENABLED:-false}
+      APP_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # ── SQL logging — keep off in production ──
+      HIBERNATE_SHOW_SQL: "false"
+      HIBERNATE_FORMAT_SQL: "false"
+      # ── Notifications ──
+      LOG_NOTIFICATIONS_ENABLED: ${LOG_NOTIFICATIONS_ENABLED:-true}
+      GMAIL_NOTIFICATIONS_ENABLED: ${GMAIL_NOTIFICATIONS_ENABLED:-true}
+      GMAIL_FROM: ${GMAIL_FROM:-}
+      GMAIL_USERNAME: ${GMAIL_USERNAME:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       MAIL_HEALTH_ENABLED: ${MAIL_HEALTH_ENABLED:-false}
     depends_on:
-      subscription-master-db:
+      db:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # No host port mapping — Nginx talks to this container on the internal network
     networks:
       - subscribe-master-network
-  subscription-master-db:
-    container_name: subscription_master_db-postgres
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  db:
+    container_name: subscription_master_db
     image: postgres:16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mirkamol}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: ${POSTGRES_DB:-subscription_master_db}
     ports:
-      - "5222:5432"
+      - "5222:5432"   # exposed only for local DBA access — remove in production
     restart: unless-stopped
     volumes:
       - subscription-master-db:/var/lib/postgresql/data
@@ -43,6 +53,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - subscribe-master-network
+
+  nginx:
+    container_name: subscription-master-nginx
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro    # mount your SSL certs here
+    depends_on:
+      app:
+        condition: service_healthy
     networks:
       - subscribe-master-network
 

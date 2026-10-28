@@ -39,7 +39,6 @@ public class CbuRateClient {
                         -> new IllegalArgumentException("CBU rate unavailable for " + currency));
     }
 
-
     public static class ExchangeRateUnavailableException extends RuntimeException {
         public ExchangeRateUnavailableException(Throwable cause) {
             super(cause);

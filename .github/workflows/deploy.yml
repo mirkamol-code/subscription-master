@@ -3,13 +3,15 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_IMAGE_NAME: smart-lead
-      DOCKER_COMPOSE_APP_SERVICE_NAME: comment-service
+      DOCKER_IMAGE_NAME: subscription-master
+      DOCKER_COMPOSE_APP_SERVICE_NAME: app
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
       EC2_PUBLIC_IP_ADDRESS: ${{ secrets.EC2_PUBLIC_IP_ADDRESS }}
@@ -46,11 +48,40 @@ jobs:
 
       - name: SSH To EC2 and Deploy
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP_ADDRESS << EOF
-            cd /home/ubuntu/app
-            sed -i 's|image: '"$DOCKER_USERNAME"'/'"$DOCKER_IMAGE_NAME"':.*$|image: '"$DOCKER_USERNAME"'/'"$DOCKER_IMAGE_NAME"':'"$BUILD_NUMBER"'|' docker-compose.yml
-            docker compose pull
-            docker compose up -d '$DOCKER_COMPOSE_APP_SERVICE_NAME'
+          ssh -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP_ADDRESS "sudo bash -s" << EOF
+            set -e
+
+            # 1. Detect directory where subscription-master is running
+            COMPOSE_DIR=""
+            if docker inspect subscription-master >/dev/null 2>&1; then
+              COMPOSE_DIR=\$(docker inspect subscription-master --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' 2>/dev/null || true)
+            fi
+
+            if [ -z "\$COMPOSE_DIR" ] || [ ! -f "\$COMPOSE_DIR/docker-compose.yml" ]; then
+              for d in /root /home/ubuntu/app /home/ubuntu/subscription-master /home/ubuntu; do
+                if [ -f "\$d/docker-compose.yml" ]; then
+                  COMPOSE_DIR="\$d"
+                  break
+                fi
+              done
+            fi
+
+            if [ -z "\$COMPOSE_DIR" ]; then
+              COMPOSE_DIR="/home/ubuntu/app"
+              mkdir -p "\$COMPOSE_DIR"
+            fi
+
+            echo "Deploying in directory: \$COMPOSE_DIR"
+            cd "\$COMPOSE_DIR"
+
+            # 2. Update image in docker-compose.yml
+            if [ -f docker-compose.yml ]; then
+              sed -i -E "s|image: .*(subscription-master).*|image: $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER|" docker-compose.yml
+            fi
+
+            # 3. Pull and restart the app service
+            docker compose pull $DOCKER_COMPOSE_APP_SERVICE_NAME || docker compose pull || true
+            docker compose up -d $DOCKER_COMPOSE_APP_SERVICE_NAME || docker compose up -d
             docker image prune -f
             docker ps
             echo "$BUILD_NUMBER" > build-number.txt

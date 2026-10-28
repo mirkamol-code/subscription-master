@@ -36,11 +36,12 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "https://*.vercel.app",
-                "https://*.netlify.app",
-                "*"
+                "https://subscriptionmaster.app",
+                "https://www.subscriptionmaster.app",
+                "https://subscription-master.app",
+                "https://www.subscription-master.app",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(

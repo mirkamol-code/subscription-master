@@ -11,7 +11,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AuthControllerIT extends AbstractTestConfig {
 
-
     @Test
     void register_shouldReturnCreatedAndTokens_whenRequestIsValid() {
         webTestClient.post()

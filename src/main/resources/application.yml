@@ -1,3 +1,8 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+
 spring:
   application:
     name: subscribe-master
@@ -5,6 +10,8 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:mirkamol}
     password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
+    # Local dev default  → localhost:5222
+    # Docker production  → jdbc:postgresql://db:5432/subscription_master_db
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5222/subscription_master_db}
   jpa:
     open-in-view: false
@@ -12,8 +19,8 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
-        show_sql: true
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+        show_sql: ${HIBERNATE_SHOW_SQL:false}
   flyway.enabled: true
   cache:
     cache-names: exchange-rates
@@ -34,11 +41,12 @@ spring:
       mail.smtp.writetimeout: 5000
 app:
   jwt:
+    # MUST be overridden via JWT_SECRET env-var in production (≥32 chars)
     secret: ${JWT_SECRET:secret-key-must-be-at-least-32-bytes}
     access-token-minutes: 15
     refresh-token-days: 30
   seed:
-    enabled: true
+    enabled: ${APP_SEED_ENABLED:true}
   rate-limiting:
     auth:
       enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
