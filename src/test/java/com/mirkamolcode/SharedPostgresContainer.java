@@ -50,12 +50,6 @@ public class SharedPostgresContainer extends PostgreSQLContainer {
         return sharedPostgresContainer;
     }
 
-    /**
-     * A reusable Testcontainers instance may have been created before the
-     * database name was configured (or with a different name). PostgreSQL
-     * only creates POSTGRES_DB during initialisation, so the configured JDBC
-     * URL can otherwise point at a database that is not present.
-     */
     private static void ensureDatabaseExists(SharedPostgresContainer container) {
         String adminUrl = String.format(
                 "jdbc:postgresql://%s:%d/postgres",

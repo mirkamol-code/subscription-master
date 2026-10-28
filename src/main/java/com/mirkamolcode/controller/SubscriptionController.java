@@ -41,12 +41,6 @@ public class SubscriptionController {
         return service.create(request);
     }
 
-    /**
-     * Paginated subscription list.
-     * TASK-01: ?name= (case-insensitive LIKE)
-     * TASK-02: ?category=
-     * TASK-05: ?nextPaymentDateFrom= &nextPaymentDateTo=
-     */
     @GetMapping
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public Page<SubscriptionResponse> list(
@@ -62,10 +56,6 @@ public class SubscriptionController {
         return service.list(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, pageable);
     }
 
-    /**
-     * TASK-03: Unpaged — returns ALL subscriptions for calendar view.
-     * GET /subscriptions/all
-     */
     @GetMapping("/all")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public List<SubscriptionResponse> listAll(
@@ -80,10 +70,6 @@ public class SubscriptionController {
         return service.listAll(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
     }
 
-    /**
-     * TASK-09: Upcoming renewals feed.
-     * GET /subscriptions/upcoming?days=7
-     */
     @GetMapping("/upcoming")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public List<SubscriptionResponse> upcoming(
@@ -91,10 +77,6 @@ public class SubscriptionController {
         return service.upcoming(days);
     }
 
-    /**
-     * TASK-04: Calendar endpoint returning per-day grouped data with pre-converted costs in UZS.
-     * GET /subscriptions/calendar?year=2026&month=10
-     */
     @GetMapping("/calendar")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public CalendarResponse calendar(
@@ -122,30 +104,18 @@ public class SubscriptionController {
         service.delete(id);
     }
 
-    /**
-     * TASK-08: Pause a subscription (ACTIVE → PAUSED).
-     * POST /subscriptions/{id}/pause
-     */
     @PostMapping("/{id}/pause")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
     public SubscriptionResponse pause(@PathVariable Long id) {
         return service.pause(id);
     }
 
-    /**
-     * TASK-08: Resume a subscription (PAUSED → ACTIVE).
-     * POST /subscriptions/{id}/resume
-     */
     @PostMapping("/{id}/resume")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
     public SubscriptionResponse resume(@PathVariable Long id) {
         return service.resume(id);
     }
 
-    /**
-     * TASK-07: Payment history for a subscription.
-     * GET /subscriptions/{id}/history
-     */
     @GetMapping("/{id}/history")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public List<PaymentHistoryResponse> history(@PathVariable Long id) {

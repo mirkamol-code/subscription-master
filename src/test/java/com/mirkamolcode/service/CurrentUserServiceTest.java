@@ -36,15 +36,12 @@ class CurrentUserServiceTest {
 
     @Test
     void requiredUser_shouldReturnUser_whenAuthenticationAndDatabaseUserExist() {
-        // Given
         User user = new User("person@example.com", "hash", Set.of(Role.USER));
         authenticate("person@example.com", Permission.SUBSCRIPTION_READ_OWN);
         when(userRepository.findByEmailIgnoreCase("person@example.com")).thenReturn(Optional.of(user));
 
-        // When
         User result = underTest.requiredUser();
 
-        // Then
         assertThat(result).isSameAs(user);
     }
 
@@ -64,10 +61,8 @@ class CurrentUserServiceTest {
 
     @Test
     void hasPermission_shouldReflectCurrentAuthorities() {
-        // Given
         authenticate("person@example.com", Permission.SUBSCRIPTION_READ_OWN);
 
-        // When / Then
         assertThat(underTest.hasPermission(Permission.SUBSCRIPTION_READ_OWN)).isTrue();
         assertThat(underTest.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).isFalse();
 

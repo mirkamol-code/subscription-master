@@ -27,7 +27,6 @@ class CurrencyControllerTest {
 
     @Test
     void getRates_shouldReturnExchangeRatesResponse() {
-        // Given
         Instant now = Instant.parse("2026-10-09T00:00:00Z");
         ExchangeRatesResponse response = new ExchangeRatesResponse(
                 "UZS",
@@ -36,10 +35,8 @@ class CurrencyControllerTest {
         );
         when(exchangeRateService.getCurrentRates()).thenReturn(response);
 
-        // When
         ExchangeRatesResponse result = underTest.getRates();
 
-        // Then
         assertThat(result.baseCurrency()).isEqualTo("UZS");
         assertThat(result.rates()).containsEntry("USD", new BigDecimal("12850.00"));
         assertThat(result.rates()).containsEntry("EUR", new BigDecimal("13967.50"));

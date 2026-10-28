@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** TASK-04: Grouped calendar view with pre-converted costs in UZS */
 public record CalendarResponse(
         int year,
         int month,

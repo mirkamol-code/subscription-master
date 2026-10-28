@@ -29,7 +29,6 @@ class NotificationServiceTest {
 
     @Test
     void gmailNotifier_shouldSendReminderToSubscriptionOwner() {
-        // Given
         Subscription subscription = new Subscription(
                 new User("person@example.com", "hash", Set.of(Role.USER)),
                 "Netflix", new BigDecimal("12.99"), CurrencyCode.USD,
@@ -37,10 +36,8 @@ class NotificationServiceTest {
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 8, 23));
         GmailNotifier notifier = new GmailNotifier(mailSender, "billing@example.com");
 
-        // When
         notifier.paymentDueSoon(subscription);
 
-        // Then
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(captor.capture());
         assertThat(captor.getValue().getFrom()).isEqualTo("billing@example.com");

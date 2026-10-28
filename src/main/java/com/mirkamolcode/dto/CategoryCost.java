@@ -4,7 +4,6 @@ import com.mirkamolcode.model.SubscriptionCategory;
 
 import java.math.BigDecimal;
 
-/** TASK-06: CategoryCost includes currency label for the monthly cost */
 public record CategoryCost(
         SubscriptionCategory category,
         BigDecimal monthlyCostUzs,

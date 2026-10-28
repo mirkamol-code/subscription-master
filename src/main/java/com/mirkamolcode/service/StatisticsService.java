@@ -36,7 +36,6 @@ public class StatisticsService {
         return mySummary(null, null);
     }
 
-    /** TASK-04: support year & month for specific month spending summary */
     public SpendingSummary mySummary(Integer year, Integer month) {
         boolean forMonth = year != null && month != null;
         if (forMonth) {

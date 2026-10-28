@@ -11,7 +11,6 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 
 public class CustomPageableHandlerMethodArgumentResolver extends PageableHandlerMethodArgumentResolver {
 
-    /** Hard cap for "unpaged" requests (unpaged=true or size=-1), so they can't load the whole table. */
     public static final int MAX_UNPAGED_SIZE = 1000;
 
     public CustomPageableHandlerMethodArgumentResolver(CustomSortHandlerMethodArgumentResolver sortResolver) {

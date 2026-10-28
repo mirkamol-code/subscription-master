@@ -27,7 +27,6 @@ class AuthControllerTest {
 
     @Test
     void me_shouldReturnUserProfile() {
-        // Given
         Instant createdAt = Instant.parse("2026-01-15T10:00:00Z");
         UserProfileResponse response = new UserProfileResponse(
                 104L,
@@ -38,10 +37,8 @@ class AuthControllerTest {
         );
         when(authService.me()).thenReturn(response);
 
-        // When
         UserProfileResponse result = underTest.me();
 
-        // Then
         assertThat(result.id()).isEqualTo(104L);
         assertThat(result.email()).isEqualTo("user@example.com");
         assertThat(result.roles()).containsExactly("ROLE_USER");
@@ -52,13 +49,10 @@ class AuthControllerTest {
 
     @Test
     void logout_shouldInvokeAuthServiceLogout() {
-        // Given
         LogoutRequest request = new LogoutRequest("sample-refresh-token");
 
-        // When
         underTest.logout(request);
 
-        // Then
         verify(authService).logout(request);
     }
 }

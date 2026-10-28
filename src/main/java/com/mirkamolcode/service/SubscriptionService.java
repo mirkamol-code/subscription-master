@@ -77,10 +77,6 @@ public class SubscriptionService {
         return list(status, currency, null, null, null, null, minPrice, maxPrice, pageable);
     }
 
-    /**
-     * Paginated list with extended filters:
-     * TASK-01: name (LIKE), TASK-02: category, TASK-05: nextPaymentDateFrom/To
-     */
     public Page<SubscriptionResponse> list(SubscriptionStatus status,
                                            CurrencyCode currency,
                                            SubscriptionCategory category,
@@ -97,9 +93,6 @@ public class SubscriptionService {
         return repository.findAll(spec, pageable).map(mapper::toResponse);
     }
 
-    /**
-     * TASK-03: Return ALL subscriptions (no pagination) — for calendar view.
-     */
     public List<SubscriptionResponse> listAll(SubscriptionStatus status,
                                               CurrencyCode currency,
                                               SubscriptionCategory category,
@@ -132,7 +125,6 @@ public class SubscriptionService {
         requiredAccessible(id, Permission.SUBSCRIPTION_DELETE_ALL).markDeleted();
     }
 
-    /** TASK-08: Pause — set status to PAUSED */
     @Transactional
     public SubscriptionResponse pause(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
@@ -144,7 +136,6 @@ public class SubscriptionService {
         return mapper.toResponse(subscription);
     }
 
-    /** TASK-08: Resume — set status back to ACTIVE */
     @Transactional
     public SubscriptionResponse resume(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
@@ -156,7 +147,6 @@ public class SubscriptionService {
         return mapper.toResponse(subscription);
     }
 
-    /** TASK-07: Payment history for a subscription */
     public List<PaymentHistoryResponse> getHistory(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_READ_ALL);
         return paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription.getId())
@@ -165,7 +155,6 @@ public class SubscriptionService {
                 .toList();
     }
 
-    /** TASK-09: Upcoming renewals within the next N days */
     public List<SubscriptionResponse> upcoming(int days) {
         if (days < 1 || days > 365)
             throw new IllegalArgumentException("days must be between 1 and 365");
@@ -184,7 +173,6 @@ public class SubscriptionService {
         return repository.findAll(spec).stream().map(mapper::toResponse).toList();
     }
 
-    /** TASK-04: Calendar view with pre-converted costs in UZS */
     public CalendarResponse calendar(int year, int month) {
         if (year < 2000 || year > 2100)
             throw new IllegalArgumentException("year must be between 2000 and 2100");
@@ -227,10 +215,6 @@ public class SubscriptionService {
         totalMonthCost = totalMonthCost.setScale(2, RoundingMode.HALF_UP);
         return new CalendarResponse(year, month, totalMonthCost, "UZS", days);
     }
-
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
 
     private Specification<Subscription> buildSpec(SubscriptionStatus status,
                                                    CurrencyCode currency,

@@ -88,12 +88,10 @@ public class Subscription extends AuditableEntity {
         status = SubscriptionStatus.CANCELLED;
     }
 
-    /** TASK-08: Pause a subscription */
     public void pause() {
         this.status = SubscriptionStatus.PAUSED;
     }
 
-    /** TASK-08: Resume a paused subscription back to ACTIVE */
     public void resume() {
         this.status = SubscriptionStatus.ACTIVE;
     }

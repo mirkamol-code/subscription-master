@@ -70,7 +70,6 @@ public record ErrorResponse(
         );
     }
 
-    /** TASK-10: returns errorCode = "AUTH_LOCKED" and retryAfterSeconds */
     public static ErrorResponse rateLimited(long retryAfterSeconds, Instant blockedUntil, String message) {
         return new ErrorResponse(
                 Instant.now(),

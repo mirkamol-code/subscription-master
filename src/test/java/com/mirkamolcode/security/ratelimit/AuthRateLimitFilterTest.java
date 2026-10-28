@@ -19,7 +19,6 @@ class AuthRateLimitFilterTest {
     void doFilter_whenBlocked_shouldReturn429WithAuthLockedErrorCode() throws Exception {
         AuthRateLimiter limiter = new AuthRateLimiter(true, 3, 60);
         String ip = "192.168.1.100";
-        // 3 failures to trigger block
         limiter.recordFailure(ip);
         limiter.recordFailure(ip);
         limiter.recordFailure(ip);

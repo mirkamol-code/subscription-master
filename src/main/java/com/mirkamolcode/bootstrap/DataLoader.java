@@ -309,7 +309,6 @@ public class DataLoader implements ApplicationRunner {
                     nextPaymentDate
             ));
 
-            // Seed historical payments for the first 30 subscriptions
             if (count < 30) {
                 seedPaymentHistoryFor(sub, today);
             }

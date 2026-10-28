@@ -57,7 +57,6 @@ public class CustomSortHandlerMethodArgumentResolver extends SortHandlerMethodAr
 
         List<Sort.Order> orders = new ArrayList<>();
 
-        // Check if serialized as array of length 2 like ["nextPaymentDate", "ASC"]
         if (sortParams.length == 2 && isDirection(sortParams[1]) && !sortParams[0].contains(",")) {
             String prop = mapProperty(sortParams[0]);
             Sort.Direction dir = parseDirection(sortParams[1]);
