@@ -2,6 +2,7 @@ package com.mirkamolcode.service;
 
 import com.mirkamolcode.dto.CbuRate;
 import com.mirkamolcode.entity.ExchangeRate;
+import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
 import com.mirkamolcode.integration.CbuRateClient;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.repository.ExchangeRateRepository;
@@ -88,7 +89,7 @@ class ExchangeRateServiceTest {
         when(rateRepository.findFirstByCurrencyOrderByRateDateDesc(CurrencyCode.USD)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> underTest.rateToUzs(CurrencyCode.USD))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ExchangeRatesUnavailableException.class)
                 .hasMessage("No cached exchange rate available for USD");
     }
 

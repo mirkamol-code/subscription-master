@@ -4,6 +4,7 @@ import com.mirkamolcode.dto.CbuRate;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.integration.CbuRateClient;
 import com.mirkamolcode.entity.ExchangeRate;
+import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
 import com.mirkamolcode.repository.ExchangeRateRepository;
 
 import java.math.BigDecimal;
@@ -42,7 +43,7 @@ public class ExchangeRateService {
         } catch (CbuRateClient.ExchangeRateUnavailableException exception) {
             return rates.findFirstByCurrencyOrderByRateDateDesc(currency)
                     .map(ExchangeRate::getRateToUzs)
-                    .orElseThrow(() -> new IllegalStateException("No cached exchange rate available for " + currency, exception));
+                    .orElseThrow(() -> new ExchangeRatesUnavailableException("No cached exchange rate available for " + currency, exception));
         }
     }
 

@@ -35,6 +35,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS", "Unauthorized", e.getMessage()));
     }
 
+    @ExceptionHandler(ExchangeRatesUnavailableException.class)
+    public ResponseEntity<ErrorResponse> exchangeRatesUnavailable(ExchangeRatesUnavailableException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponse.of(HttpStatus.SERVICE_UNAVAILABLE.value(), "EXCHANGE_RATES_UNAVAILABLE", "Service Unavailable", "Exchange rates temporarily unavailable"));
+    }
+
     @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> forbidden(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)

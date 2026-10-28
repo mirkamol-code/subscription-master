@@ -99,6 +99,25 @@ class StatisticControllerIT extends AbstractTestConfig {
                 .jsonPath("$.monthlyTotalUzs").isEqualTo(24000.0);
     }
 
+    @Test
+    void summary_shouldReturnServiceUnavailable_whenCbuIsUnreachableAndNoRateIsStored() {
+        // given CBU is unreachable in the test profile and no USD rate was ever stored
+        String authorization = bearer(register("owner-no-rate@example.com"));
+        createSubscription(authorization, new SubscriptionRequest("USD service", new BigDecimal("2.00"), CurrencyCode.USD,
+                BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
+                SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10)));
+
+        // when / then
+        webTestClient.get()
+                .uri(API + "/statistics/summary")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("EXCHANGE_RATES_UNAVAILABLE")
+                .jsonPath("$.message").isEqualTo("Exchange rates temporarily unavailable");
+    }
+
     private SubscriptionRequest request(String name, String price) {
         return new SubscriptionRequest(name, new BigDecimal(price), CurrencyCode.UZS,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
