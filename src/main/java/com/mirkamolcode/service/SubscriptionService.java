@@ -134,6 +134,8 @@ public class SubscriptionService {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (subscription.getStatus() == SubscriptionStatus.PAUSED)
             throw new IllegalArgumentException("Subscription is already paused");
+        if (subscription.getStatus() != SubscriptionStatus.ACTIVE)
+            throw new IllegalArgumentException("Only active subscriptions can be paused");
         subscription.pause();
         return mapper.toResponse(subscription);
     }
@@ -144,6 +146,8 @@ public class SubscriptionService {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (subscription.getStatus() == SubscriptionStatus.ACTIVE)
             throw new IllegalArgumentException("Subscription is already active");
+        if (subscription.getStatus() != SubscriptionStatus.PAUSED)
+            throw new IllegalArgumentException("Only paused subscriptions can be resumed");
         subscription.resume();
         return mapper.toResponse(subscription);
     }

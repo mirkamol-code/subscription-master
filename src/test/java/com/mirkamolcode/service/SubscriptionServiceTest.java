@@ -278,6 +278,32 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void pause_shouldThrowWhenCancelled() {
+        Subscription subscription = cancelledSubscription();
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+
+        assertThatThrownBy(() -> underTest.pause(7L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only active subscriptions can be paused");
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
+    void resume_shouldThrowWhenCancelled() {
+        Subscription subscription = cancelledSubscription();
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
+
+        assertThatThrownBy(() -> underTest.resume(7L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only paused subscriptions can be resumed");
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
     void upcoming_shouldReturnActiveSubscriptionsWithinDays() {
         Subscription subscription = subscription(owner, "Netflix");
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
@@ -353,6 +379,14 @@ class SubscriptionServiceTest {
     private Subscription subscription(User user, String name) {
         Subscription subscription = new Subscription(user, name, new BigDecimal("12.99"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
+                SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10));
+        ReflectionTestUtils.setField(subscription, "id", 7L);
+        return subscription;
+    }
+
+    private Subscription cancelledSubscription() {
+        Subscription subscription = new Subscription(owner, "Netflix", new BigDecimal("12.99"), CurrencyCode.USD,
+                BillingFrequency.MONTHLY, SubscriptionStatus.CANCELLED,
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10));
         ReflectionTestUtils.setField(subscription, "id", 7L);
         return subscription;
