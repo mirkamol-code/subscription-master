@@ -111,6 +111,48 @@ class SubscriptionControllerIT extends AbstractTestConfig {
     }
 
     @Test
+    void user_shouldNotPauseResumeOrReadHistoryOfAnotherUsersSubscription() {
+        String ownerAuthorization = bearer(register("owner-actions@example.com"));
+        String otherAuthorization = bearer(register("other-actions@example.com"));
+        SubscriptionResponse ownerSubscription = createSubscription(
+                ownerAuthorization, request("Owner only", "9.99", CurrencyCode.USD));
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/pause", ownerSubscription.id())
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/resume", ownerSubscription.id())
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/{id}/history", ownerSubscription.id())
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/all")
+                .header("Authorization", otherAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(0);
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/{id}", ownerSubscription.id())
+                .header("Authorization", ownerAuthorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("ACTIVE");
+    }
+
+    @Test
     void admin_shouldListReadUpdateAndDeleteSubscriptionsAcrossUsers() {
         String ownerAuthorization = bearer(register("owner@example.com"));
         SubscriptionResponse subscription = createSubscription(
