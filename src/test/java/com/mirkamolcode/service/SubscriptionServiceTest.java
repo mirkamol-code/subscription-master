@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -218,9 +219,7 @@ class SubscriptionServiceTest {
     @Test
     void pause_shouldChangeStatusToPaused() {
         Subscription subscription = subscription(owner, "Netflix");
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         SubscriptionResponse result = underTest.pause(7L);
@@ -232,9 +231,7 @@ class SubscriptionServiceTest {
     void pause_shouldThrowWhenAlreadyPaused() {
         Subscription subscription = subscription(owner, "Netflix");
         subscription.pause();
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
 
         assertThatThrownBy(() -> underTest.pause(7L))
                 .isInstanceOf(ConflictException.class)
@@ -245,9 +242,7 @@ class SubscriptionServiceTest {
     void resume_shouldChangeStatusToActive() {
         Subscription subscription = subscription(owner, "Netflix");
         subscription.pause();
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         SubscriptionResponse result = underTest.resume(7L);
@@ -258,9 +253,7 @@ class SubscriptionServiceTest {
     @Test
     void resume_shouldThrowWhenAlreadyActive() {
         Subscription subscription = subscription(owner, "Netflix");
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        givenOwnerCanUpdate(subscription);
 
         assertThatThrownBy(() -> underTest.resume(7L))
                 .isInstanceOf(ConflictException.class)
@@ -269,10 +262,8 @@ class SubscriptionServiceTest {
 
     @Test
     void pause_shouldThrowWhenCancelled() {
-        Subscription subscription = cancelledSubscription();
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        Subscription subscription = subscription(owner, "Netflix", SubscriptionStatus.CANCELLED);
+        givenOwnerCanUpdate(subscription);
 
         assertThatThrownBy(() -> underTest.pause(7L))
                 .isInstanceOf(ConflictException.class)
@@ -282,10 +273,8 @@ class SubscriptionServiceTest {
 
     @Test
     void resume_shouldThrowWhenCancelled() {
-        Subscription subscription = cancelledSubscription();
-        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
-        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
-        when(currentUserService.requiredUser()).thenReturn(owner);
+        Subscription subscription = subscription(owner, "Netflix", SubscriptionStatus.CANCELLED);
+        givenOwnerCanUpdate(subscription);
 
         assertThatThrownBy(() -> underTest.resume(7L))
                 .isInstanceOf(ConflictException.class)
@@ -344,6 +333,7 @@ class SubscriptionServiceTest {
         verify(subscriptionRepository).findAll(any(Specification.class), pageable.capture());
         assertThat(pageable.getValue().getPageNumber()).isZero();
         assertThat(pageable.getValue().getPageSize()).isEqualTo(1000);
+        assertThat(pageable.getValue().getSort()).isEqualTo(Sort.by("nextPaymentDate", "id"));
         assertThat(results).hasSize(1);
         assertThat(results.get(0).name()).isEqualTo("Netflix");
     }
@@ -379,19 +369,21 @@ class SubscriptionServiceTest {
     }
 
     private Subscription subscription(User user, String name) {
+        return subscription(user, name, SubscriptionStatus.ACTIVE);
+    }
+
+    private Subscription subscription(User user, String name, SubscriptionStatus status) {
         Subscription subscription = new Subscription(user, name, new BigDecimal("12.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
+                BillingFrequency.MONTHLY, status,
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10));
         ReflectionTestUtils.setField(subscription, "id", 7L);
         return subscription;
     }
 
-    private Subscription cancelledSubscription() {
-        Subscription subscription = new Subscription(owner, "Netflix", new BigDecimal("12.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, SubscriptionStatus.CANCELLED,
-                SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10));
-        ReflectionTestUtils.setField(subscription, "id", 7L);
-        return subscription;
+    private void givenOwnerCanUpdate(Subscription subscription) {
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(subscription));
+        when(currentUserService.hasPermission(Permission.SUBSCRIPTION_UPDATE_ALL)).thenReturn(false);
+        when(currentUserService.requiredUser()).thenReturn(owner);
     }
 
     private Subscription subscription(BillingFrequency frequency, LocalDate startDate) {

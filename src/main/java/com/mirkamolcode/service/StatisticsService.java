@@ -39,12 +39,8 @@ public class StatisticsService {
     public SpendingSummary mySummary(Integer year, Integer month) {
         boolean forMonth = year != null && month != null;
         if (forMonth) {
-            if (year < 2000 || year > 2100) {
-                throw new IllegalArgumentException("year must be between 2000 and 2100");
-            }
-            if (month < 1 || month > 12) {
-                throw new IllegalArgumentException("month must be between 1 and 12");
-            }
+            PeriodValidation.requireSupportedYear(year);
+            PeriodValidation.requireValidMonth(month);
         }
 
         Long userId = currentUser.requiredUser().getId();

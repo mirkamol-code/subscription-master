@@ -1,5 +1,6 @@
 package com.mirkamolcode.entity;
 
+import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.SubscriptionCategory;
@@ -89,10 +90,18 @@ public class Subscription extends AuditableEntity {
     }
 
     public void pause() {
+        if (status == SubscriptionStatus.PAUSED)
+            throw new ConflictException("Subscription is already paused");
+        if (status != SubscriptionStatus.ACTIVE)
+            throw new ConflictException("Only active subscriptions can be paused");
         this.status = SubscriptionStatus.PAUSED;
     }
 
     public void resume() {
+        if (status == SubscriptionStatus.ACTIVE)
+            throw new ConflictException("Subscription is already active");
+        if (status != SubscriptionStatus.PAUSED)
+            throw new ConflictException("Only paused subscriptions can be resumed");
         this.status = SubscriptionStatus.ACTIVE;
     }
 

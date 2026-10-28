@@ -1,13 +1,11 @@
 package com.mirkamolcode.service;
 
-import com.mirkamolcode.config.CustomPageableHandlerMethodArgumentResolver;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.mapper.SubscriptionMapper;
-import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
@@ -26,9 +24,11 @@ import java.util.stream.Collectors;
 
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Permission;
+import com.mirkamolcode.model.QueryLimits;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,8 +105,8 @@ public class SubscriptionService {
             throw new IllegalArgumentException("minPrice must not exceed maxPrice");
 
         Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
-        Pageable firstRows = PageRequest.of(0, CustomPageableHandlerMethodArgumentResolver.MAX_UNPAGED_SIZE);
-        return repository.findAll(spec, firstRows).stream().map(mapper::toResponse).toList();
+        Pageable cappedPage = PageRequest.of(0, QueryLimits.MAX_UNPAGED_ROWS, Sort.by("nextPaymentDate", "id"));
+        return repository.findAll(spec, cappedPage).stream().map(mapper::toResponse).toList();
     }
 
     public SubscriptionResponse get(Long id) {
@@ -128,10 +128,6 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponse pause(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        if (subscription.getStatus() == SubscriptionStatus.PAUSED)
-            throw new ConflictException("Subscription is already paused");
-        if (subscription.getStatus() != SubscriptionStatus.ACTIVE)
-            throw new ConflictException("Only active subscriptions can be paused");
         subscription.pause();
         return mapper.toResponse(subscription);
     }
@@ -139,10 +135,6 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponse resume(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        if (subscription.getStatus() == SubscriptionStatus.ACTIVE)
-            throw new ConflictException("Subscription is already active");
-        if (subscription.getStatus() != SubscriptionStatus.PAUSED)
-            throw new ConflictException("Only paused subscriptions can be resumed");
         subscription.resume();
         return mapper.toResponse(subscription);
     }
@@ -174,10 +166,8 @@ public class SubscriptionService {
     }
 
     public CalendarResponse calendar(int year, int month) {
-        if (year < 2000 || year > 2100)
-            throw new IllegalArgumentException("year must be between 2000 and 2100");
-        if (month < 1 || month > 12)
-            throw new IllegalArgumentException("month must be between 1 and 12");
+        PeriodValidation.requireSupportedYear(year);
+        PeriodValidation.requireValidMonth(month);
 
         LocalDate from = LocalDate.of(year, month, 1);
         LocalDate to = YearMonth.of(year, month).atEndOfMonth();
