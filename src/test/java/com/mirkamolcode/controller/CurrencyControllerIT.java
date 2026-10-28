@@ -62,4 +62,30 @@ class CurrencyControllerIT extends AbstractTestConfig {
         verify(cbuRateClient, times(1)).find(CurrencyCode.USD);
         verify(cbuRateClient, times(1)).find(CurrencyCode.EUR);
     }
+
+    @Test
+    void getRates_shouldUseLiveRateAgain_onceCbuRecovers() {
+        // given CBU is down for the first request and a USD rate was stored earlier
+        cacheManager.getCache("exchange-rates").clear();
+        exchangeRateRepository.save(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12000.00"), LocalDate.of(2026, 10, 27)));
+        given(cbuRateClient.find(CurrencyCode.USD))
+                .willThrow(new CbuRateClient.ExchangeRateUnavailableException(new RuntimeException("CBU down")))
+                .willReturn(new CbuRate("USD", new BigDecimal("12850.00"), "28.10.2026"));
+        given(cbuRateClient.find(CurrencyCode.EUR)).willReturn(new CbuRate("EUR", new BigDecimal("13967.50"), "28.10.2026"));
+
+        webTestClient.get()
+                .uri(API + "/currencies/rates")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.rates.USD").isEqualTo(12000.00);
+
+        // when / then CBU has recovered
+        webTestClient.get()
+                .uri(API + "/currencies/rates")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.rates.USD").isEqualTo(12850.00);
+    }
 }

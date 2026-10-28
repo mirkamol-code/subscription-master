@@ -8,11 +8,12 @@ import com.mirkamolcode.repository.ExchangeRateRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,8 +26,12 @@ class ExchangeRateServiceTest {
     private CbuRateClient client;
     @Mock
     private ExchangeRateRepository rateRepository;
-    @InjectMocks
     private ExchangeRateService underTest;
+
+    @BeforeEach
+    void setUp() {
+        underTest = new ExchangeRateService(client, rateRepository, new ConcurrentMapCacheManager(ExchangeRateService.CACHE_NAME));
+    }
 
     @Test
     void rateToUzs_shouldReturnOne_withoutExternalCallForBaseCurrency() {
