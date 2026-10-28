@@ -127,6 +127,17 @@ class AuthControllerIT extends AbstractTestConfig {
     }
 
     @Test
+    void login_shouldExposeRetryAfterHeader_toTheFrontendOrigin() {
+        webTestClient.post()
+                .uri(API + "/auth/login")
+                .header("Origin", "http://localhost:5173")
+                .bodyValue(new LoginRequest("nobody@example.com", "wrong-password"))
+                .exchange()
+                .expectHeader().value("Access-Control-Expose-Headers",
+                        exposed -> assertThat(exposed).contains("Retry-After"));
+    }
+
+    @Test
     void me_shouldReturnUnauthorized_whenTokenIsMissing() {
         webTestClient.get()
                 .uri(API + "/auth/me")
