@@ -24,6 +24,19 @@ class StatisticControllerIT extends AbstractTestConfig {
     }
 
     @Test
+    void summary_shouldReturnBadRequest_whenYearIsOutsideSupportedRange() {
+        String authorization = bearer(register("owner-summary-year@example.com"));
+
+        webTestClient.get()
+                .uri(API + "/statistics/summary?year=1999&month=10")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
+    @Test
     void summary_shouldIncludeOnlyAuthenticatedUsersActiveSubscriptions() {
         String ownerAuthorization = bearer(register("owner@example.com"));
         String otherAuthorization = bearer(register("other@example.com"));

@@ -264,6 +264,49 @@ class SubscriptionControllerIT extends AbstractTestConfig {
                 .jsonPath("$[0].name").isEqualTo("My_Box");
     }
 
+    @Test
+    void pauseAndResume_shouldReturnConflict_whenSubscriptionIsInWrongState() {
+        String authorization = bearer(register("owner-conflict@example.com"));
+        SubscriptionResponse subscription = createSubscription(authorization, request("Netflix", "12.99", CurrencyCode.USD));
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/resume", subscription.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("CONFLICT");
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/pause", subscription.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("PAUSED");
+
+        webTestClient.post()
+                .uri(API + "/subscriptions/{id}/pause", subscription.id())
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("CONFLICT");
+    }
+
+    @Test
+    void calendar_shouldReturnBadRequest_whenYearIsOutsideSupportedRange() {
+        String authorization = bearer(register("owner-calendar@example.com"));
+
+        webTestClient.get()
+                .uri(API + "/subscriptions/calendar?year=1999&month=10")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("BAD_REQUEST");
+    }
+
     private SubscriptionRequest request(String name, String price, CurrencyCode currency) {
         return new SubscriptionRequest(name, new BigDecimal(price), currency,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
