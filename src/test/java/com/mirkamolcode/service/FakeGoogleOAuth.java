@@ -6,11 +6,11 @@ import com.mirkamolcode.integration.google.InvalidGrantException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
-final class FakeGoogleOAuth implements GoogleOAuthClient {
+public final class FakeGoogleOAuth implements GoogleOAuthClient {
     private final AtomicInteger refreshes = new AtomicInteger();
     private volatile int revokeAfterRefreshes = -1;
 
-    void reset() {
+    public void reset() {
         refreshes.set(0);
         revokeAfterRefreshes = -1;
     }

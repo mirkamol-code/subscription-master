@@ -12,8 +12,6 @@ import com.mirkamolcode.integration.gmail.GmailClient;
 import com.mirkamolcode.integration.gmail.GmailHistoryExpiredException;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.GmailNotFoundException;
-import com.mirkamolcode.integration.gmail.GmailUnauthorizedException;
-import com.mirkamolcode.integration.google.GoogleTokenService;
 import com.mirkamolcode.model.SyncError;
 import com.mirkamolcode.model.SyncState;
 import com.mirkamolcode.repository.BillingEmailRepository;
@@ -45,7 +43,7 @@ public class GmailSyncService {
     private final BillingEmailRecorder recorder;
     private final BillingEmailAnalyzer analyzer;
     private final GmailClient gmail;
-    private final GoogleTokenService tokens;
+    private final GmailAccessor gmailAccessor;
     private final GmailQuery query;
     private final CurrentUserService currentUser;
     private final ApplicationEventPublisher events;
@@ -57,7 +55,7 @@ public class GmailSyncService {
                             BillingEmailRecorder recorder,
                             BillingEmailAnalyzer analyzer,
                             GmailClient gmail,
-                            GoogleTokenService tokens,
+                            GmailAccessor gmailAccessor,
                             GmailQuery query,
                             CurrentUserService currentUser,
                             ApplicationEventPublisher events) {
@@ -68,7 +66,7 @@ public class GmailSyncService {
         this.recorder = recorder;
         this.analyzer = analyzer;
         this.gmail = gmail;
-        this.tokens = tokens;
+        this.gmailAccessor = gmailAccessor;
         this.query = query;
         this.currentUser = currentUser;
         this.events = events;
@@ -105,7 +103,7 @@ public class GmailSyncService {
         Long userId = claim.userId();
         try {
             GmailConnection connection = connections.findByUserId(userId).orElseThrow();
-            String latestHistoryId = withAccessToken(userId, gmail::fetchCurrentHistoryId);
+            String latestHistoryId = gmailAccessor.callWithFreshToken(userId, gmail::fetchCurrentHistoryId);
             CandidateScan scan = findCandidateIds(userId, connection);
             syncState.recordTotal(claim, scan.ids().size());
             int failures = scan.failures() + recordAll(claim, scan.ids());
@@ -141,14 +139,14 @@ public class GmailSyncService {
 
     private List<String> listMessageIds(Long userId, String gmailQuery) {
         return collectAllPages(pageToken -> {
-            var page = withAccessToken(userId, accessToken -> gmail.listMessageIds(accessToken, gmailQuery, pageToken));
+            var page = gmailAccessor.callWithFreshToken(userId, accessToken -> gmail.listMessageIds(accessToken, gmailQuery, pageToken));
             return new Page(page.messageIds(), page.nextPageToken());
         });
     }
 
     private CandidateScan findNewCandidateIds(Long userId, String startHistoryId) {
         List<String> added = collectAllPages(pageToken -> {
-            var page = withAccessToken(userId, accessToken -> gmail.listHistory(accessToken, startHistoryId, pageToken));
+            var page = gmailAccessor.callWithFreshToken(userId, accessToken -> gmail.listHistory(accessToken, startHistoryId, pageToken));
             return new Page(page.addedMessageIds(), page.nextPageToken());
         });
         List<String> candidates = new ArrayList<>();
@@ -157,7 +155,7 @@ public class GmailSyncService {
             if (billingEmails.existsByUserIdAndGmailMessageId(userId, id))
                 continue;
             try {
-                GmailMessage headers = withAccessToken(userId, accessToken -> gmail.getMessageHeaders(accessToken, id));
+                GmailMessage headers = gmailAccessor.callWithFreshToken(userId, accessToken -> gmail.getMessageHeaders(accessToken, id));
                 if (analyzer.isCandidate(headers))
                     candidates.add(id);
             } catch (GmailDisconnectedException e) {
@@ -187,7 +185,7 @@ public class GmailSyncService {
 
     private boolean recordOne(Long userId, String id) {
         try {
-            GmailMessage message = withAccessToken(userId, accessToken -> gmail.getMessage(accessToken, id));
+            GmailMessage message = gmailAccessor.callWithFreshToken(userId, accessToken -> gmail.getMessage(accessToken, id));
             recorder.record(userId, message);
             failedMessages.clearFailure(userId, id);
             return true;
@@ -213,20 +211,6 @@ public class GmailSyncService {
             pageToken = page.nextPageToken();
         } while (pageToken != null);
         return ids;
-    }
-
-    private <T> T withAccessToken(Long userId, Function<String, T> call) {
-        try {
-            return call.apply(tokens.accessToken(userId));
-        } catch (GmailUnauthorizedException rejected) {
-            tokens.invalidate(userId);
-            try {
-                return call.apply(tokens.accessToken(userId));
-            } catch (GmailUnauthorizedException stillRejected) {
-                tokens.markDisconnected(userId);
-                throw new GmailDisconnectedException("Gmail rejected a freshly refreshed access token");
-            }
-        }
     }
 
     private static GmailSyncStatusResponse mapToGmailSyncStatusResponse(GmailConnection connection) {

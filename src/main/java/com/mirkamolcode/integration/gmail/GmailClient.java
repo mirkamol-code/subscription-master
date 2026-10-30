@@ -7,6 +7,8 @@ public interface GmailClient {
 
     GmailMessage getMessageHeaders(String accessToken, String messageId);
 
+    byte[] getAttachment(String accessToken, String messageId, String attachmentId);
+
     GmailHistoryPage listHistory(String accessToken, String startHistoryId, String pageToken);
 
     String fetchCurrentHistoryId(String accessToken);

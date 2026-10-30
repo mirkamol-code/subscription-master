@@ -74,6 +74,8 @@ app:
     connect-timeout: 2s
     read-timeout: 10s
     retry-initial-backoff: 500ms
+    attachments:
+      max-bytes: ${GMAIL_ATTACHMENT_MAX_BYTES:26214400}
     sync:
       cron: ${GMAIL_SYNC_CRON:0 0 */6 * * *}
       stale-after: 30m
