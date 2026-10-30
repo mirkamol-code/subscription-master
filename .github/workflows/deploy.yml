@@ -145,6 +145,11 @@ jobs:
               fi
               sleep 5
             done
+
+            # 7. Keep only this build and the previous one of the app image, so the disk can't fill up
+            docker images "$DOCKER_USERNAME/$DOCKER_IMAGE_NAME" --format '{{.Tag}}' \\
+              | grep -vx "$BUILD_NUMBER" | grep -vx latest | tail -n +2 \\
+              | while read -r tag; do docker rmi "$DOCKER_USERNAME/$DOCKER_IMAGE_NAME:\$tag" || true; done
             docker image prune -f
             docker ps
             echo "$BUILD_NUMBER" > build-number.txt
