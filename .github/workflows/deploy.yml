@@ -15,6 +15,12 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
       EC2_PUBLIC_IP_ADDRESS: ${{ secrets.EC2_PUBLIC_IP_ADDRESS }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      APP_ADMIN_EMAILS: ${{ secrets.APP_ADMIN_EMAILS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +30,29 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+
+      - name: Check Required Secrets
+        run: |
+          missing=""
+          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub secrets:$missing"
+            exit 1
+          fi
+
+      - name: Prepare Server Environment
+        run: |
+          encode() { printf '%s' "$1" | base64 -w0; }
+          {
+            for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS; do
+              if [ -n "${!name}" ]; then echo "$name $(encode "${!name}")"; fi
+            done
+          } > server-env.b64
+          echo "SERVER_ENV_B64=$(base64 -w0 server-env.b64)" >> $GITHUB_ENV
+          echo "COMPOSE_B64=$(base64 -w0 docker-compose.yml)" >> $GITHUB_ENV
+          rm server-env.b64
 
       - name: Generate Build Number
         run: |
@@ -74,14 +103,47 @@ jobs:
             echo "Deploying in directory: \$COMPOSE_DIR"
             cd "\$COMPOSE_DIR"
 
-            # 2. Update image in docker-compose.yml
+            # 2. Update only the managed keys in .env (other values stay as they are)
+            touch .env
+            chmod 600 .env
+            echo "$SERVER_ENV_B64" | base64 -d | while read -r key value_b64; do
+              value=\$(echo "\$value_b64" | base64 -d)
+              grep -v "^\$key=" .env > .env.next || true
+              printf "%s='%s'\\n" "\$key" "\$value" >> .env.next
+              mv .env.next .env
+              chmod 600 .env
+              echo "Updated \$key in .env"
+            done
+
+            # 3. Ship the repository docker-compose.yml (keeps a backup of the previous one)
+            if [ -f docker-compose.yml ]; then
+              cp docker-compose.yml docker-compose.yml.bak-$BUILD_NUMBER
+            fi
+            echo "$COMPOSE_B64" | base64 -d > docker-compose.yml
+
+            # 4. Point the app service at the image built in this run
             if [ -f docker-compose.yml ]; then
               sed -i -E "s|image: .*(subscription-master).*|image: $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER|" docker-compose.yml
             fi
 
-            # 3. Pull and restart the app service
+            # 5. Pull and restart the app service
             docker compose pull $DOCKER_COMPOSE_APP_SERVICE_NAME || docker compose pull || true
             docker compose up -d $DOCKER_COMPOSE_APP_SERVICE_NAME || docker compose up -d
+
+            # 6. Fail the deploy unless the app becomes healthy
+            for attempt in \$(seq 1 24); do
+              status=\$(docker inspect -f '{{ .State.Health.Status }}' subscription-master 2>/dev/null || echo missing)
+              if [ "\$status" = "healthy" ]; then
+                echo "App is healthy"
+                break
+              fi
+              if [ "\$attempt" = "24" ]; then
+                echo "App did not become healthy (status: \$status)"
+                docker compose logs --tail=150 $DOCKER_COMPOSE_APP_SERVICE_NAME
+                exit 1
+              fi
+              sleep 5
+            done
             docker image prune -f
             docker ps
             echo "$BUILD_NUMBER" > build-number.txt
