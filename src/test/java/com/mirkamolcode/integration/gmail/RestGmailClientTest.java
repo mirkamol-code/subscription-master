@@ -1,6 +1,7 @@
 package com.mirkamolcode.integration.gmail;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.mirkamolcode.exception.AttachmentTooLargeException;
 import com.mirkamolcode.exception.GoogleApiUnavailableException;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
@@ -31,7 +32,7 @@ class RestGmailClientTest {
         gmail = new WireMockServer(wireMockConfig().dynamicPort());
         gmail.start();
         underTest = new RestGmailClient(RestClient.builder(), RetryRegistry.ofDefaults(),
-                gmail.baseUrl(), Duration.ofSeconds(2), Duration.ofSeconds(3), Duration.ofMillis(5));
+                gmail.baseUrl(), Duration.ofSeconds(2), Duration.ofSeconds(3), Duration.ofMillis(5), 25L * 1024 * 1024);
     }
 
     @AfterEach
@@ -119,6 +120,71 @@ class RestGmailClientTest {
         assertThat(headers.subject()).isEqualTo("Your Netflix membership receipt");
         assertThat(headers.receivedAt()).isEqualTo(Instant.parse("2026-10-30T09:00:00Z"));
         assertThat(headers.bodyText()).isEmpty();
+    }
+
+    @Test
+    void getAttachment_shouldDecodeBase64UrlData_intoOriginalBytes() throws Exception {
+        // given
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/18c2a1f0adobe0001/attachments/ANGjdJ8_recorded"))
+                .willReturn(okJson(recorded("google/gmail-attachment.json"))));
+
+        // when
+        byte[] content = underTest.getAttachment(TOKEN, "18c2a1f0adobe0001", "ANGjdJ8_recorded");
+
+        // then
+        byte[] expected;
+        try (InputStream in = RestGmailClientTest.class.getResourceAsStream("/google/invoice-sample.pdf")) {
+            expected = in.readAllBytes();
+        }
+        assertThat(content).isEqualTo(expected);
+        gmail.verify(getRequestedFor(urlPathEqualTo(MESSAGES + "/18c2a1f0adobe0001/attachments/ANGjdJ8_recorded"))
+                .withHeader("Authorization", equalTo("Bearer " + TOKEN)));
+    }
+
+    @Test
+    void getAttachment_shouldThrowNotFound_whenMessageOrAttachmentIsGone() {
+        // given
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/gone/attachments/a1")).willReturn(aResponse().withStatus(404)
+                .withHeader("Content-Type", "application/json")
+                .withBody(recorded("google/gmail-history-expired-404.json"))));
+
+        // when / then
+        assertThatThrownBy(() -> underTest.getAttachment(TOKEN, "gone", "a1")).isInstanceOf(GmailNotFoundException.class);
+    }
+
+    @Test
+    void getAttachment_shouldRefuseToDecode_whenGmailReportsSizeAboveLimit() {
+        // given
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/m1/attachments/big"))
+                .willReturn(okJson("{\"size\": 30000000, \"data\": \"AAAA\"}")));
+
+        // when / then
+        assertThatThrownBy(() -> underTest.getAttachment(TOKEN, "m1", "big")).isInstanceOf(AttachmentTooLargeException.class);
+    }
+
+    @Test
+    void getAttachment_shouldRefuseToDecode_whenGmailOmitsSizeButDataIsAboveLimit() {
+        // given
+        String oversizedData = "A".repeat(36_000_000);
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/m1/attachments/no-size"))
+                .willReturn(okJson("{\"data\": \"" + oversizedData + "\"}")));
+
+        // when / then
+        assertThatThrownBy(() -> underTest.getAttachment(TOKEN, "m1", "no-size")).isInstanceOf(AttachmentTooLargeException.class);
+    }
+
+    @Test
+    void getAttachment_shouldRetry_whenGmailRateLimits() {
+        // given
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/m1/attachments/a1")).inScenario("att").whenScenarioStateIs(STARTED)
+                .willReturn(aResponse().withStatus(429).withHeader("Content-Type", "application/json")
+                        .withBody(recorded("google/gmail-rate-limited-429.json")))
+                .willSetStateTo("ok"));
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/m1/attachments/a1")).inScenario("att").whenScenarioStateIs("ok")
+                .willReturn(okJson(recorded("google/gmail-attachment.json"))));
+
+        // when / then
+        assertThat(underTest.getAttachment(TOKEN, "m1", "a1")).hasSize(395);
     }
 
     @Test

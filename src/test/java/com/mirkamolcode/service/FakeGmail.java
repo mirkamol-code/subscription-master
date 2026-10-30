@@ -5,6 +5,7 @@ import com.mirkamolcode.integration.gmail.GmailHistoryExpiredException;
 import com.mirkamolcode.integration.gmail.GmailHistoryPage;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.GmailMessagePage;
+import com.mirkamolcode.integration.gmail.GmailNotFoundException;
 import com.mirkamolcode.integration.gmail.GmailTransientException;
 import com.mirkamolcode.integration.gmail.GmailUnauthorizedException;
 import java.util.ArrayList;
@@ -19,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-final class FakeGmail implements GmailClient {
+public final class FakeGmail implements GmailClient {
     private final ConcurrentHashMap<String, GmailMessage> messages = new ConcurrentHashMap<>();
     private volatile List<String> listedIds = List.of();
     private volatile List<String> historyAdded = List.of();
@@ -28,6 +29,8 @@ final class FakeGmail implements GmailClient {
     final List<String> fetchedIds = new CopyOnWriteArrayList<>();
     final Set<String> failingIds = ConcurrentHashMap.newKeySet();
     final Set<String> failingHeaderIds = ConcurrentHashMap.newKeySet();
+    final AtomicInteger attachmentFetches = new AtomicInteger();
+    private final ConcurrentHashMap<String, byte[]> attachmentBytes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AtomicInteger> attemptsById = new ConcurrentHashMap<>();
     private final AtomicBoolean listingBlockPending = new AtomicBoolean();
     private volatile String blockedFetchId;
@@ -40,7 +43,7 @@ final class FakeGmail implements GmailClient {
     private volatile CountDownLatch listingStarted = new CountDownLatch(0);
     private volatile CountDownLatch listingReleased = new CountDownLatch(0);
 
-    void reset() {
+    public void reset() {
         messages.clear();
         listedIds = List.of();
         historyAdded = List.of();
@@ -49,6 +52,8 @@ final class FakeGmail implements GmailClient {
         fetchedIds.clear();
         failingIds.clear();
         failingHeaderIds.clear();
+        attachmentFetches.set(0);
+        attachmentBytes.clear();
         attemptsById.clear();
         listingBlockPending.set(false);
         blockedFetchId = null;
@@ -62,7 +67,7 @@ final class FakeGmail implements GmailClient {
         listingReleased = new CountDownLatch(0);
     }
 
-    void mailbox(GmailMessage... newestFirst) {
+    public void mailbox(GmailMessage... newestFirst) {
         List<String> ids = new ArrayList<>();
         for (GmailMessage message : newestFirst) {
             messages.put(message.id(), message);
@@ -71,11 +76,23 @@ final class FakeGmail implements GmailClient {
         listedIds = List.copyOf(ids);
     }
 
-    void deliver(GmailMessage message) {
+    public int attachmentFetchCount() {
+        return attachmentFetches.get();
+    }
+
+    public void storeAttachment(String messageId, String attachmentId, byte[] bytes) {
+        attachmentBytes.put(messageId + "/" + attachmentId, bytes);
+    }
+
+    public void deleteMessage(String messageId) {
+        messages.remove(messageId);
+    }
+
+    public void deliver(GmailMessage message) {
         messages.put(message.id(), message);
     }
 
-    void historyAdds(String... ids) {
+    public void historyAdds(String... ids) {
         historyAdded = List.of(ids);
     }
 
@@ -155,6 +172,15 @@ final class FakeGmail implements GmailClient {
             throw new GmailTransientException("Gmail API failed with 500");
         GmailMessage message = messages.get(messageId);
         return new GmailMessage(message.id(), message.threadId(), message.receivedAt(), message.from(), message.subject(), null, null);
+    }
+
+    @Override
+    public byte[] getAttachment(String accessToken, String messageId, String attachmentId) {
+        attachmentFetches.incrementAndGet();
+        byte[] bytes = attachmentBytes.get(messageId + "/" + attachmentId);
+        if (bytes == null || !messages.containsKey(messageId))
+            throw new GmailNotFoundException("Gmail API failed with 404 notFound");
+        return bytes;
     }
 
     @Override
