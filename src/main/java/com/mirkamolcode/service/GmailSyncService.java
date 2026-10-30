@@ -12,6 +12,7 @@ import com.mirkamolcode.integration.gmail.GmailClient;
 import com.mirkamolcode.integration.gmail.GmailHistoryExpiredException;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.GmailNotFoundException;
+import com.mirkamolcode.integration.gmail.GmailScopeMissingException;
 import com.mirkamolcode.model.SyncError;
 import com.mirkamolcode.model.SyncState;
 import com.mirkamolcode.repository.BillingEmailRepository;
@@ -113,6 +114,10 @@ public class GmailSyncService {
         } catch (GmailDisconnectedException e) {
             log.info("Gmail sync for user {} stopped: reconnect required", userId);
             syncState.fail(claim, SyncError.RECONNECT_REQUIRED);
+        } catch (GmailScopeMissingException e) {
+            log.info("Gmail sync for user {} stopped: Gmail read access was not granted", userId);
+            gmailAccessor.markDisconnected(userId);
+            syncState.fail(claim, SyncError.RECONNECT_REQUIRED);
         } catch (RuntimeException e) {
             log.error("Gmail sync for user {} failed", userId, e);
             syncState.fail(claim, SyncError.SYNC_FAILED);
@@ -158,7 +163,7 @@ public class GmailSyncService {
                 GmailMessage headers = gmailAccessor.callWithFreshToken(userId, accessToken -> gmail.getMessageHeaders(accessToken, id));
                 if (analyzer.isCandidate(headers))
                     candidates.add(id);
-            } catch (GmailDisconnectedException e) {
+            } catch (GmailDisconnectedException | GmailScopeMissingException e) {
                 throw e;
             } catch (GmailNotFoundException e) {
                 log.debug("Gmail message {} disappeared before sync", id);

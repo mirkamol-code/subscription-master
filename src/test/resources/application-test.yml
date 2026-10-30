@@ -6,9 +6,6 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: validate
-  mail:
-    host: localhost
-    port: 2525
   security:
     oauth2:
       client:
@@ -29,6 +26,8 @@ app:
     retry-initial-backoff: 1ms
     sync:
       async-enabled: false
+  notifications:
+    async-enabled: false
   seed:
     enabled: false
   jwt:
@@ -37,12 +36,6 @@ app:
     refresh-token-days: 1
   cbu:
     base-url: http://localhost:9999
-  notifications:
-    log:
-      enabled: true
-    gmail:
-      enabled: false
-    gmail-from: mirkamol.m.a@gmail.com
 resilience4j:
   retry:
     instances:

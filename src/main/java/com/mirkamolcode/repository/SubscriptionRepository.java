@@ -22,6 +22,15 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     @Query("""
             select s.id from Subscription s
+             where s.isDeleted = false and s.isHidden = false and s.endsOn is null
+               and s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
+               and s.nextPaymentDate between :from and :to
+             order by s.id
+            """)
+    List<Long> findReminderCandidateIds(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("""
+            select s.id from Subscription s
              where s.isDeleted = false and s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
                and ((s.endsOn is not null and s.endsOn <= :latestLocalDate)
                     or (s.endsOn is null and s.nextPaymentDate < :overdueBefore))

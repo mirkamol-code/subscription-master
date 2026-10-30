@@ -11,7 +11,8 @@ public enum Role {
             Permission.SUBSCRIPTION_DELETE_OWN,
             Permission.STATISTICS_READ_OWN,
             Permission.GMAIL_MANAGE_OWN,
-            Permission.EMAIL_READ_OWN
+            Permission.EMAIL_READ_OWN,
+            Permission.NOTIFICATION_MANAGE_OWN
     )),
     ADMIN(EnumSet.allOf(Permission.class));
 

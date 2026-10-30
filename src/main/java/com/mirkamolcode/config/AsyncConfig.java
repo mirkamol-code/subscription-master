@@ -16,13 +16,23 @@ public class AsyncConfig {
     @Bean
     Executor gmailSyncExecutor(@Value("${app.gmail.sync.async-enabled}") boolean asyncEnabled,
                                @Value("${app.gmail.sync.max-concurrent}") int maxConcurrent) {
+        return createExecutor(asyncEnabled, maxConcurrent, "gmail-sync-");
+    }
+
+    @Bean
+    Executor notificationExecutor(@Value("${app.notifications.async-enabled}") boolean asyncEnabled,
+                                  @Value("${app.notifications.max-concurrent}") int maxConcurrent) {
+        return createExecutor(asyncEnabled, maxConcurrent, "notify-");
+    }
+
+    private static Executor createExecutor(boolean asyncEnabled, int maxConcurrent, String threadNamePrefix) {
         if (!asyncEnabled)
             return new SyncTaskExecutor();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(maxConcurrent);
         executor.setMaxPoolSize(maxConcurrent);
-        executor.setQueueCapacity(500);
-        executor.setThreadNamePrefix("gmail-sync-");
+        executor.setQueueCapacity(1000);
+        executor.setThreadNamePrefix(threadNamePrefix);
         executor.initialize();
         return executor;
     }

@@ -76,3 +76,7 @@ _Avoid_: Status event, transition log
 **Reminder**:
 A notice to a User that a Subscription will charge soon, sent once per Billing cycle.
 _Avoid_: Alert, due notice
+
+**Notification**:
+A message to a User about one of their Subscriptions, either a Reminder or a recent Status change, delivered in the app, by email from their own Gmail, or as a browser push.
+_Avoid_: Alert, message, push (when meaning any channel)

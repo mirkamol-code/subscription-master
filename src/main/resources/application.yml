@@ -43,17 +43,6 @@ spring:
               - profile
               - https://www.googleapis.com/auth/gmail.readonly
               - https://www.googleapis.com/auth/gmail.send
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${GMAIL_USERNAME:}
-    password: ${GMAIL_APP_PASSWORD:}
-    properties:
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
-      mail.smtp.connectiontimeout: 5000
-      mail.smtp.timeout: 5000
-      mail.smtp.writetimeout: 5000
 app:
   jwt:
     # MUST be overridden via JWT_SECRET env-var in production (≥32 chars)
@@ -63,6 +52,16 @@ app:
   seed:
     enabled: ${APP_SEED_ENABLED:false}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  notifications:
+    reminder-hour: ${REMINDER_HOUR:9}
+    reminder-cron: ${REMINDER_CRON:0 5 * * * *}
+    status-max-age: 3d
+    async-enabled: true
+    max-concurrent: 4
+  push:
+    vapid-public-key: ${VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${VAPID_PRIVATE_KEY:}
+    vapid-subject: ${VAPID_SUBJECT:mailto:admin@subscriptionmaster.app}
   status:
     overdue-grace-days: ${OVERDUE_GRACE_DAYS:5}
     daily-rules-cron: ${STATUS_RULES_CRON:0 15 * * * *}
@@ -113,18 +112,9 @@ app:
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
   cbu.connect-timeout: 2s
   cbu.read-timeout: 3s
-  notifications:
-    log:
-      enabled: ${LOG_NOTIFICATIONS_ENABLED:true}
-    gmail:
-      enabled: ${GMAIL_NOTIFICATIONS_ENABLED:false}
-    gmail-from: ${GMAIL_FROM:}
 springdoc:
   swagger-ui.path: /swagger-ui.html
 management:
-  health:
-    mail:
-      enabled: ${MAIL_HEALTH_ENABLED:false}
   endpoints:
     web:
       exposure:
