@@ -363,7 +363,7 @@ class SubscriptionServiceTest {
     }
 
     private User user(Long id, String email) {
-        User user = new User(email, "hash", Set.of(Role.USER));
+        User user = new User(email, Set.of(Role.USER));
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }

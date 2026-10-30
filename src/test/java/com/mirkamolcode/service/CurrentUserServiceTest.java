@@ -36,7 +36,7 @@ class CurrentUserServiceTest {
 
     @Test
     void requiredUser_shouldReturnUser_whenAuthenticationAndDatabaseUserExist() {
-        User user = new User("person@example.com", "hash", Set.of(Role.USER));
+        User user = new User("person@example.com", Set.of(Role.USER));
         authenticate("person@example.com", Permission.SUBSCRIPTION_READ_OWN);
         when(userRepository.findByEmailIgnoreCase("person@example.com")).thenReturn(Optional.of(user));
 

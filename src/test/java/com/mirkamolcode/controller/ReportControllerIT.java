@@ -26,8 +26,8 @@ class ReportControllerIT extends AbstractTestConfig {
 
     @Test
     void csv_shouldDownloadOnlyAuthenticatedUsersSubscriptions() {
-        String ownerAuthorization = bearer(register("owner@example.com"));
-        String otherAuthorization = bearer(register("other@example.com"));
+        String ownerAuthorization = bearer(signIn("owner@example.com"));
+        String otherAuthorization = bearer(signIn("other@example.com"));
         createSubscription(ownerAuthorization, request("Owner service"));
         createSubscription(otherAuthorization, request("Other service"));
 
@@ -48,7 +48,7 @@ class ReportControllerIT extends AbstractTestConfig {
 
     @Test
     void xlsx_shouldDownloadAValidOfficeOpenXmlPayload() {
-        String authorization = bearer(register("owner@example.com"));
+        String authorization = bearer(signIn("owner@example.com"));
         createSubscription(authorization, request("Owner service"));
 
         byte[] body = webTestClient.get()

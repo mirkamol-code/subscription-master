@@ -1,75 +1,48 @@
 package com.mirkamolcode.service;
 
 import com.mirkamolcode.dto.response.UserProfileResponse;
-import com.mirkamolcode.model.Role;
-import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.UnauthorizedException;
 import com.mirkamolcode.entity.RefreshToken;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.repository.RefreshTokenRepository;
-import com.mirkamolcode.repository.UserRepository;
 import com.mirkamolcode.security.jwt.JwtService;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.mirkamolcode.dto.AuthDtos.*;
+import static com.mirkamolcode.security.TokenHashes.sha256;
 
 @Service
 @Transactional
 public class AuthService {
-    private final UserRepository users;
     private final RefreshTokenRepository refreshTokens;
-    private final PasswordEncoder passwords;
     private final JwtService jwt;
     private final CurrentUserService currentUser;
+    private final LoginCodeService loginCodes;
 
-    public AuthService(UserRepository users,
-                       RefreshTokenRepository refreshTokens,
-                       PasswordEncoder passwords,
+    public AuthService(RefreshTokenRepository refreshTokens,
                        JwtService jwt,
-                       CurrentUserService currentUser) {
-        this.users = users;
+                       CurrentUserService currentUser,
+                       LoginCodeService loginCodes) {
         this.refreshTokens = refreshTokens;
-        this.passwords = passwords;
         this.jwt = jwt;
         this.currentUser = currentUser;
+        this.loginCodes = loginCodes;
     }
 
-    public TokenResponse register(RegisterRequest request) {
-        if (users.existsByEmailIgnoreCase(request.email()))
-            throw new ConflictException("Email is already registered");
-
-        User user = users.save(
-                new User(request.email().trim().toLowerCase(),
-                        passwords.encode(request.password()),
-                        Set.of(Role.USER)));
-
-        return issue(user);
-    }
-
-    public TokenResponse login(LoginRequest request) {
-        User user = users.findByEmailIgnoreCase(request.email())
-                .orElseThrow(
-                        () -> new UnauthorizedException("Invalid credentials"));
-        if (!passwords.matches(request.password(), user.getPasswordHash()))
-            throw new UnauthorizedException("Invalid credentials");
-        return issue(user);
+    public TokenResponse exchange(ExchangeRequest request) {
+        return issue(loginCodes.consume(request.code()));
     }
 
     public TokenResponse refresh(RefreshRequest request) {
         if (!jwt.isRefreshToken(request.refreshToken()))
             throw new UnauthorizedException("Invalid refresh token");
 
-        RefreshToken stored = refreshTokens.findByTokenHash(hash(request.refreshToken()))
+        RefreshToken stored = refreshTokens.findByTokenHash(sha256(request.refreshToken()))
                 .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (stored.isRevoked() || stored.getExpiresAt().isBefore(Instant.now()))
@@ -82,8 +55,7 @@ public class AuthService {
         if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
             return;
         }
-        String tokenHash = hash(request.refreshToken());
-        refreshTokens.findByTokenHash(tokenHash).ifPresent(RefreshToken::revoke);
+        refreshTokens.findByTokenHash(sha256(request.refreshToken())).ifPresent(RefreshToken::revoke);
     }
 
     @Transactional(readOnly = true)
@@ -96,6 +68,8 @@ public class AuthService {
         return new UserProfileResponse(
                 user.getId(),
                 user.getEmail(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
                 roles,
                 "UZS",
                 user.getCreatedAt()
@@ -105,15 +79,7 @@ public class AuthService {
     private TokenResponse issue(User user) {
         String access = jwt.accessToken(user);
         String refresh = jwt.refreshToken(user);
-        refreshTokens.save(new RefreshToken(user, hash(refresh), jwt.refreshExpiry()));
+        refreshTokens.save(new RefreshToken(user, sha256(refresh), jwt.refreshExpiry()));
         return new TokenResponse(access, refresh, "Bearer", jwt.accessSeconds());
-    }
-
-    private String hash(String value) {
-        try {
-            return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
     }
 }

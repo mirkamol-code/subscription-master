@@ -30,7 +30,7 @@ class NotificationServiceTest {
     @Test
     void gmailNotifier_shouldSendReminderToSubscriptionOwner() {
         Subscription subscription = new Subscription(
-                new User("person@example.com", "hash", Set.of(Role.USER)),
+                new User("person@example.com", Set.of(Role.USER)),
                 "Netflix", new BigDecimal("12.99"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 8, 23));

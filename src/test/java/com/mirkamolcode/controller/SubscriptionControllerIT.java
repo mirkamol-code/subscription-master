@@ -24,7 +24,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void crud_shouldCreateReadUpdateAndSoftDeleteOwnedSubscription() {
-        String authorization = bearer(register("owner@example.com"));
+        String authorization = bearer(signIn("owner@example.com"));
 
         SubscriptionResponse created = createSubscription(authorization, request("Netflix", "12.99", CurrencyCode.USD));
 
@@ -61,7 +61,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void create_shouldReturnBadRequest_whenPayloadViolatesValidation() {
-        String authorization = bearer(register("owner@example.com"));
+        String authorization = bearer(signIn("owner@example.com"));
         SubscriptionRequest invalid = new SubscriptionRequest("", BigDecimal.ZERO, null, null, null, null, null);
 
         webTestClient.post()
@@ -78,8 +78,8 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void user_shouldNotReadUpdateOrDeleteAnotherUsersSubscription() {
-        String ownerAuthorization = bearer(register("owner@example.com"));
-        String otherAuthorization = bearer(register("other@example.com"));
+        String ownerAuthorization = bearer(signIn("owner@example.com"));
+        String otherAuthorization = bearer(signIn("other@example.com"));
         SubscriptionResponse privateSubscription = createSubscription(
                 otherAuthorization, request("Private", "9.99", CurrencyCode.UZS));
 
@@ -113,8 +113,8 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void user_shouldNotPauseResumeOrReadHistoryOfAnotherUsersSubscription() {
-        String ownerAuthorization = bearer(register("owner-actions@example.com"));
-        String otherAuthorization = bearer(register("other-actions@example.com"));
+        String ownerAuthorization = bearer(signIn("owner-actions@example.com"));
+        String otherAuthorization = bearer(signIn("other-actions@example.com"));
         SubscriptionResponse ownerSubscription = createSubscription(
                 ownerAuthorization, request("Owner only", "9.99", CurrencyCode.USD));
 
@@ -155,11 +155,10 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void admin_shouldListReadUpdateAndDeleteSubscriptionsAcrossUsers() {
-        String ownerAuthorization = bearer(register("owner@example.com"));
+        String ownerAuthorization = bearer(signIn("owner@example.com"));
         SubscriptionResponse subscription = createSubscription(
                 ownerAuthorization, request("Owner service", "10.00", CurrencyCode.UZS));
-        saveAdmin("admin@example.com");
-        String adminAuthorization = bearer(login("admin@example.com"));
+        String adminAuthorization = bearer(signInAsAdmin("admin@example.com"));
 
         webTestClient.get()
                 .uri(API + "/subscriptions")
@@ -193,8 +192,8 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void list_shouldApplyFiltersPaginationAndOwnerIsolation() {
-        String ownerAuthorization = bearer(register("owner@example.com"));
-        String otherAuthorization = bearer(register("other@example.com"));
+        String ownerAuthorization = bearer(signIn("owner@example.com"));
+        String otherAuthorization = bearer(signIn("other@example.com"));
         createSubscription(ownerAuthorization, request("Zeta", "30.00", CurrencyCode.USD));
         createSubscription(ownerAuthorization, request("Alpha", "5.00", CurrencyCode.USD));
         createSubscription(otherAuthorization, request("Other", "50.00", CurrencyCode.USD));
@@ -216,7 +215,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void list_shouldSupportCaseInsensitiveEnumsAndCustomSortSyntax() {
-        String ownerAuthorization = bearer(register("owner-enums@example.com"));
+        String ownerAuthorization = bearer(signIn("owner-enums@example.com"));
         createSubscription(ownerAuthorization, request("Service A", "10.00", CurrencyCode.USD));
         createSubscription(ownerAuthorization, request("Service B", "20.00", CurrencyCode.USD));
 
@@ -236,7 +235,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void listAll_shouldTreatPercentAndUnderscoreInNameAsLiteralCharacters() {
-        String ownerAuthorization = bearer(register("owner-wildcards@example.com"));
+        String ownerAuthorization = bearer(signIn("owner-wildcards@example.com"));
         createSubscription(ownerAuthorization, request("100% Fitness", "10.00", CurrencyCode.USD));
         createSubscription(ownerAuthorization, request("My_Box", "10.00", CurrencyCode.USD));
         createSubscription(ownerAuthorization, request("MyXBox", "10.00", CurrencyCode.USD));
@@ -267,7 +266,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void pauseAndResume_shouldReturnConflict_whenSubscriptionIsInWrongState() {
-        String authorization = bearer(register("owner-conflict@example.com"));
+        String authorization = bearer(signIn("owner-conflict@example.com"));
         SubscriptionResponse subscription = createSubscription(authorization, request("Netflix", "12.99", CurrencyCode.USD));
 
         webTestClient.post()
@@ -297,7 +296,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void calendar_shouldReturnBadRequest_whenYearIsOutsideSupportedRange() {
-        String authorization = bearer(register("owner-calendar@example.com"));
+        String authorization = bearer(signIn("owner-calendar@example.com"));
 
         webTestClient.get()
                 .uri(API + "/subscriptions/calendar?year=1999&month=10")
@@ -310,7 +309,7 @@ class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
     void update_shouldRejectAStaleVersion_andKeepTheNewerEdit() {
-        String authorization = bearer(register("editor@example.com"));
+        String authorization = bearer(signIn("editor@example.com"));
         SubscriptionResponse created = createSubscription(authorization, request("Netflix", "10.00", CurrencyCode.USD));
 
         // two edits in a row, each sending the version the previous response returned
