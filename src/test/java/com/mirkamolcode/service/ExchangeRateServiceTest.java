@@ -95,14 +95,17 @@ class ExchangeRateServiceTest {
 
     @Test
     void refreshDailyRates_shouldRefreshEveryNonBaseCurrency() {
-        when(client.find(CurrencyCode.USD)).thenReturn(new CbuRate("USD", BigDecimal.TEN, "21.08.2026"));
-        when(client.find(CurrencyCode.EUR)).thenReturn(new CbuRate("EUR", BigDecimal.TEN, "21.08.2026"));
+        for (CurrencyCode currency : CurrencyCode.values())
+            if (currency != CurrencyCode.UZS)
+                when(client.find(currency)).thenReturn(new CbuRate(currency.name(), BigDecimal.TEN, "21.08.2026"));
         when(rateRepository.findByCurrencyAndRateDate(any(), any())).thenReturn(Optional.of(
                 new ExchangeRate(CurrencyCode.USD, BigDecimal.TEN, LocalDate.of(2026, 8, 21))));
 
         underTest.refreshDailyRates();
 
-        verify(client).find(CurrencyCode.USD);
-        verify(client).find(CurrencyCode.EUR);
+        for (CurrencyCode currency : CurrencyCode.values())
+            if (currency != CurrencyCode.UZS)
+                verify(client).find(currency);
+        verify(client, never()).find(CurrencyCode.UZS);
     }
 }

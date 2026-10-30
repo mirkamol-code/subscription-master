@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0amzn0001",
+  "threadId": "18c2a1f0amzn0001",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Hello Alex,\nThank you for your order. Your receipt is below.\nWireless mouse x1\nO",
+  "historyId": "184467",
+  "internalDate": "1793008800000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Amazon.com <auto-confirm@amazon.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Amazon.com order receipt #112-1234567"
+      },
+      {
+        "name": "Date",
+        "value": "Mon, 26 Oct 2026 10:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 117,
+          "data": "SGVsbG8gQWxleCwKVGhhbmsgeW91IGZvciB5b3VyIG9yZGVyLiBZb3VyIHJlY2VpcHQgaXMgYmVsb3cuCldpcmVsZXNzIG1vdXNlIHgxCk9yZGVyIFRvdGFsOiAkMzQuOTkKQXJyaXZpbmcgVGh1cnNkYXku"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0netflix01",
+  "threadId": "18c2a1f0netflix01",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "",
+  "historyId": "184467",
+  "internalDate": "1793350800000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Netflix <info@account.netflix.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Netflix membership receipt"
+      },
+      {
+        "name": "Date",
+        "value": "Fri, 30 Oct 2026 09:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/html",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/html; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 416,
+          "data": "PGh0bWw-PGJvZHk-PHRhYmxlPgo8dHI-PHRkPjxoMT5UaGFua3MgZm9yIHlvdXIgcGF5bWVudDwvaDE-PC90ZD48L3RyPgo8dHI-PHRkPkhpIEFsZXgsPC90ZD48L3RyPgo8dHI-PHRkPk1lbWJlcnNoaXA6IDxiPlByZW1pdW08L2I-PC90ZD48L3RyPgo8dHI-PHRkPkFtb3VudCBjaGFyZ2VkOiA8Yj4kMjIuOTk8L2I-IHBlciBtb250aDwvdGQ-PC90cj4KPHRyPjx0ZD5QYXltZW50IG1ldGhvZDogVmlzYSDigKLigKLigKLigKIgNDI0MjwvdGQ-PC90cj4KPHRyPjx0ZD5Zb3VyIG5leHQgYmlsbGluZyBkYXRlIGlzIDxiPk5vdmVtYmVyIDMwLCAyMDI2PC9iPi48L3RkPjwvdHI-Cjx0cj48dGQ-UXVlc3Rpb25zPyBWaXNpdCB0aGUgSGVscCBDZW50ZXIuIE5ldGZsaXgsIEluYy48L3RkPjwvdHI-CjwvdGFibGU-PC9ib2R5PjwvaHRtbD4"
+        }
+      }
+    ]
+  }
+}

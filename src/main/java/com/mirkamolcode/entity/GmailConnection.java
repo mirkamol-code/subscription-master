@@ -1,7 +1,10 @@
 package com.mirkamolcode.entity;
 
 import com.mirkamolcode.model.GmailConnectionStatus;
+import com.mirkamolcode.model.SyncState;
 import jakarta.persistence.*;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "gmail_connections")
@@ -26,6 +29,31 @@ public class GmailConnection extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private GmailConnectionStatus status;
+
+    @Column(length = 32, insertable = false, updatable = false)
+    private String historyId;
+
+    @Column(insertable = false, updatable = false)
+    private Instant lastSyncedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16, insertable = false, updatable = false)
+    private SyncState syncState = SyncState.IDLE;
+
+    @Column(insertable = false, updatable = false)
+    private Instant syncStartedAt;
+
+    @Column(insertable = false, updatable = false)
+    private Instant syncHeartbeatAt;
+
+    @Column(nullable = false, insertable = false, updatable = false)
+    private int syncProcessed;
+
+    @Column(nullable = false, insertable = false, updatable = false)
+    private int syncTotal;
+
+    @Column(length = 64, insertable = false, updatable = false)
+    private String syncError;
 
     @Version
     private long version;
@@ -75,5 +103,29 @@ public class GmailConnection extends AuditableEntity {
 
     public GmailConnectionStatus getStatus() {
         return status;
+    }
+
+    public String getHistoryId() {
+        return historyId;
+    }
+
+    public Instant getLastSyncedAt() {
+        return lastSyncedAt;
+    }
+
+    public SyncState getSyncState() {
+        return syncState;
+    }
+
+    public int getSyncProcessed() {
+        return syncProcessed;
+    }
+
+    public int getSyncTotal() {
+        return syncTotal;
+    }
+
+    public String getSyncError() {
+        return syncError;
     }
 }

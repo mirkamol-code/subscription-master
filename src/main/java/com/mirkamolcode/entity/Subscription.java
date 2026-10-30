@@ -1,6 +1,6 @@
 package com.mirkamolcode.entity;
 
-import com.mirkamolcode.exception.ConflictException;
+import com.mirkamolcode.detection.Confidence;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.SubscriptionCategory;
@@ -53,6 +53,20 @@ public class Subscription extends AuditableEntity {
     @Column(nullable = false)
     private boolean isDeleted = false;
 
+    @Column(length = 120)
+    private String merchantKey;
+
+    @Column(nullable = false)
+    private boolean needsReview = false;
+
+    @Column(nullable = false)
+    private boolean isHidden = false;
+
+    private LocalDate lastPaymentDate;
+
+    @Column(length = 253)
+    private String logoDomain;
+
     @Version
     private long version;
 
@@ -82,6 +96,7 @@ public class Subscription extends AuditableEntity {
         this.status = status;
         this.category = category;
         this.startDate = startDate;
+        this.needsReview = false;
     }
 
     public void markDeleted() {
@@ -89,20 +104,35 @@ public class Subscription extends AuditableEntity {
         status = SubscriptionStatus.CANCELLED;
     }
 
-    public void pause() {
-        if (status == SubscriptionStatus.PAUSED)
-            throw new ConflictException("Subscription is already paused");
-        if (status != SubscriptionStatus.ACTIVE)
-            throw new ConflictException("Only active subscriptions can be paused");
-        this.status = SubscriptionStatus.PAUSED;
+    public void linkMerchant(String merchantKey, String logoDomain) {
+        this.merchantKey = merchantKey;
+        this.logoDomain = logoDomain;
     }
 
-    public void resume() {
-        if (status == SubscriptionStatus.ACTIVE)
-            throw new ConflictException("Subscription is already active");
-        if (status != SubscriptionStatus.PAUSED)
-            throw new ConflictException("Only paused subscriptions can be resumed");
-        this.status = SubscriptionStatus.ACTIVE;
+    public void recordPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency, BillingFrequency cycle,
+                              LocalDate nextPaymentDate, Confidence confidence) {
+        if (lastPaymentDate != null && paidOn.isBefore(lastPaymentDate))
+            return;
+        boolean changed = price.compareTo(amount) != 0 || this.currency != currency || frequency != cycle;
+        if (confidence == Confidence.LOW && changed)
+            needsReview = true;
+        this.price = amount;
+        this.currency = currency;
+        this.frequency = cycle;
+        this.lastPaymentDate = paidOn;
+        this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : cycle.addTo(paidOn);
+    }
+
+    public void flagForReview() {
+        needsReview = true;
+    }
+
+    public void hide() {
+        isHidden = true;
+    }
+
+    public void unhide() {
+        isHidden = false;
     }
 
     public void advanceNextPaymentDate() {
@@ -151,6 +181,26 @@ public class Subscription extends AuditableEntity {
 
     public boolean isDeleted() {
         return isDeleted;
+    }
+
+    public String getMerchantKey() {
+        return merchantKey;
+    }
+
+    public boolean isNeedsReview() {
+        return needsReview;
+    }
+
+    public boolean isHidden() {
+        return isHidden;
+    }
+
+    public LocalDate getLastPaymentDate() {
+        return lastPaymentDate;
+    }
+
+    public String getLogoDomain() {
+        return logoDomain;
     }
 
     public long getVersion() {

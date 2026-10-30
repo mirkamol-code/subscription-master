@@ -23,7 +23,11 @@ public final class SubscriptionSpecifications {
     }
 
     public static Specification<Subscription> visible() {
-        return (root, q, b) -> b.isFalse(root.get("isDeleted"));
+        return (root, q, b) -> b.and(b.isFalse(root.get("isDeleted")), b.isFalse(root.get("isHidden")));
+    }
+
+    public static Specification<Subscription> hiddenByUser() {
+        return (root, q, b) -> b.and(b.isFalse(root.get("isDeleted")), b.isTrue(root.get("isHidden")));
     }
 
     public static Specification<Subscription> hasStatus(SubscriptionStatus status) {
@@ -75,7 +79,8 @@ public final class SubscriptionSpecifications {
     }
 
     private static Expression<BigDecimal> buildNormalizedPriceExpression(Root<Subscription> root, CriteriaBuilder b, Map<CurrencyCode, BigDecimal> rates) {
-        CriteriaBuilder.Case<BigDecimal> selectCase = b.<BigDecimal>selectCase();
+        CriteriaBuilder.Case<BigDecimal> selectCase = b.<BigDecimal>selectCase()
+                .when(b.equal(root.get("currency"), CurrencyCode.UZS), root.get("price"));
         if (rates != null) {
             for (Map.Entry<CurrencyCode, BigDecimal> entry : rates.entrySet()) {
                 if (entry.getKey() != CurrencyCode.UZS && entry.getValue() != null) {
@@ -86,6 +91,6 @@ public final class SubscriptionSpecifications {
                 }
             }
         }
-        return selectCase.otherwise(root.get("price"));
+        return selectCase.otherwise(b.nullLiteral(BigDecimal.class));
     }
 }

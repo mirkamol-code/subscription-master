@@ -66,6 +66,39 @@ app:
   security:
     token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
     admin-emails: ${APP_ADMIN_EMAILS:}
+  gmail:
+    api-base-url: https://gmail.googleapis.com
+    connect-timeout: 2s
+    read-timeout: 10s
+    retry-initial-backoff: 500ms
+    sync:
+      cron: ${GMAIL_SYNC_CRON:0 0 */6 * * *}
+      stale-after: 30m
+      async-enabled: true
+      max-concurrent: 4
+    detection:
+      query: 'subject:(receipt OR invoice OR subscription OR renewal OR renewed OR "payment received" OR "your plan" OR billing OR "payment failed" OR declined OR canceled OR cancelled)'
+      lookback: 1y
+      keywords:
+        receipt-subject: [receipt, invoice, "payment received", "payment confirmation", "your plan", renewal, renewed, billing, subscription, "order confirmation", "thanks for your payment"]
+        payment-confirmation: ["thanks for your payment", "thank you for your payment", "payment received", "amount charged", "you paid", "we charged", "your card was charged", "payment confirmation"]
+        cancellation: ["has been canceled", "has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
+        payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
+        promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, "free trial", webinar, newsletter]
+      merchants:
+        - { key: netflix, display-name: Netflix, senders: [netflix.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
+        - { key: spotify, display-name: Spotify, senders: [spotify.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
+        - { key: youtube-premium, display-name: YouTube Premium, aliases: [YouTube, YouTube Music], senders: [youtube.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
+        - { key: google-play, display-name: Google Play, senders: [googleplay-noreply@google.com], category: OTHER }
+        - { key: apple, display-name: Apple (App Store / iCloud), aliases: [Apple, iCloud, iCloud+, App Store, Apple Music, Apple TV+], senders: [apple.com], category: OTHER }
+        - { key: amazon-prime, display-name: Amazon Prime, aliases: [Prime Video, Amazon Prime Video], senders: [prime@amazon.com, primevideo.com], category: ENTERTAINMENT }
+        - { key: microsoft, display-name: Microsoft, aliases: [Microsoft 365, Office 365, Xbox Game Pass], senders: [microsoft.com, microsoftstore.com], category: PRODUCTIVITY }
+        - { key: adobe, display-name: Adobe, aliases: [Adobe Creative Cloud, Creative Cloud], senders: [adobe.com], category: PRODUCTIVITY }
+        - { key: openai, display-name: ChatGPT, aliases: [OpenAI, ChatGPT Plus], senders: [openai.com], category: AI_TOOLS, default-cycle: MONTHLY }
+        - { key: notion, display-name: Notion, senders: [notion.so, makenotion.com], category: PRODUCTIVITY }
+        - { key: github, display-name: GitHub, senders: [github.com], category: PRODUCTIVITY }
+        - { key: canva, display-name: Canva, senders: [canva.com], category: PRODUCTIVITY }
+        - { key: dropbox, display-name: Dropbox, senders: [dropbox.com, dropboxmail.com], category: PRODUCTIVITY }
   google:
     oauth-base-url: https://oauth2.googleapis.com
     connect-timeout: 2s

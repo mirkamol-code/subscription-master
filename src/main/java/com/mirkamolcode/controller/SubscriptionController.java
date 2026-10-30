@@ -1,6 +1,7 @@
 package com.mirkamolcode.controller;
 
 import com.mirkamolcode.dto.request.SubscriptionRequest;
+import com.mirkamolcode.dto.response.BillingEmailResponse;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
@@ -52,8 +53,9 @@ public class SubscriptionController {
             @RequestParam(required = false) LocalDate nextPaymentDateTo,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "false") boolean hidden,
             @ParameterObject @PageableDefault(size = 20, sort = "nextPaymentDate") Pageable pageable) {
-        return service.list(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, pageable);
+        return service.list(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, hidden, pageable);
     }
 
     @GetMapping("/all")
@@ -66,8 +68,9 @@ public class SubscriptionController {
             @RequestParam(required = false) LocalDate nextPaymentDateFrom,
             @RequestParam(required = false) LocalDate nextPaymentDateTo,
             @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice) {
-        return service.listAll(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "false") boolean hidden) {
+        return service.listAll(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, hidden);
     }
 
     @GetMapping("/upcoming")
@@ -104,16 +107,22 @@ public class SubscriptionController {
         service.delete(id);
     }
 
-    @PostMapping("/{id}/pause")
+    @PostMapping("/{id}/hide")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
-    public SubscriptionResponse pause(@PathVariable Long id) {
-        return service.pause(id);
+    public SubscriptionResponse hide(@PathVariable Long id) {
+        return service.hide(id);
     }
 
-    @PostMapping("/{id}/resume")
+    @PostMapping("/{id}/unhide")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
-    public SubscriptionResponse resume(@PathVariable Long id) {
-        return service.resume(id);
+    public SubscriptionResponse unhide(@PathVariable Long id) {
+        return service.unhide(id);
+    }
+
+    @GetMapping("/{id}/emails")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
+    public List<BillingEmailResponse> emails(@PathVariable Long id) {
+        return service.findEmails(id);
     }
 
     @GetMapping("/{id}/history")

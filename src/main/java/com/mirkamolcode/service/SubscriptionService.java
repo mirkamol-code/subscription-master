@@ -4,7 +4,13 @@ import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
+import com.mirkamolcode.entity.BillingEmail;
 import com.mirkamolcode.entity.PaymentHistory;
+import com.mirkamolcode.dto.response.BillingEmailResponse;
+import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
+import com.mirkamolcode.repository.BillingEmailRepository;
+import com.mirkamolcode.repository.MerchantTombstoneRepository;
+import com.mirkamolcode.entity.MerchantTombstone;
 import com.mirkamolcode.mapper.SubscriptionMapper;
 import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
@@ -18,6 +24,8 @@ import com.mirkamolcode.specification.SubscriptionSpecifications;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.*;
@@ -26,6 +34,8 @@ import java.util.stream.Collectors;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Permission;
 import com.mirkamolcode.model.QueryLimits;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,22 +47,33 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class SubscriptionService {
+    private static final Logger log = LoggerFactory.getLogger(SubscriptionService.class);
+
     private final SubscriptionRepository repository;
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final SubscriptionMapper mapper;
     private final CurrentUserService currentUser;
     private final ExchangeRateService exchangeRateService;
+    private final BillingEmailRepository billingEmailRepository;
+    private final MerchantTombstoneRepository merchantTombstoneRepository;
+    private final Clock clock;
 
     public SubscriptionService(SubscriptionRepository repository,
                                PaymentHistoryRepository paymentHistoryRepository,
                                SubscriptionMapper mapper,
                                CurrentUserService currentUser,
-                               ExchangeRateService exchangeRateService) {
+                               ExchangeRateService exchangeRateService,
+                               BillingEmailRepository billingEmailRepository,
+                               MerchantTombstoneRepository merchantTombstoneRepository,
+                               Clock clock) {
         this.repository = repository;
         this.paymentHistoryRepository = paymentHistoryRepository;
         this.mapper = mapper;
         this.currentUser = currentUser;
         this.exchangeRateService = exchangeRateService;
+        this.billingEmailRepository = billingEmailRepository;
+        this.merchantTombstoneRepository = merchantTombstoneRepository;
+        this.clock = clock;
     }
 
     @Transactional
@@ -75,7 +96,7 @@ public class SubscriptionService {
                                            BigDecimal minPrice,
                                            BigDecimal maxPrice,
                                            Pageable pageable) {
-        return list(status, currency, null, null, null, null, minPrice, maxPrice, pageable);
+        return list(status, currency, null, null, null, null, minPrice, maxPrice, false, pageable);
     }
 
     public Page<SubscriptionResponse> list(SubscriptionStatus status,
@@ -86,11 +107,12 @@ public class SubscriptionService {
                                            LocalDate nextPaymentDateTo,
                                            BigDecimal minPrice,
                                            BigDecimal maxPrice,
+                                           boolean hidden,
                                            Pageable pageable) {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0)
             throw new IllegalArgumentException("minPrice must not exceed maxPrice");
 
-        Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
+        Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, hidden);
         return repository.findAll(spec, pageable).map(mapper::toResponse);
     }
 
@@ -101,11 +123,12 @@ public class SubscriptionService {
                                               LocalDate nextPaymentDateFrom,
                                               LocalDate nextPaymentDateTo,
                                               BigDecimal minPrice,
-                                              BigDecimal maxPrice) {
+                                              BigDecimal maxPrice,
+                                              boolean hidden) {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0)
             throw new IllegalArgumentException("minPrice must not exceed maxPrice");
 
-        Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice);
+        Specification<Subscription> spec = buildSpec(status, currency, category, name, nextPaymentDateFrom, nextPaymentDateTo, minPrice, maxPrice, hidden);
         Pageable cappedPage = PageRequest.of(0, QueryLimits.MAX_UNPAGED_ROWS, Sort.by("nextPaymentDate", "id"));
         return repository.findAll(spec, cappedPage).stream().map(mapper::toResponse).toList();
     }
@@ -126,21 +149,40 @@ public class SubscriptionService {
 
     @Transactional
     public void delete(Long id) {
-        requiredAccessible(id, Permission.SUBSCRIPTION_DELETE_ALL).markDeleted();
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_DELETE_ALL);
+        subscription.markDeleted();
+        if (subscription.getMerchantKey() != null)
+            recordTombstone(subscription);
+    }
+
+    private void recordTombstone(Subscription subscription) {
+        Instant deletedAt = clock.instant();
+        merchantTombstoneRepository.findByUserIdAndMerchantKey(subscription.getUser().getId(), subscription.getMerchantKey())
+                .ifPresentOrElse(tombstone -> tombstone.markDeletedAgain(deletedAt),
+                        () -> merchantTombstoneRepository.save(
+                                new MerchantTombstone(subscription.getUser(), subscription.getMerchantKey(), deletedAt)));
     }
 
     @Transactional
-    public SubscriptionResponse pause(Long id) {
+    public SubscriptionResponse hide(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        subscription.pause();
+        subscription.hide();
         return mapper.toResponse(subscription);
     }
 
     @Transactional
-    public SubscriptionResponse resume(Long id) {
+    public SubscriptionResponse unhide(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        subscription.resume();
+        subscription.unhide();
         return mapper.toResponse(subscription);
+    }
+
+    public List<BillingEmailResponse> findEmails(Long id) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_READ_ALL);
+        return billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(subscription.getId())
+                .stream()
+                .map(SubscriptionService::mapToBillingEmailResponse)
+                .toList();
     }
 
     public List<PaymentHistoryResponse> getHistory(Long id) {
@@ -217,8 +259,9 @@ public class SubscriptionService {
                                                    LocalDate nextPaymentDateFrom,
                                                    LocalDate nextPaymentDateTo,
                                                    BigDecimal minPrice,
-                                                   BigDecimal maxPrice) {
-        Specification<Subscription> spec = SubscriptionSpecifications.visible()
+                                                   BigDecimal maxPrice,
+                                                   boolean hidden) {
+        Specification<Subscription> spec = (hidden ? SubscriptionSpecifications.hiddenByUser() : SubscriptionSpecifications.visible())
                 .and(SubscriptionSpecifications.hasStatus(status))
                 .and(SubscriptionSpecifications.hasCurrency(currency))
                 .and(SubscriptionSpecifications.hasCategory(category))
@@ -232,7 +275,11 @@ public class SubscriptionService {
         } else if (minPrice != null || maxPrice != null) {
             Map<CurrencyCode, BigDecimal> rates = new EnumMap<>(CurrencyCode.class);
             for (CurrencyCode c : CurrencyCode.values()) {
-                rates.put(c, exchangeRateService.rateToUzs(c));
+                try {
+                    rates.put(c, exchangeRateService.rateToUzs(c));
+                } catch (ExchangeRatesUnavailableException e) {
+                    log.warn("Price filter skips {} subscriptions: no exchange rate available", c);
+                }
             }
             spec = spec.and(SubscriptionSpecifications.priceInUzsAtLeast(minPrice, rates))
                     .and(SubscriptionSpecifications.priceInUzsAtMost(maxPrice, rates));
@@ -242,6 +289,15 @@ public class SubscriptionService {
             spec = SubscriptionSpecifications.ownedBy(currentUser.requiredUser().getId()).and(spec);
 
         return spec;
+    }
+
+    private static BillingEmailResponse mapToBillingEmailResponse(BillingEmail email) {
+        List<BillingEmailResponse.Attachment> attachments = email.getAttachments().stream()
+                .map(attachment -> new BillingEmailResponse.Attachment(
+                        attachment.getId(), attachment.getFilename(), attachment.getMimeType(), attachment.getSizeBytes()))
+                .toList();
+        return new BillingEmailResponse(email.getId(), email.getGmailMessageId(), email.getKind(), email.getSender(),
+                email.getSubject(), email.getReceivedAt(), email.getConfidence(), attachments);
     }
 
     private Subscription requiredAccessible(Long id, Permission allPermission) {

@@ -42,6 +42,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS", "Unauthorized", e.getMessage()));
     }
 
+    @ExceptionHandler(SyncAlreadyRunningException.class)
+    public ResponseEntity<ErrorResponse> syncAlreadyRunning(SyncAlreadyRunningException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), "SYNC_ALREADY_RUNNING", "Conflict", e.getMessage()));
+    }
+
     @ExceptionHandler(GmailDisconnectedException.class)
     public ResponseEntity<ErrorResponse> gmailDisconnected(GmailDisconnectedException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

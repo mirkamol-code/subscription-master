@@ -36,6 +36,15 @@ public class PaymentHistory extends AuditableEntity {
     protected PaymentHistory() {
     }
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "billing_email_id", unique = true)
+    private BillingEmail billingEmail;
+
+    public PaymentHistory(Subscription subscription, BillingEmail billingEmail, LocalDate paymentDate, BigDecimal originalAmount, CurrencyCode originalCurrency, BigDecimal exchangeRateToUzs) {
+        this(subscription, paymentDate, originalAmount, originalCurrency, exchangeRateToUzs);
+        this.billingEmail = billingEmail;
+    }
+
     public PaymentHistory(Subscription subscription, LocalDate paymentDate, BigDecimal originalAmount, CurrencyCode originalCurrency, BigDecimal exchangeRateToUzs) {
         this.subscription = subscription;
         this.paymentDate = paymentDate;

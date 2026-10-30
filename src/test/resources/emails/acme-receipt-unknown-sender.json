@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0acme0001",
+  "threadId": "18c2a1f0acme0001",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Thanks for your payment.\nStarter plan\nTotal: $5.00 per month",
+  "historyId": "184467",
+  "internalDate": "1792497600000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Acme Cloud <billing@acmecloud.example>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your receipt from Acme Cloud"
+      },
+      {
+        "name": "Date",
+        "value": "Tue, 20 Oct 2026 12:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 60,
+          "data": "VGhhbmtzIGZvciB5b3VyIHBheW1lbnQuClN0YXJ0ZXIgcGxhbgpUb3RhbDogJDUuMDAgcGVyIG1vbnRo"
+        }
+      }
+    ]
+  }
+}

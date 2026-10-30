@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0notion001",
+  "threadId": "18c2a1f0notion001",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "",
+  "historyId": "184467",
+  "internalDate": "1792058400000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Notion <billing@mail.notion.so>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Notion receipt"
+      },
+      {
+        "name": "Date",
+        "value": "Thu, 15 Oct 2026 10:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/html",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/html; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 461,
+          "data": "PGh0bWw-PGhlYWQ-CjxzY3JpcHQgdHlwZT0iYXBwbGljYXRpb24vbGQranNvbiI-CnsiQGNvbnRleHQiOiAiaHR0cDovL3NjaGVtYS5vcmciLCAiQHR5cGUiOiAiSW52b2ljZSIsCiAicHJvdmlkZXIiOiB7IkB0eXBlIjogIk9yZ2FuaXphdGlvbiIsICJuYW1lIjogIk5vdGlvbiBMYWJzIn0sCiAiYmlsbGluZ1BlcmlvZCI6ICJQMU0iLAogInBheW1lbnRTdGF0dXMiOiAiaHR0cDovL3NjaGVtYS5vcmcvUGF5bWVudENvbXBsZXRlIiwKICJwYXltZW50RHVlRGF0ZSI6ICIyMDI2LTEwLTE1IiwKICJ0b3RhbFBheW1lbnREdWUiOiB7IkB0eXBlIjogIlByaWNlU3BlY2lmaWNhdGlvbiIsICJwcmljZSI6ICIxMC4wMCIsICJwcmljZUN1cnJlbmN5IjogIlVTRCJ9fQo8L3NjcmlwdD48L2hlYWQ-Cjxib2R5PjxwPlRoYW5rcyBmb3IgeW91ciBwYXltZW50LiBQbHVzIHBsYW4sICQxMC4wMC48L3A-PC9ib2R5PjwvaHRtbD4"
+        }
+      }
+    ]
+  }
+}

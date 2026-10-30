@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0openai001",
+  "threadId": "18c2a1f0openai001",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Hi Alex,\nWe were unable to process your payment of $20.00 for ChatGPT Plus.\nPlea",
+  "historyId": "184467",
+  "internalDate": "1793847600000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "OpenAI <noreply@tm.openai.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Action required: your ChatGPT Plus payment failed"
+      },
+      {
+        "name": "Date",
+        "value": "Thu, 5 Nov 2026 03:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 161,
+          "data": "SGkgQWxleCwKV2Ugd2VyZSB1bmFibGUgdG8gcHJvY2VzcyB5b3VyIHBheW1lbnQgb2YgJDIwLjAwIGZvciBDaGF0R1BUIFBsdXMuClBsZWFzZSB1cGRhdGUgeW91ciBwYXltZW50IG1ldGhvZCB0byBrZWVwIHlvdXIgc3Vic2NyaXB0aW9uIGFjdGl2ZS4KLSBUaGUgT3BlbkFJIHRlYW0"
+        }
+      }
+    ]
+  }
+}

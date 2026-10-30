@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0bank0001",
+  "threadId": "18c2a1f0bank0001",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Dear customer,\nPay for your subscriptions with the Visa Platinum card and get $1",
+  "historyId": "184467",
+  "internalDate": "1792652400000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Kapital Bank <info@kapitalbank.example>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your new card benefits are here"
+      },
+      {
+        "name": "Date",
+        "value": "Thu, 22 Oct 2026 07:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 207,
+          "data": "RGVhciBjdXN0b21lciwKUGF5IGZvciB5b3VyIHN1YnNjcmlwdGlvbnMgd2l0aCB0aGUgVmlzYSBQbGF0aW51bSBjYXJkIGFuZCBnZXQgJDEwIGNhc2hiYWNrIGV2ZXJ5IG1vbnRoLgpObyBhbm51YWwgZmVlIGluIHRoZSBmaXJzdCB5ZWFyLiBDYXJkIHNlcnZpY2UgMTIwIDAwMCBzbydtIHBlciB5ZWFyIGFmdGVyIHRoYXQuCkFwcGx5IGluIHRoZSBhcHAgdG9kYXku"
+        }
+      }
+    ]
+  }
+}

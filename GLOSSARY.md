@@ -42,6 +42,14 @@ _Avoid_: Receipt (when meaning any billing email), message
 One pass over a User's mailbox that turns new Billing emails into Subscriptions and Payments.
 _Avoid_: Import, scan, crawl
 
+**Hidden subscription**:
+A Subscription the User set aside as a false positive or not worth tracking; it stays hidden through every later Sync.
+_Avoid_: Ignored, archived, deleted
+
+**Needs review**:
+A Subscription whose amount, currency or Billing cycle was guessed rather than read, waiting for the User to confirm or correct it.
+_Avoid_: Unverified, unconfirmed
+
 ## Status
 
 **Active**:
