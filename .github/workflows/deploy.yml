@@ -18,6 +18,7 @@ jobs:
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       APP_ADMIN_EMAILS: ${{ secrets.APP_ADMIN_EMAILS }}
@@ -34,25 +35,13 @@ jobs:
       - name: Check Required Secrets
         run: |
           missing=""
-          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY; do
+          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET; do
             if [ -z "${!name}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
             echo "::error::Missing GitHub secrets:$missing"
             exit 1
           fi
-
-      - name: Prepare Server Environment
-        run: |
-          encode() { printf '%s' "$1" | base64 -w0; }
-          {
-            for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS; do
-              if [ -n "${!name}" ]; then echo "$name $(encode "${!name}")"; fi
-            done
-          } > server-env.b64
-          echo "SERVER_ENV_B64=$(base64 -w0 server-env.b64)" >> $GITHUB_ENV
-          echo "COMPOSE_B64=$(base64 -w0 docker-compose.yml)" >> $GITHUB_ENV
-          rm server-env.b64
 
       - name: Generate Build Number
         run: |
@@ -77,6 +66,18 @@ jobs:
 
       - name: SSH To EC2 and Deploy
         run: |
+          encode() { printf '%s' "$1" | base64 -w0; }
+          SERVER_ENV=""
+          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS; do
+            if [ -n "${!name}" ]; then
+              encoded=$(encode "${!name}")
+              echo "::add-mask::$encoded"
+              SERVER_ENV="$SERVER_ENV$name $encoded"$'\n'
+            fi
+          done
+          SERVER_ENV_B64=$(printf '%s' "$SERVER_ENV" | base64 -w0)
+          echo "::add-mask::$SERVER_ENV_B64"
+          COMPOSE_B64=$(base64 -w0 docker-compose.yml)
           ssh -o StrictHostKeyChecking=no ubuntu@$EC2_PUBLIC_IP_ADDRESS "sudo bash -s" << EOF
             set -e
 
