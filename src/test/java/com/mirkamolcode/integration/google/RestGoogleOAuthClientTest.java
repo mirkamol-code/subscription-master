@@ -133,6 +133,53 @@ class RestGoogleOAuthClientTest {
         google.verify(3, postRequestedFor(urlEqualTo("/token")));
     }
 
+    @Test
+    void revoke_shouldPostTokenToRevokeEndpoint() {
+        // given
+        google.stubFor(post("/revoke").willReturn(ok()));
+
+        // when
+        boolean revoked = underTest.revoke("1//refresh");
+
+        // then
+        assertThat(revoked).isTrue();
+        google.verify(postRequestedFor(urlEqualTo("/revoke"))
+                .withHeader("Content-Type", containing("application/x-www-form-urlencoded"))
+                .withRequestBody(equalTo("token=1%2F%2Frefresh")));
+    }
+
+    @Test
+    void revoke_shouldTreatInvalidTokenAsAlreadyRevoked() {
+        // given
+        google.stubFor(post("/revoke").willReturn(aResponse().withStatus(400)
+                .withHeader("Content-Type", "application/json")
+                .withBody(recorded("revoke-invalid-token.json"))));
+
+        // when / then
+        assertThat(underTest.revoke("1//gone")).isTrue();
+    }
+
+    @Test
+    void revoke_shouldReportFailure_whenGoogleRejectsTheRequestOtherwise() {
+        // given
+        google.stubFor(post("/revoke").willReturn(aResponse().withStatus(401)
+                .withHeader("Content-Type", "application/json")
+                .withBody(recorded("token-invalid-client.json"))));
+
+        // when / then
+        assertThat(underTest.revoke("1//refresh")).isFalse();
+    }
+
+    @Test
+    void revoke_shouldReportFailure_whenGoogleKeepsFailing() {
+        // given
+        google.stubFor(post("/revoke").willReturn(aResponse().withStatus(503)));
+
+        // when / then
+        assertThat(underTest.revoke("1//refresh")).isFalse();
+        google.verify(3, postRequestedFor(urlEqualTo("/revoke")));
+    }
+
     private static String recorded(String fixture) {
         try (InputStream in = RestGoogleOAuthClientTest.class.getResourceAsStream("/google/" + fixture)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);

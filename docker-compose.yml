@@ -22,6 +22,17 @@ services:
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?TOKEN_ENCRYPTION_KEY is required}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://subscriptionmaster.app}
       APP_ADMIN_EMAILS: ${APP_ADMIN_EMAILS:-}
+      # ── Web Push (empty keys disable push) ──
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@subscriptionmaster.app}
+      # ── Jobs ──
+      GMAIL_SYNC_CRON: ${GMAIL_SYNC_CRON:-0 0 */6 * * *}
+      REMINDER_CRON: ${REMINDER_CRON:-0 5 * * * *}
+      STATUS_RULES_CRON: ${STATUS_RULES_CRON:-0 15 * * * *}
+      OVERDUE_GRACE_DAYS: ${OVERDUE_GRACE_DAYS:-5}
+      REMINDER_HOUR: ${REMINDER_HOUR:-9}
+      GMAIL_ATTACHMENT_MAX_BYTES: ${GMAIL_ATTACHMENT_MAX_BYTES:-26214400}
       # ── SQL logging — keep off in production ──
       HIBERNATE_SHOW_SQL: "false"
       HIBERNATE_FORMAT_SQL: "false"

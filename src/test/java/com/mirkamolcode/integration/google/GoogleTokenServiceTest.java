@@ -8,6 +8,7 @@ import com.mirkamolcode.repository.GmailConnectionRepository;
 import com.mirkamolcode.security.TokenCipher;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -141,9 +142,17 @@ class GoogleTokenServiceTest {
     }
 
     private static final class FakeGoogleOAuthClient implements GoogleOAuthClient {
+        private final List<String> revokedTokens = new CopyOnWriteArrayList<>();
+
         private final List<String> refreshTokensUsed = new ArrayList<>();
         private GoogleTokens nextTokens;
         private boolean rejectRefreshToken;
+
+        @Override
+        public boolean revoke(String token) {
+            revokedTokens.add(token);
+            return true;
+        }
 
         @Override
         public GoogleTokens refreshAccessToken(String refreshToken) {

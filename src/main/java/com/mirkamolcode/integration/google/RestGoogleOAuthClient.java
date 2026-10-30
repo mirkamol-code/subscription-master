@@ -19,6 +19,8 @@ import org.springframework.web.client.RestClientException;
 @Component
 public class RestGoogleOAuthClient implements GoogleOAuthClient {
     private static final String INVALID_GRANT = "invalid_grant";
+    private static final int ALREADY_REVOKED = 400;
+    private static final int TOO_MANY_REQUESTS = 429;
 
     private final RestClient client;
     private final Retry retry;
@@ -44,6 +46,33 @@ public class RestGoogleOAuthClient implements GoogleOAuthClient {
     @Override
     public GoogleTokens refreshAccessToken(String refreshToken) {
         return retry.executeSupplier(() -> requestAccessToken(refreshToken));
+    }
+
+    @Override
+    public boolean revoke(String token) {
+        try {
+            return retry.executeSupplier(() -> requestRevocation(token));
+        } catch (GoogleApiUnavailableException e) {
+            return false;
+        }
+    }
+
+    private boolean requestRevocation(String token) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("token", token);
+        try {
+            return client.post().uri("/revoke")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .exchange((request, response) -> {
+                        int status = response.getStatusCode().value();
+                        if (status == TOO_MANY_REQUESTS || response.getStatusCode().is5xxServerError())
+                            throw new GoogleApiUnavailableException("Google revoke endpoint failed with " + status);
+                        return response.getStatusCode().is2xxSuccessful() || status == ALREADY_REVOKED;
+                    });
+        } catch (RestClientException e) {
+            throw new GoogleApiUnavailableException("Google revoke endpoint unreachable", e);
+        }
     }
 
     private GoogleTokens requestAccessToken(String refreshToken) {

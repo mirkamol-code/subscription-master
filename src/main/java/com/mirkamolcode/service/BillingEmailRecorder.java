@@ -7,6 +7,7 @@ import com.mirkamolcode.detection.EmailKind;
 import com.mirkamolcode.detection.Merchant;
 import com.mirkamolcode.detection.ParsedBilling;
 import com.mirkamolcode.entity.BillingEmail;
+import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.entity.MerchantTombstone;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.entity.Subscription;
@@ -16,6 +17,7 @@ import com.mirkamolcode.integration.gmail.GmailAttachment;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.BillingEmailRepository;
+import com.mirkamolcode.repository.GmailConnectionRepository;
 import com.mirkamolcode.repository.MerchantTombstoneRepository;
 import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
@@ -47,6 +49,7 @@ public class BillingEmailRecorder {
     private final ExchangeRateService exchangeRates;
     private final ApplicationEventPublisher events;
     private final SubscriptionStatusService statusService;
+    private final GmailConnectionRepository connections;
 
     public BillingEmailRecorder(BillingEmailAnalyzer analyzer,
                                 UserRepository users,
@@ -56,7 +59,8 @@ public class BillingEmailRecorder {
                                 MerchantTombstoneRepository tombstones,
                                 ExchangeRateService exchangeRates,
                                 ApplicationEventPublisher events,
-                                SubscriptionStatusService statusService) {
+                                SubscriptionStatusService statusService,
+                                GmailConnectionRepository connections) {
         this.analyzer = analyzer;
         this.users = users;
         this.billingEmails = billingEmails;
@@ -66,9 +70,12 @@ public class BillingEmailRecorder {
         this.exchangeRates = exchangeRates;
         this.events = events;
         this.statusService = statusService;
+        this.connections = connections;
     }
 
     public void record(Long userId, GmailMessage message) {
+        if (connections.findLockedByUserId(userId).filter(GmailConnection::isConnected).isEmpty())
+            return;
         User user = users.getReferenceById(userId);
         BillingEmailAnalysis analysis = analyzer.analyze(message);
         if (analysis.kind() == EmailKind.IRRELEVANT) {
