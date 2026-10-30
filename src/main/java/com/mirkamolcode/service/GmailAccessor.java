@@ -16,6 +16,10 @@ public class GmailAccessor {
         this.tokens = tokens;
     }
 
+    public void markDisconnected(Long userId) {
+        tokens.markDisconnected(userId);
+    }
+
     public <T> T callWithFreshToken(Long userId, Function<String, T> gmailCall) {
         try {
             return gmailCall.apply(tokens.accessToken(userId));

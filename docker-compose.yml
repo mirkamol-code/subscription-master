@@ -25,13 +25,6 @@ services:
       # ── SQL logging — keep off in production ──
       HIBERNATE_SHOW_SQL: "false"
       HIBERNATE_FORMAT_SQL: "false"
-      # ── Notifications ──
-      LOG_NOTIFICATIONS_ENABLED: ${LOG_NOTIFICATIONS_ENABLED:-true}
-      GMAIL_NOTIFICATIONS_ENABLED: ${GMAIL_NOTIFICATIONS_ENABLED:-false}
-      GMAIL_FROM: ${GMAIL_FROM:-}
-      GMAIL_USERNAME: ${GMAIL_USERNAME:-}
-      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
-      MAIL_HEALTH_ENABLED: ${MAIL_HEALTH_ENABLED:-false}
     depends_on:
       db:
         condition: service_healthy

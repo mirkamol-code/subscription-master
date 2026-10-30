@@ -16,12 +16,13 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Component;
@@ -34,6 +35,7 @@ public class RestGmailClient implements GmailClient {
     private static final int PAGE_SIZE = 500;
     private static final int MAX_ATTEMPTS = 4;
     private static final int BASE64_SLACK = 4096;
+    private static final String INSUFFICIENT_SCOPE = "insufficientPermissions";
     private static final Set<String> RATE_LIMIT_REASONS = Set.of("rateLimitExceeded", "userRateLimitExceeded");
 
     private final RestClient client;
@@ -139,11 +141,20 @@ public class RestGmailClient implements GmailClient {
         return fetch(accessToken, uri -> uri.path("/profile").build()).path("historyId").asText();
     }
 
+    @Override
+    public void sendMessage(String accessToken, String rawMessage) {
+        requestOnce(accessToken, rest -> rest.post().uri("/messages/send")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("raw", rawMessage)));
+    }
+
     private JsonNode fetch(String accessToken, Function<UriBuilder, URI> uri) {
-        Supplier<JsonNode> request = () -> {
+        return retry.executeSupplier(() -> requestOnce(accessToken, rest -> rest.get().uri(uri)));
+    }
+
+    private JsonNode requestOnce(String accessToken, Function<RestClient, RestClient.RequestHeadersSpec<?>> request) {
             try {
-                return client.get()
-                        .uri(uri)
+                return request.apply(client)
                         .headers(headers -> headers.setBearerAuth(accessToken))
                         .exchange((req, response) -> {
                             JsonNode body = response.bodyTo(JsonNode.class);
@@ -156,8 +167,6 @@ public class RestGmailClient implements GmailClient {
                     throw new AttachmentTooLargeException(-1, maxAttachmentBytes);
                 throw new GmailTransientException("Gmail API unreachable", e);
             }
-        };
-        return retry.executeSupplier(request);
     }
 
     private static RuntimeException toException(HttpStatusCode status, JsonNode body) {
@@ -165,6 +174,8 @@ public class RestGmailClient implements GmailClient {
         String message = "Gmail API failed with " + status.value() + " " + reason;
         if (status.value() == 429 || (status.value() == 403 && RATE_LIMIT_REASONS.contains(reason)))
             return new GmailTransientException(message);
+        if (status.value() == 403 && INSUFFICIENT_SCOPE.equals(reason))
+            return new GmailScopeMissingException(message);
         if (status.value() == 401 || status.value() == 403)
             return new GmailUnauthorizedException(message);
         if (status.value() == 404)

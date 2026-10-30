@@ -1,62 +1,15 @@
 package com.mirkamolcode.service;
 
-import com.mirkamolcode.model.SubscriptionStatus;
-import com.mirkamolcode.entity.PaymentHistory;
-import com.mirkamolcode.entity.Subscription;
-import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
-import com.mirkamolcode.repository.PaymentHistoryRepository;
-import com.mirkamolcode.repository.SubscriptionRepository;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PaymentService {
-    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
-
-    private final SubscriptionRepository subscriptions;
-    private final PaymentHistoryRepository payments;
     private final ExchangeRateService exchangeRates;
-    private final List<NotificationService> notifications;
 
-    public PaymentService(SubscriptionRepository subscriptions, PaymentHistoryRepository payments, ExchangeRateService exchangeRates, List<NotificationService> notifications) {
-        this.subscriptions = subscriptions;
-        this.payments = payments;
+    public PaymentService(ExchangeRateService exchangeRates) {
         this.exchangeRates = exchangeRates;
-        this.notifications = notifications;
-    }
-
-    @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tashkent")
-    @SchedulerLock(name = "paymentDueNotifications", lockAtMostFor = "PT15M")
-    @Transactional
-    public void notifyDuePayments() {
-        subscriptions.findByIsDeletedFalseAndStatusAndNextPaymentDate(SubscriptionStatus.ACTIVE, LocalDate.now().plusDays(2))
-                .forEach(subscription -> notifications.forEach(notification -> notification.paymentDueSoon(subscription)));
-    }
-
-    @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Tashkent")
-    @SchedulerLock(name = "recordDuePayments", lockAtMostFor = "PT30M")
-    @Transactional
-    public void recordDuePayments() {
-        for (Subscription subscription : subscriptions.findByIsDeletedFalseAndStatusAndNextPaymentDateLessThanEqual(SubscriptionStatus.ACTIVE, LocalDate.now())) {
-            BigDecimal rate;
-            try {
-                rate = exchangeRates.rateToUzs(subscription.getCurrency());
-            } catch (ExchangeRatesUnavailableException exception) {
-                log.warn("Skipping payment for subscription {} until a {} rate is available", subscription.getId(), subscription.getCurrency());
-                continue;
-            }
-            payments.save(new PaymentHistory(subscription, subscription.getNextPaymentDate(), subscription.getPrice(), subscription.getCurrency(), rate));
-            subscription.advanceNextPaymentDate();
-        }
     }
 
     @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Tashkent")

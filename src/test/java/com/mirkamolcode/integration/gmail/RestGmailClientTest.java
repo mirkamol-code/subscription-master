@@ -188,6 +188,42 @@ class RestGmailClientTest {
     }
 
     @Test
+    void sendMessage_shouldPostRawMessage_fromTheUsersOwnMailbox() {
+        // given
+        gmail.stubFor(post(urlPathEqualTo(MESSAGES + "/send"))
+                .willReturn(okJson("{\"id\": \"18c2b0sent\", \"threadId\": \"18c2b0sent\", \"labelIds\": [\"SENT\"]}")));
+
+        // when
+        underTest.sendMessage(TOKEN, "cmF3LW1pbWU");
+
+        // then
+        gmail.verify(postRequestedFor(urlPathEqualTo(MESSAGES + "/send"))
+                .withHeader("Authorization", equalTo("Bearer " + TOKEN))
+                .withRequestBody(equalToJson("{\"raw\": \"cmF3LW1pbWU\"}")));
+    }
+
+    @Test
+    void sendMessage_shouldReportMissingScope_whenSendScopeWasNotGranted() {
+        // given
+        gmail.stubFor(post(urlPathEqualTo(MESSAGES + "/send")).willReturn(aResponse().withStatus(403)
+                .withHeader("Content-Type", "application/json")
+                .withBody(recorded("google/gmail-insufficient-scope-403.json"))));
+
+        // when / then
+        assertThatThrownBy(() -> underTest.sendMessage(TOKEN, "cmF3")).isInstanceOf(GmailScopeMissingException.class);
+    }
+
+    @Test
+    void sendMessage_shouldNotRetry_becauseSendingIsNotIdempotent() {
+        // given
+        gmail.stubFor(post(urlPathEqualTo(MESSAGES + "/send")).willReturn(aResponse().withStatus(503)));
+
+        // when / then
+        assertThatThrownBy(() -> underTest.sendMessage(TOKEN, "cmF3")).isInstanceOf(GoogleApiUnavailableException.class);
+        gmail.verify(1, postRequestedFor(urlPathEqualTo(MESSAGES + "/send")));
+    }
+
+    @Test
     void listHistory_shouldReturnOnlyAddedMessages_andLatestHistoryId() {
         // given
         gmail.stubFor(get(urlPathEqualTo("/gmail/v1/users/me/history"))
@@ -270,14 +306,14 @@ class RestGmailClientTest {
     }
 
     @Test
-    void getMessage_shouldThrowUnauthorized_whenGmailScopeWasNotGranted() {
+    void getMessage_shouldReportMissingScope_whenGmailScopeWasNotGranted() {
         // given
         gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/m1")).willReturn(aResponse().withStatus(403)
                 .withHeader("Content-Type", "application/json")
                 .withBody(recorded("google/gmail-insufficient-scope-403.json"))));
 
         // when / then
-        assertThatThrownBy(() -> underTest.getMessage(TOKEN, "m1")).isInstanceOf(GmailUnauthorizedException.class);
+        assertThatThrownBy(() -> underTest.getMessage(TOKEN, "m1")).isInstanceOf(GmailScopeMissingException.class);
         gmail.verify(1, getRequestedFor(urlPathEqualTo(MESSAGES + "/m1")));
     }
 

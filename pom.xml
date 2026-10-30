@@ -22,6 +22,8 @@
         <testcontainers.version>2.0.5</testcontainers.version>
         <wiremock.version>3.13.2</wiremock.version>
         <jsoup.version>1.23.2</jsoup.version>
+        <web-push.version>5.1.2</web-push.version>
+        <bouncycastle.version>1.86</bouncycastle.version>
         <docker.username>mirkamolcode</docker.username>
         <docker.image.name>subscription-master</docker.image.name>
         <docker.image.tag/>
@@ -56,12 +58,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
-
-        <!-- Email support using JavaMailSender / SMTP -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
         <!-- Spring caching abstraction -->
@@ -100,6 +96,48 @@
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>${jsoup.version}</version>
+        </dependency>
+
+        <!-- Web Push (VAPID) delivery of payment reminders to browsers -->
+        <dependency>
+            <groupId>nl.martijndwars</groupId>
+            <artifactId>web-push</artifactId>
+            <version>${web-push.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcprov-jdk15on</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.asynchttpclient</groupId>
+                    <artifactId>async-http-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.beust</groupId>
+                    <artifactId>jcommander</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- HttpResponse type returned by web-push's PushService (already shipped by web-push at runtime) -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.4.16</version>
+        </dependency>
+
+        <!-- JWT signing used by web-push for VAPID; pinned above web-push's 0.7.9 (CVE-2023-51775) -->
+        <dependency>
+            <groupId>org.bitbucket.b_c</groupId>
+            <artifactId>jose4j</artifactId>
+            <version>0.9.6</version>
+        </dependency>
+
+        <!-- Current BouncyCastle provider for Web Push payload encryption -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
         </dependency>
 
         <!-- DTO ↔ Entity mapping using generated mapper implementations -->

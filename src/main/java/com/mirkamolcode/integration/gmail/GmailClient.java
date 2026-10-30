@@ -12,4 +12,6 @@ public interface GmailClient {
     GmailHistoryPage listHistory(String accessToken, String startHistoryId, String pageToken);
 
     String fetchCurrentHistoryId(String accessToken);
+
+    void sendMessage(String accessToken, String rawMessage);
 }

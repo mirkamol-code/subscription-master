@@ -6,6 +6,7 @@ import com.mirkamolcode.integration.gmail.GmailHistoryPage;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.GmailMessagePage;
 import com.mirkamolcode.integration.gmail.GmailNotFoundException;
+import com.mirkamolcode.integration.gmail.GmailScopeMissingException;
 import com.mirkamolcode.integration.gmail.GmailTransientException;
 import com.mirkamolcode.integration.gmail.GmailUnauthorizedException;
 import java.util.ArrayList;
@@ -53,6 +54,9 @@ public final class FakeGmail implements GmailClient {
         failingIds.clear();
         failingHeaderIds.clear();
         attachmentFetches.set(0);
+        sentRawMessages.clear();
+        rejectSending = false;
+        revokeOnSend = false;
         attachmentBytes.clear();
         attemptsById.clear();
         listingBlockPending.set(false);
@@ -74,6 +78,19 @@ public final class FakeGmail implements GmailClient {
             ids.add(message.id());
         }
         listedIds = List.copyOf(ids);
+    }
+
+    public final List<String> sentRawMessages = new CopyOnWriteArrayList<>();
+    public volatile boolean rejectSending;
+    public volatile boolean revokeOnSend;
+
+    @Override
+    public void sendMessage(String accessToken, String rawMessage) {
+        if (revokeOnSend)
+            throw new GmailUnauthorizedException("Gmail API failed with 401 authError");
+        if (rejectSending)
+            throw new GmailScopeMissingException("Gmail API failed with 403 insufficientPermissions");
+        sentRawMessages.add(rawMessage);
     }
 
     public int attachmentFetchCount() {
