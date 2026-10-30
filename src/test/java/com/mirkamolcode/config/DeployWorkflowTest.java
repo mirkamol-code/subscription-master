@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +50,35 @@ class DeployWorkflowTest {
 
         // then
         assertThat(written).containsAll(requiredByCompose());
+    }
+
+    @Test
+    void deploy_shouldPullAndStartOnlyTheAppService() {
+        // when
+        List<String> composeCommands = composeCommands("pull", "up");
+
+        // then
+        assertThat(composeCommands).hasSize(2);
+        composeCommands.forEach(command -> assertThat(command).endsWith("$DOCKER_COMPOSE_APP_SERVICE_NAME"));
+    }
+
+    @Test
+    void deploy_shouldCheckHealthOfTheContainerComposeCreated() {
+        // when
+        String script = stepScript("SSH To EC2 and Deploy");
+
+        // then
+        assertThat(script).contains("docker compose ps -q $DOCKER_COMPOSE_APP_SERVICE_NAME");
+        assertThat(script).doesNotContain("docker inspect -f '{{ .State.Health.Status }}' subscription-master");
+    }
+
+    private static List<String> composeCommands(String... subcommands) {
+        Pattern command = Pattern.compile("docker compose (?:" + String.join("|", subcommands) + ")\\b[^\\n|]*");
+        Matcher matcher = command.matcher(stepScript("SSH To EC2 and Deploy"));
+        List<String> found = new ArrayList<>();
+        while (matcher.find())
+            found.add(matcher.group().trim());
+        return found;
     }
 
     private static Set<String> requiredByCompose() {
