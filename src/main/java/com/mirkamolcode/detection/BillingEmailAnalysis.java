@@ -1,12 +1,15 @@
 package com.mirkamolcode.detection;
 
+import java.time.LocalDate;
+
 public record BillingEmailAnalysis(
         EmailKind kind,
         Merchant merchant,
-        ParsedBilling billing
+        ParsedBilling billing,
+        LocalDate accessEndsOn
 ) {
     public static BillingEmailAnalysis irrelevant() {
-        return new BillingEmailAnalysis(EmailKind.IRRELEVANT, null, null);
+        return new BillingEmailAnalysis(EmailKind.IRRELEVANT, null, null, null);
     }
 
     public boolean isPayment() {

@@ -2,6 +2,7 @@ package com.mirkamolcode.detection;
 
 import com.mirkamolcode.integration.gmail.GmailMessage;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -14,6 +15,7 @@ public class EmailClassifier {
     private final Pattern cancellation;
     private final Pattern paymentFailed;
     private final Pattern promotion;
+    private final Pattern accessEnds;
 
     public EmailClassifier(DetectionProperties properties) {
         DetectionProperties.Keywords keywords = properties.keywords();
@@ -22,6 +24,7 @@ public class EmailClassifier {
         this.cancellation = anyPhrase(keywords.cancellation());
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
         this.promotion = anyPhrase(keywords.promotion());
+        this.accessEnds = anyPhrase(keywords.accessEnds());
     }
 
     public EmailKind classify(GmailMessage message) {
@@ -37,6 +40,10 @@ public class EmailClassifier {
         if (receiptSubject.matcher(subject).find() || confirmsPayment)
             return EmailKind.RECEIPT;
         return EmailKind.IRRELEVANT;
+    }
+
+    public LocalDate findAccessEndDate(GmailMessage message) {
+        return DateFinder.findDateAfter(message.bodyText(), accessEnds, message.receivedOnUtc());
     }
 
     public boolean hasBillingSubject(GmailMessage headers) {

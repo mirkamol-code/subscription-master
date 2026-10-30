@@ -337,6 +337,6 @@ class SubscriptionServiceTest {
                 subscription.getCurrency(), subscription.getFrequency(), subscription.getStatus(),
                 subscription.getCategory(), subscription.getStartDate(), subscription.getNextPaymentDate(),
                 subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.isHidden(),
-                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getVersion());
+                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getVersion());
     }
 }

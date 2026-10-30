@@ -1,6 +1,8 @@
 package com.mirkamolcode.controller;
 
+import com.mirkamolcode.dto.request.StatusChangeRequest;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
+import com.mirkamolcode.dto.response.StatusChangeResponse;
 import com.mirkamolcode.dto.response.BillingEmailResponse;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
@@ -105,6 +107,18 @@ public class SubscriptionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         service.delete(id);
+    }
+
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
+    public SubscriptionResponse changeStatus(@PathVariable Long id, @Valid @RequestBody StatusChangeRequest request) {
+        return service.changeStatus(id, request);
+    }
+
+    @GetMapping("/{id}/status-history")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
+    public List<StatusChangeResponse> statusHistory(@PathVariable Long id) {
+        return service.findStatusHistory(id);
     }
 
     @PostMapping("/{id}/hide")

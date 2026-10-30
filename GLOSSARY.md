@@ -63,6 +63,10 @@ _Avoid_: Canceled, ended, inactive
 A Subscription whose last payment failed, or whose expected Payment is overdue with no receipt.
 _Avoid_: Past due, failed, on hold
 
+**Access end**:
+The day a cancelled Subscription stops being usable; until then it is still Active and is never treated as overdue.
+_Avoid_: Expiry, period end, end date
+
 **Status change**:
 A recorded move of a Subscription from one status to another, with its reason and the Billing email or User action that caused it.
 _Avoid_: Status event, transition log

@@ -11,6 +11,10 @@ import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
 import com.mirkamolcode.repository.BillingEmailRepository;
 import com.mirkamolcode.repository.MerchantTombstoneRepository;
 import com.mirkamolcode.entity.MerchantTombstone;
+import com.mirkamolcode.entity.StatusChange;
+import com.mirkamolcode.repository.StatusChangeRepository;
+import com.mirkamolcode.dto.request.StatusChangeRequest;
+import com.mirkamolcode.dto.response.StatusChangeResponse;
 import com.mirkamolcode.mapper.SubscriptionMapper;
 import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
@@ -56,6 +60,8 @@ public class SubscriptionService {
     private final ExchangeRateService exchangeRateService;
     private final BillingEmailRepository billingEmailRepository;
     private final MerchantTombstoneRepository merchantTombstoneRepository;
+    private final StatusChangeRepository statusChangeRepository;
+    private final SubscriptionStatusService statusService;
     private final Clock clock;
 
     public SubscriptionService(SubscriptionRepository repository,
@@ -65,6 +71,8 @@ public class SubscriptionService {
                                ExchangeRateService exchangeRateService,
                                BillingEmailRepository billingEmailRepository,
                                MerchantTombstoneRepository merchantTombstoneRepository,
+                               StatusChangeRepository statusChangeRepository,
+                               SubscriptionStatusService statusService,
                                Clock clock) {
         this.repository = repository;
         this.paymentHistoryRepository = paymentHistoryRepository;
@@ -73,6 +81,8 @@ public class SubscriptionService {
         this.exchangeRateService = exchangeRateService;
         this.billingEmailRepository = billingEmailRepository;
         this.merchantTombstoneRepository = merchantTombstoneRepository;
+        this.statusChangeRepository = statusChangeRepository;
+        this.statusService = statusService;
         this.clock = clock;
     }
 
@@ -142,7 +152,12 @@ public class SubscriptionService {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (request.version() != null && request.version() != subscription.getVersion())
             throw new ConflictException("Subscription was changed by someone else");
-        subscription.update(request.name(), request.price(), request.currency(), request.frequency(), request.status(), request.category(), request.startDate());
+        subscription.update(request.name(), request.price(), request.currency(), request.frequency(), request.category(), request.startDate());
+        if (request.status() != subscription.getStatus()) {
+            if (request.version() == null)
+                throw new ConflictException("Include the subscription version to change its status");
+            statusService.markByUser(subscription, request.status());
+        }
         repository.flush();
         return mapper.toResponse(subscription);
     }
@@ -161,6 +176,21 @@ public class SubscriptionService {
                 .ifPresentOrElse(tombstone -> tombstone.markDeletedAgain(deletedAt),
                         () -> merchantTombstoneRepository.save(
                                 new MerchantTombstone(subscription.getUser(), subscription.getMerchantKey(), deletedAt)));
+    }
+
+    @Transactional
+    public SubscriptionResponse changeStatus(Long id, StatusChangeRequest request) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        statusService.markByUser(subscription, request.status());
+        return mapper.toResponse(subscription);
+    }
+
+    public List<StatusChangeResponse> findStatusHistory(Long id) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_READ_ALL);
+        return statusChangeRepository.findBySubscriptionIdOrderByEffectiveAtDescIdDesc(subscription.getId())
+                .stream()
+                .map(SubscriptionService::mapToStatusChangeResponse)
+                .toList();
     }
 
     @Transactional
@@ -289,6 +319,14 @@ public class SubscriptionService {
             spec = SubscriptionSpecifications.ownedBy(currentUser.requiredUser().getId()).and(spec);
 
         return spec;
+    }
+
+    private static StatusChangeResponse mapToStatusChangeResponse(StatusChange change) {
+        BillingEmail email = change.getBillingEmail();
+        return new StatusChangeResponse(change.getId(), change.getFromStatus(), change.getToStatus(), change.getReason(),
+                change.getReason().source(), change.getEffectiveAt(), change.getEndsOn(),
+                email == null ? null : email.getId(), email == null ? null : email.getSender(),
+                email == null ? null : email.getReceivedAt());
     }
 
     private static BillingEmailResponse mapToBillingEmailResponse(BillingEmail email) {

@@ -3,12 +3,15 @@ package com.mirkamolcode.entity;
 import com.mirkamolcode.model.Role;
 import jakarta.persistence.*;
 
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "users")
 public class User extends AuditableEntity {
+    public static final String DEFAULT_TIME_ZONE = "Asia/Tashkent";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,6 +33,9 @@ public class User extends AuditableEntity {
     @Column(name = "role", nullable = false, length = 16)
     private Set<Role> roles = new HashSet<>();
 
+    @Column(nullable = false, length = 64)
+    private String timeZone = DEFAULT_TIME_ZONE;
+
     @Version
     private long version;
 
@@ -46,6 +52,10 @@ public class User extends AuditableEntity {
         this.email = email;
         this.displayName = displayName;
         this.avatarUrl = avatarUrl;
+    }
+
+    public void changeTimeZone(ZoneId zone) {
+        this.timeZone = zone.getId();
     }
 
     public void grantRole(Role role) {
@@ -74,6 +84,10 @@ public class User extends AuditableEntity {
 
     public String getAvatarUrl() {
         return avatarUrl;
+    }
+
+    public ZoneId getTimeZone() {
+        return ZoneId.of(timeZone);
     }
 
     public Set<Role> getRoles() {

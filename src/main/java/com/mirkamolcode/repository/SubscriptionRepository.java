@@ -21,6 +21,16 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     Optional<Subscription> findByUserIdAndMerchantKeyAndIsDeletedFalse(Long userId, String merchantKey);
 
     @Query("""
+            select s.id from Subscription s
+             where s.isDeleted = false and s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
+               and ((s.endsOn is not null and s.endsOn <= :latestLocalDate)
+                    or (s.endsOn is null and s.nextPaymentDate < :overdueBefore))
+             order by s.id
+            """)
+    List<Long> findDailyRuleCandidateIds(@Param("latestLocalDate") LocalDate latestLocalDate,
+                                         @Param("overdueBefore") LocalDate overdueBefore);
+
+    @Query("""
             select s from Subscription s
              where s.user.id = :userId and s.merchantKey is null and s.isDeleted = false
                and lower(s.name) in :lowercaseNames
