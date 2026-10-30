@@ -10,6 +10,7 @@ import java.util.Optional;
 import com.mirkamolcode.model.SubscriptionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -46,4 +47,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
              order by s.id
             """)
     List<Subscription> findManualByNames(@Param("userId") Long userId, @Param("lowercaseNames") Collection<String> lowercaseNames);
+
+    @Modifying
+    @Query("delete from Subscription e where e.user.id = :userId")
+    int deleteAllOfUser(@Param("userId") Long userId);
 }

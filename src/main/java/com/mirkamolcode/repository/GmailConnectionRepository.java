@@ -2,18 +2,24 @@ package com.mirkamolcode.repository;
 
 import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.model.GmailConnectionStatus;
+import jakarta.persistence.LockModeType;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface GmailConnectionRepository extends JpaRepository<GmailConnection, Long> {
     Optional<GmailConnection> findByUserId(Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from GmailConnection c where c.user.id = :userId")
+    Optional<GmailConnection> findLockedByUserId(@Param("userId") Long userId);
 
     @Query("select c.user.id from GmailConnection c where c.status = :status order by c.user.id")
     List<Long> findUserIdsByStatus(@Param("status") GmailConnectionStatus status);
@@ -66,4 +72,8 @@ public interface GmailConnectionRepository extends JpaRepository<GmailConnection
                and c.syncState = com.mirkamolcode.model.SyncState.RUNNING
             """)
     int failSync(@Param("userId") Long userId, @Param("claimedAt") Instant claimedAt, @Param("error") String error);
+
+    @Modifying
+    @Query("delete from GmailConnection e where e.user.id = :userId")
+    int deleteAllOfUser(@Param("userId") Long userId);
 }
