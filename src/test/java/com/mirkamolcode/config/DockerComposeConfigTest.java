@@ -60,6 +60,26 @@ class DockerComposeConfigTest {
         assertThat((List<?>) app.get("ports")).singleElement().asString().startsWith("127.0.0.1:");
     }
 
+    @Test
+    void database_shouldBePublishedOnLocalhostOnly() {
+        // when
+        Map<String, Object> db = service("db");
+
+        // then
+        assertThat((List<?>) db.get("ports")).singleElement().asString().startsWith("127.0.0.1:");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void database_shouldFailToStart_whenCredentialIsMissing() {
+        // when
+        Map<String, Object> environment = (Map<String, Object>) service("db").get("environment");
+
+        // then
+        List.of("POSTGRES_USER", "POSTGRES_PASSWORD").forEach(name ->
+                assertThat(String.valueOf(environment.get(name))).as(name).contains(":?"));
+    }
+
     private static Set<String> placeholdersWithoutDefault(PropertySource<?> source) {
         Set<String> names = new TreeSet<>();
         for (String property : ((EnumerablePropertySource<?>) source).getPropertyNames()) {
