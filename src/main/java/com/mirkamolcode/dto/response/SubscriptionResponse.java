@@ -23,6 +23,7 @@ public record SubscriptionResponse(
         boolean hidden,
         LocalDate lastPaymentDate,
         String logoDomain,
+        LocalDate endsOn,
         long version
 ){
 }

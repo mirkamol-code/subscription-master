@@ -66,13 +66,57 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
-    void analyze_shouldDetectCancellation() {
+    void analyze_shouldDetectCancellation_withAccessEndDate() {
         // when
         BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("spotify-cancellation.json"));
 
         // then
         assertThat(analysis.kind()).isEqualTo(EmailKind.CANCELLATION);
         assertThat(analysis.merchant().key()).isEqualTo("spotify");
+        assertThat(analysis.accessEndsOn()).isEqualTo(LocalDate.of(2026, 12, 1));
+    }
+
+    @Test
+    void analyze_shouldInferYearOfAccessEndDate_whenEmailOmitsIt() {
+        // given
+        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Your membership has been cancelled", null,
+                "We're sorry to see you go. Your plan ends on Nov 20 and you won't be charged again.");
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.CANCELLATION);
+        assertThat(analysis.accessEndsOn()).isEqualTo(LocalDate.of(2026, 11, 20));
+    }
+
+    @Test
+    void analyze_shouldRollAccessEndDateIntoNextYear_whenMonthAlreadyPassed() {
+        // given
+        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-12-28T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Your membership has been cancelled", null,
+                "Your membership has been cancelled. You can keep watching until Jan 15.");
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.accessEndsOn()).isEqualTo(LocalDate.of(2027, 1, 15));
+    }
+
+    @Test
+    void analyze_shouldLeaveAccessEndDateEmpty_whenCancellationTakesEffectNow() {
+        // given
+        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Spotify <no-reply@spotify.com>", "Your subscription has been cancelled", null,
+                "Your subscription has been cancelled effective immediately.");
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.accessEndsOn()).isNull();
     }
 
     @Test

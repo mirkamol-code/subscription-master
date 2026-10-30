@@ -5,14 +5,10 @@ import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
 
 import java.math.BigDecimal;
-import java.time.DateTimeException;
 import java.time.LocalDate;
-import java.time.Month;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -52,12 +48,6 @@ public class HeuristicParser implements EmailParser {
 
     private static final Pattern NEXT_BILLING_KEYWORD = Pattern.compile(
             "(?i)renews? on|renewal date|next (?:billing|payment|charge)(?: date)?|will be (?:charged|billed)|next bill");
-    private static final int DATE_SEARCH_WINDOW = 40;
-    private static final String MONTH_NAME = "(?<month>jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?";
-    private static final Pattern MONTH_DAY_YEAR = Pattern.compile("(?i)" + MONTH_NAME + "\\s+(?<day>\\d{1,2}),?\\s+(?<year>\\d{4})");
-    private static final Pattern DAY_MONTH_YEAR = Pattern.compile("(?i)(?<day>\\d{1,2})\\s+" + MONTH_NAME + "\\s+(?<year>\\d{4})");
-    private static final Pattern ISO_DATE = Pattern.compile("(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})");
-    private static final Pattern NUMERIC_DATE = Pattern.compile("(?<first>\\d{1,2})[/.](?<second>\\d{1,2})[/.](?<year>\\d{4})");
 
     @Override
     public boolean supports(GmailMessage message) {
@@ -68,7 +58,8 @@ public class HeuristicParser implements EmailParser {
     public Optional<ParsedBilling> parse(GmailMessage message) {
         String text = message.bodyText();
         return findAmount(text).map(amount -> new ParsedBilling(
-                amount.value(), amount.currency(), findCycle(text, amount), null, findNextBillingDate(text), Confidence.LOW));
+                amount.value(), amount.currency(), findCycle(text, amount), null,
+                DateFinder.findDateAfter(text, NEXT_BILLING_KEYWORD, message.receivedOnUtc()), Confidence.LOW));
     }
 
     private static Optional<Amount> findAmount(String text) {
@@ -155,75 +146,10 @@ public class HeuristicParser implements EmailParser {
         return boundary.find(from) ? boundary.start() : text.length();
     }
 
-    private static LocalDate findNextBillingDate(String text) {
-        Matcher keyword = NEXT_BILLING_KEYWORD.matcher(text);
-        while (keyword.find()) {
-            String window = text.substring(keyword.end(), Math.min(text.length(), keyword.end() + DATE_SEARCH_WINDOW));
-            Optional<LocalDate> date = findFirstDate(window);
-            if (date.isPresent())
-                return date.get();
-        }
-        return null;
-    }
-
-    private static Optional<LocalDate> findFirstDate(String window) {
-        List<DateMatch> matches = new ArrayList<>();
-        addNamedMonthDates(MONTH_DAY_YEAR, window, matches);
-        addNamedMonthDates(DAY_MONTH_YEAR, window, matches);
-        Matcher iso = ISO_DATE.matcher(window);
-        if (iso.find())
-            matches.add(new DateMatch(iso.start(), createDate(iso.group("year"), iso.group("month"), iso.group("day"))));
-        Matcher numeric = NUMERIC_DATE.matcher(window);
-        if (numeric.find())
-            matches.add(new DateMatch(numeric.start(), unambiguousNumericDate(numeric)));
-        return matches.stream()
-                .min(Comparator.comparingInt(DateMatch::position))
-                .map(DateMatch::date);
-    }
-
-    private static void addNamedMonthDates(Pattern pattern, String window, List<DateMatch> matches) {
-        Matcher matcher = pattern.matcher(window);
-        if (matcher.find()) {
-            int month = parseMonthNumber(matcher.group("month"));
-            matches.add(new DateMatch(matcher.start(), createDate(matcher.group("year"), String.valueOf(month), matcher.group("day"))));
-        }
-    }
-
-    private static LocalDate unambiguousNumericDate(Matcher matcher) {
-        int first = Integer.parseInt(matcher.group("first"));
-        int second = Integer.parseInt(matcher.group("second"));
-        String year = matcher.group("year");
-        if (first > 12)
-            return createDate(year, String.valueOf(second), String.valueOf(first));
-        if (second > 12)
-            return createDate(year, String.valueOf(first), String.valueOf(second));
-        return null;
-    }
-
-    private static int parseMonthNumber(String name) {
-        String prefix = name.substring(0, 3).toUpperCase(Locale.ROOT);
-        return Arrays.stream(Month.values())
-                .filter(month -> month.name().startsWith(prefix))
-                .findFirst()
-                .orElseThrow()
-                .getValue();
-    }
-
-    private static LocalDate createDate(String year, String month, String day) {
-        try {
-            return LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
-        } catch (DateTimeException e) {
-            return null;
-        }
-    }
-
     private record AmountPattern(Pattern pattern, Function<Matcher, CurrencyCode> currency) {
     }
 
     private record Amount(BigDecimal value, CurrencyCode currency, int start, int end) {
-    }
-
-    private record DateMatch(int position, LocalDate date) {
     }
 
     private record CycleMatch(BillingFrequency cycle, int start, int end) {

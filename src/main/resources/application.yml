@@ -63,6 +63,9 @@ app:
   seed:
     enabled: ${APP_SEED_ENABLED:false}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  status:
+    overdue-grace-days: ${OVERDUE_GRACE_DAYS:5}
+    daily-rules-cron: ${STATUS_RULES_CRON:0 15 * * * *}
   security:
     token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
     admin-emails: ${APP_ADMIN_EMAILS:}
@@ -85,6 +88,7 @@ app:
         cancellation: ["has been canceled", "has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
         promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, "free trial", webinar, newsletter]
+        access-ends: [until, "ends on", "end on", "will end", "expires on", "expire on", "access until", "active until"]
       merchants:
         - { key: netflix, display-name: Netflix, senders: [netflix.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: spotify, display-name: Spotify, senders: [spotify.com], category: ENTERTAINMENT, default-cycle: MONTHLY }

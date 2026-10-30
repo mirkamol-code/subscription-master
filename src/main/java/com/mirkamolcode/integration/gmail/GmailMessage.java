@@ -1,6 +1,8 @@
 package com.mirkamolcode.integration.gmail;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,6 +25,10 @@ public record GmailMessage(
     public GmailMessage {
         subject = subject == null ? "" : subject;
         attachments = attachments == null ? List.of() : List.copyOf(attachments);
+    }
+
+    public LocalDate receivedOnUtc() {
+        return receivedAt == null ? null : LocalDate.ofInstant(receivedAt, ZoneOffset.UTC);
     }
 
     public String bodyText() {

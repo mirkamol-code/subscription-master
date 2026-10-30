@@ -5,6 +5,7 @@ import com.mirkamolcode.detection.EmailKind;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +47,11 @@ public class BillingEmail extends AuditableEntity {
     @Column(length = 8)
     private Confidence confidence;
 
+    @Column(length = 120)
+    private String merchantKey;
+
+    private LocalDate accessEndsOn;
+
     @OneToMany(mappedBy = "billingEmail", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EmailAttachment> attachments = new ArrayList<>();
 
@@ -65,8 +71,13 @@ public class BillingEmail extends AuditableEntity {
     }
 
     public static BillingEmail relevant(User user, String gmailMessageId, String threadId, EmailKind kind, String sender,
-                                        String subject, Instant receivedAt, Confidence confidence) {
-        return new BillingEmail(user, gmailMessageId, threadId, kind, truncate(sender, 320), truncate(subject, 500), receivedAt, confidence);
+                                        String subject, Instant receivedAt, Confidence confidence,
+                                        String merchantKey, LocalDate accessEndsOn) {
+        BillingEmail email = new BillingEmail(user, gmailMessageId, threadId, kind, truncate(sender, 320), truncate(subject, 500),
+                receivedAt, confidence);
+        email.merchantKey = merchantKey;
+        email.accessEndsOn = accessEndsOn;
+        return email;
     }
 
     public static BillingEmail irrelevant(User user, String gmailMessageId, Instant receivedAt) {
@@ -115,6 +126,10 @@ public class BillingEmail extends AuditableEntity {
 
     public Confidence getConfidence() {
         return confidence;
+    }
+
+    public LocalDate getAccessEndsOn() {
+        return accessEndsOn;
     }
 
     public List<EmailAttachment> getAttachments() {

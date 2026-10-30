@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -67,6 +68,10 @@ public class Subscription extends AuditableEntity {
     @Column(length = 253)
     private String logoDomain;
 
+    private Instant statusEvidenceAt;
+
+    private LocalDate endsOn;
+
     @Version
     private long version;
 
@@ -88,12 +93,11 @@ public class Subscription extends AuditableEntity {
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : frequency.addTo(startDate);
     }
 
-    public void update(String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionStatus status, SubscriptionCategory category, LocalDate startDate) {
+    public void update(String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionCategory category, LocalDate startDate) {
         this.name = name;
         this.price = price;
         this.currency = currency;
         this.frequency = frequency;
-        this.status = status;
         this.category = category;
         this.startDate = startDate;
         this.needsReview = false;
@@ -121,6 +125,20 @@ public class Subscription extends AuditableEntity {
         this.frequency = cycle;
         this.lastPaymentDate = paidOn;
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : cycle.addTo(paidOn);
+    }
+
+    public void applyStatus(SubscriptionStatus status, LocalDate endsOn, Instant evidenceAt) {
+        this.status = status;
+        this.endsOn = endsOn;
+        this.statusEvidenceAt = evidenceAt;
+    }
+
+    public void recordUnpricedPayment(LocalDate paidOn) {
+        if (lastPaymentDate != null && !paidOn.isAfter(lastPaymentDate))
+            return;
+        this.lastPaymentDate = paidOn;
+        this.nextPaymentDate = frequency.addTo(paidOn);
+        this.needsReview = true;
     }
 
     public void flagForReview() {
@@ -201,6 +219,14 @@ public class Subscription extends AuditableEntity {
 
     public String getLogoDomain() {
         return logoDomain;
+    }
+
+    public Instant getStatusEvidenceAt() {
+        return statusEvidenceAt;
+    }
+
+    public LocalDate getEndsOn() {
+        return endsOn;
     }
 
     public long getVersion() {

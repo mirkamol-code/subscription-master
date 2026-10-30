@@ -31,13 +31,15 @@ public class BillingEmailAnalyzer {
         if (kind == EmailKind.IRRELEVANT)
             return BillingEmailAnalysis.irrelevant();
         Merchant merchant = merchants.resolve(message);
+        if (kind == EmailKind.CANCELLATION)
+            return new BillingEmailAnalysis(kind, merchant, null, classifier.findAccessEndDate(message));
         if (kind != EmailKind.RECEIPT)
-            return new BillingEmailAnalysis(kind, merchant, null);
+            return new BillingEmailAnalysis(kind, merchant, null, null);
 
         Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message);
         if (!merchant.known() && !hasRecurringBilling(parsed))
             return BillingEmailAnalysis.irrelevant();
-        return new BillingEmailAnalysis(kind, merchant, complete(parsed, merchant, message));
+        return new BillingEmailAnalysis(kind, merchant, complete(parsed, merchant, message), null);
     }
 
     public boolean isCandidate(GmailMessage headers) {

@@ -21,6 +21,9 @@ import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
 import com.mirkamolcode.repository.UserRepository;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.REQUIRES_NEW)
 public class BillingEmailRecorder {
     private static final String PDF = "application/pdf";
+    private static final List<EmailKind> REPLAYED_KINDS = List.of(EmailKind.RECEIPT, EmailKind.CANCELLATION, EmailKind.PAYMENT_FAILED);
 
     private final BillingEmailAnalyzer analyzer;
     private final UserRepository users;
@@ -42,6 +46,7 @@ public class BillingEmailRecorder {
     private final MerchantTombstoneRepository tombstones;
     private final ExchangeRateService exchangeRates;
     private final ApplicationEventPublisher events;
+    private final SubscriptionStatusService statusService;
 
     public BillingEmailRecorder(BillingEmailAnalyzer analyzer,
                                 UserRepository users,
@@ -50,7 +55,8 @@ public class BillingEmailRecorder {
                                 PaymentHistoryRepository payments,
                                 MerchantTombstoneRepository tombstones,
                                 ExchangeRateService exchangeRates,
-                                ApplicationEventPublisher events) {
+                                ApplicationEventPublisher events,
+                                SubscriptionStatusService statusService) {
         this.analyzer = analyzer;
         this.users = users;
         this.billingEmails = billingEmails;
@@ -59,6 +65,7 @@ public class BillingEmailRecorder {
         this.tombstones = tombstones;
         this.exchangeRates = exchangeRates;
         this.events = events;
+        this.statusService = statusService;
     }
 
     public void record(Long userId, GmailMessage message) {
@@ -71,7 +78,8 @@ public class BillingEmailRecorder {
 
         ParsedBilling billing = analysis.billing();
         BillingEmail email = BillingEmail.relevant(user, message.id(), message.threadId(), analysis.kind(),
-                message.from(), message.subject(), message.receivedAt(), billing == null ? null : billing.confidence());
+                message.from(), message.subject(), message.receivedAt(), billing == null ? null : billing.confidence(),
+                analysis.merchant().key(), analysis.accessEndsOn());
         message.attachments().stream()
                 .filter(attachment -> PDF.equalsIgnoreCase(attachment.mimeType()))
                 .forEach(attachment -> addAttachment(email, attachment));
@@ -82,27 +90,62 @@ public class BillingEmailRecorder {
             return;
         }
 
-        findOrCreateSubscription(user, analysis, tombstone.isPresent()).ifPresent(subscription -> {
-            email.attachTo(subscription);
-            if (analysis.isPayment())
-                recordPayment(subscription, email, billing);
-            else if (analysis.kind() == EmailKind.RECEIPT)
-                subscription.flagForReview();
-        });
+        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, analysis, tombstone.isPresent());
+        if (tracked.isEmpty()) {
+            billingEmails.save(email);
+            return;
+        }
+        Subscription subscription = tracked.get().subscription();
+        email.attachTo(subscription);
         billingEmails.save(email);
+        if (analysis.isPayment())
+            recordPayment(subscription, email, billing);
+        else if (analysis.kind() == EmailKind.RECEIPT)
+            subscription.recordUnpricedPayment(billing.paymentDate());
+        statusService.apply(subscription, toStatusEvidence(email), email);
+        if (tracked.get().newlyLinked())
+            replayUnattachedStatusEmails(userId, subscription, tombstone);
     }
 
-    private Optional<Subscription> findOrCreateSubscription(User user, BillingEmailAnalysis analysis, boolean wasDeleted) {
+    private void replayUnattachedStatusEmails(Long userId, Subscription subscription, Optional<MerchantTombstone> tombstone) {
+        billingEmails.findByUserIdAndMerchantKeyAndSubscriptionIsNullAndKindInOrderByReceivedAtAsc(
+                        userId, subscription.getMerchantKey(), REPLAYED_KINDS)
+                .stream()
+                .filter(email -> tombstone.map(deleted -> !deleted.covers(email.getReceivedAt())).orElse(true))
+                .forEach(email -> {
+                    email.attachTo(subscription);
+                    if (email.getKind() == EmailKind.RECEIPT)
+                        subscription.recordUnpricedPayment(LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC));
+                    statusService.apply(subscription, toStatusEvidence(email), email);
+                });
+    }
+
+    private static StatusEvidence toStatusEvidence(BillingEmail email) {
+        return switch (email.getKind()) {
+            case CANCELLATION -> StatusEvidence.cancellation(email.getReceivedAt(), email.getAccessEndsOn());
+            case PAYMENT_FAILED -> StatusEvidence.paymentFailed(email.getReceivedAt());
+            case RECEIPT, IRRELEVANT -> StatusEvidence.receipt(email.getReceivedAt());
+        };
+    }
+
+    private Optional<TrackedSubscription> findOrCreateSubscription(User user, BillingEmailAnalysis analysis, boolean wasDeleted) {
         Merchant merchant = analysis.merchant();
-        Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), merchant.key())
-                .or(() -> adoptManualSubscription(user, merchant));
-        if (existing.isPresent() || !analysis.isPayment())
-            return existing;
+        Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), merchant.key());
+        if (existing.isPresent())
+            return Optional.of(new TrackedSubscription(existing.get(), false));
+        Optional<Subscription> adopted = adoptManualSubscription(user, merchant);
+        if (adopted.isPresent())
+            return Optional.of(new TrackedSubscription(adopted.get(), true));
+        if (!analysis.isPayment())
+            return Optional.empty();
         Subscription created = subscriptions.save(createSubscription(user, merchant, analysis.billing()));
         if (wasDeleted)
             events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), created.getId(), merchant.displayName(),
                     analysis.billing().paymentDate()));
-        return Optional.of(created);
+        return Optional.of(new TrackedSubscription(created, true));
+    }
+
+    private record TrackedSubscription(Subscription subscription, boolean newlyLinked) {
     }
 
     private static Subscription createSubscription(User user, Merchant merchant, ParsedBilling billing) {
