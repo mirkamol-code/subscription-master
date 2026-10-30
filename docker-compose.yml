@@ -67,7 +67,9 @@ services:
     networks:
       - subscribe-master-network
 
+  # Only for hosts without their own Nginx: docker compose --profile bundled-nginx up -d
   nginx:
+    profiles: ["bundled-nginx"]
     container_name: subscription-master-nginx
     image: nginx:1.27-alpine
     ports:

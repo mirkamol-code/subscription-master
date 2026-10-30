@@ -70,6 +70,15 @@ class DockerComposeConfigTest {
     }
 
     @Test
+    void bundledNginx_shouldStartOnlyWhenItsProfileIsRequested() {
+        // when
+        Map<String, Object> nginx = service("nginx");
+
+        // then
+        assertThat(String.valueOf(nginx.get("profiles"))).isEqualTo("[bundled-nginx]");
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void database_shouldFailToStart_whenCredentialIsMissing() {
         // when

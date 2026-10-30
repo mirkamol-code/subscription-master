@@ -129,13 +129,14 @@ jobs:
               sed -i -E "s|image: .*(subscription-master).*|image: $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER|" docker-compose.yml
             fi
 
-            # 5. Pull and restart the app service
-            docker compose pull $DOCKER_COMPOSE_APP_SERVICE_NAME || docker compose pull || true
-            docker compose up -d $DOCKER_COMPOSE_APP_SERVICE_NAME || docker compose up -d
+            # 5. Pull and restart the app service (and the database it depends on), nothing else
+            docker compose pull $DOCKER_COMPOSE_APP_SERVICE_NAME
+            docker compose up -d $DOCKER_COMPOSE_APP_SERVICE_NAME
 
-            # 6. Fail the deploy unless the app becomes healthy
+            # 6. Fail the deploy unless the container compose just started becomes healthy
+            APP_CONTAINER=\$(docker compose ps -q $DOCKER_COMPOSE_APP_SERVICE_NAME)
             for attempt in \$(seq 1 24); do
-              status=\$(docker inspect -f '{{ .State.Health.Status }}' subscription-master 2>/dev/null || echo missing)
+              status=\$(docker inspect -f '{{ .State.Health.Status }}' "\$APP_CONTAINER" 2>/dev/null || echo missing)
               if [ "\$status" = "healthy" ]; then
                 echo "App is healthy"
                 break
