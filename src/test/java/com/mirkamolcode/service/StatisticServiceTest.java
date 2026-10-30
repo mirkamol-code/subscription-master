@@ -47,7 +47,7 @@ class StatisticServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User("person@example.com", "hash", Set.of(Role.USER));
+        user = new User("person@example.com", Set.of(Role.USER));
         ReflectionTestUtils.setField(user, "id", 1L);
     }
 

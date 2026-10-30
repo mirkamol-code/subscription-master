@@ -1,9 +1,8 @@
 package com.mirkamolcode.controller;
 
 import com.mirkamolcode.AbstractTestConfig;
-import com.mirkamolcode.dto.AuthDtos.LoginRequest;
+import com.mirkamolcode.dto.AuthDtos.ExchangeRequest;
 import com.mirkamolcode.dto.AuthDtos.RefreshRequest;
-import com.mirkamolcode.dto.AuthDtos.RegisterRequest;
 import com.mirkamolcode.dto.AuthDtos.TokenResponse;
 import org.junit.jupiter.api.Test;
 
@@ -12,71 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuthControllerIT extends AbstractTestConfig {
 
     @Test
-    void register_shouldReturnCreatedAndTokens_whenRequestIsValid() {
-        webTestClient.post()
-                .uri(API + "/auth/register")
-                .bodyValue(new RegisterRequest("person@example.com", "a-long-enough-password"))
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(TokenResponse.class)
-                .value(tokens -> {
-                    assertThat(tokens.accessToken()).isNotBlank();
-                    assertThat(tokens.refreshToken()).isNotBlank();
-                    assertThat(tokens.tokenType()).isEqualTo("Bearer");
-                });
-    }
-
-    @Test
-    void register_shouldReturnBadRequest_whenPayloadIsInvalid() {
-        webTestClient.post()
-                .uri(API + "/auth/register")
-                .bodyValue(new RegisterRequest("not-an-email", "short"))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("VALIDATION_ERROR")
-                .jsonPath("$.fields.email").exists()
-                .jsonPath("$.fields.password").exists();
-    }
-
-    @Test
-    void register_shouldReturnConflict_whenEmailAlreadyExists() {
-        register("person@example.com");
-
-        webTestClient.post()
-                .uri(API + "/auth/register")
-                .bodyValue(new RegisterRequest("person@example.com", "a-long-enough-password"))
-                .exchange()
-                .expectStatus().isEqualTo(409)
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("CONFLICT");
-    }
-
-    @Test
-    void login_shouldReturnTokensForValidCredentials_andUnauthorizedForInvalidCredentials() {
-        register("person@example.com");
-
-        webTestClient.post()
-                .uri(API + "/auth/login")
-                .bodyValue(new LoginRequest("person@example.com", "a-long-enough-password"))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(TokenResponse.class)
-                .value(tokens -> assertThat(tokens.accessToken()).isNotBlank());
-
-        webTestClient.post()
-                .uri(API + "/auth/login")
-                .bodyValue(new LoginRequest("person@example.com", "wrong-password"))
-                .exchange()
-                .expectStatus().isUnauthorized()
-                .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("INVALID_CREDENTIALS")
-                .jsonPath("$.message").isEqualTo("Invalid credentials");
-    }
-
-    @Test
     void refresh_shouldRotateValidRefreshToken_andRejectItsReuse() {
-        TokenResponse tokens = register("person@example.com");
+        TokenResponse tokens = signIn("person@example.com");
 
         TokenResponse rotated = webTestClient.post()
                 .uri(API + "/auth/refresh")
@@ -112,7 +48,7 @@ class AuthControllerIT extends AbstractTestConfig {
 
     @Test
     void me_shouldReturnCurrentUserProfile_whenAuthenticated() {
-        TokenResponse tokens = register("me-user@example.com");
+        TokenResponse tokens = signIn("me-user@example.com");
 
         webTestClient.get()
                 .uri(API + "/auth/me")
@@ -127,11 +63,11 @@ class AuthControllerIT extends AbstractTestConfig {
     }
 
     @Test
-    void login_shouldExposeRetryAfterHeader_toTheFrontendOrigin() {
+    void exchange_shouldExposeRetryAfterHeader_toTheFrontendOrigin() {
         webTestClient.post()
-                .uri(API + "/auth/login")
+                .uri(API + "/auth/exchange")
                 .header("Origin", "http://localhost:5173")
-                .bodyValue(new LoginRequest("nobody@example.com", "wrong-password"))
+                .bodyValue(new ExchangeRequest("unknown-code"))
                 .exchange()
                 .expectHeader().value("Access-Control-Expose-Headers",
                         exposed -> assertThat(exposed).contains("Retry-After"));
@@ -152,7 +88,7 @@ class AuthControllerIT extends AbstractTestConfig {
 
     @Test
     void logout_shouldRevokeRefreshToken_andPreventSubsequentRefresh() {
-        TokenResponse tokens = register("logout-user@example.com");
+        TokenResponse tokens = signIn("logout-user@example.com");
 
         webTestClient.post()
                 .uri(API + "/auth/logout")

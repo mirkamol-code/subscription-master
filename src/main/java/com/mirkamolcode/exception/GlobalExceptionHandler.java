@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,6 +23,12 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> noRoute(NoResourceFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), "NOT_FOUND", "Not Found", "No endpoint " + e.getHttpMethod() + " /" + e.getResourcePath()));
+    }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> notFound(NotFoundException e) {
@@ -33,6 +40,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> unauthorized(UnauthorizedException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS", "Unauthorized", e.getMessage()));
+    }
+
+    @ExceptionHandler(GmailDisconnectedException.class)
+    public ResponseEntity<ErrorResponse> gmailDisconnected(GmailDisconnectedException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), "GMAIL_RECONNECT_REQUIRED", "Conflict", e.getMessage()));
+    }
+
+    @ExceptionHandler(GoogleApiUnavailableException.class)
+    public ResponseEntity<ErrorResponse> googleUnavailable(GoogleApiUnavailableException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponse.of(HttpStatus.SERVICE_UNAVAILABLE.value(), "GOOGLE_UNAVAILABLE", "Service Unavailable", "Google is temporarily unavailable"));
     }
 
     @ExceptionHandler(ExchangeRatesUnavailableException.class)

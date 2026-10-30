@@ -16,15 +16,9 @@ public class AuthController {
         this.service = service;
     }
 
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    public TokenResponse register(@Valid @RequestBody RegisterRequest request) {
-        return service.register(request);
-    }
-
-    @PostMapping("/login")
-    public TokenResponse login(@Valid @RequestBody LoginRequest request) {
-        return service.login(request);
+    @PostMapping("/exchange")
+    public TokenResponse exchange(@Valid @RequestBody ExchangeRequest request) {
+        return service.exchange(request);
     }
 
     @PostMapping("/refresh")

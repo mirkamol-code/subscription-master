@@ -26,7 +26,7 @@ class StatisticControllerIT extends AbstractTestConfig {
 
     @Test
     void summary_shouldReturnBadRequest_whenYearIsOutsideSupportedRange() {
-        String authorization = bearer(register("owner-summary-year@example.com"));
+        String authorization = bearer(signIn("owner-summary-year@example.com"));
 
         webTestClient.get()
                 .uri(API + "/statistics/summary?year=1999&month=10")
@@ -39,8 +39,8 @@ class StatisticControllerIT extends AbstractTestConfig {
 
     @Test
     void summary_shouldIncludeOnlyAuthenticatedUsersActiveSubscriptions() {
-        String ownerAuthorization = bearer(register("owner@example.com"));
-        String otherAuthorization = bearer(register("other@example.com"));
+        String ownerAuthorization = bearer(signIn("owner@example.com"));
+        String otherAuthorization = bearer(signIn("other@example.com"));
         createSubscription(ownerAuthorization, request("Owner service", "10.00"));
         createSubscription(otherAuthorization, request("Other service", "999.00"));
 
@@ -57,7 +57,7 @@ class StatisticControllerIT extends AbstractTestConfig {
 
     @Test
     void monthlyDynamics_shouldReturnCurrentUsersPaymentHistory_andValidateRange() {
-        String authorization = bearer(register("owner@example.com"));
+        String authorization = bearer(signIn("owner@example.com"));
         SubscriptionResponse created = createSubscription(authorization, request("Owner service", "10.00"));
         Subscription subscription = subscriptionRepository.findById(created.id()).orElseThrow();
         paymentHistoryRepository.save(new PaymentHistory(
@@ -84,7 +84,7 @@ class StatisticControllerIT extends AbstractTestConfig {
     void summary_shouldUseLastStoredRate_whenCbuIsUnreachable() {
         // given CBU is unreachable in the test profile and a USD rate was stored earlier
         exchangeRateRepository.save(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12000.00"), LocalDate.of(2026, 10, 27)));
-        String authorization = bearer(register("owner-usd@example.com"));
+        String authorization = bearer(signIn("owner-usd@example.com"));
         createSubscription(authorization, new SubscriptionRequest("USD service", new BigDecimal("2.00"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10)));
@@ -102,7 +102,7 @@ class StatisticControllerIT extends AbstractTestConfig {
     @Test
     void summary_shouldReturnServiceUnavailable_whenCbuIsUnreachableAndNoRateIsStored() {
         // given CBU is unreachable in the test profile and no USD rate was ever stored
-        String authorization = bearer(register("owner-no-rate@example.com"));
+        String authorization = bearer(signIn("owner-no-rate@example.com"));
         createSubscription(authorization, new SubscriptionRequest("USD service", new BigDecimal("2.00"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
                 SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 10)));

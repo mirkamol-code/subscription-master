@@ -14,7 +14,7 @@ class AdminControllerIT extends AbstractTestConfig {
 
     @Test
     void serviceUsage_shouldReturnForbiddenForNormalUser() {
-        String authorization = bearer(register("user@example.com"));
+        String authorization = bearer(signIn("user@example.com"));
 
         webTestClient.get()
                 .uri(API + "/admin/statistics/service-usage")
@@ -25,13 +25,12 @@ class AdminControllerIT extends AbstractTestConfig {
 
     @Test
     void serviceUsage_shouldReturnGlobalGroupedCountsForAdmin() {
-        String firstUser = bearer(register("first@example.com"));
-        String secondUser = bearer(register("second@example.com"));
+        String firstUser = bearer(signIn("first@example.com"));
+        String secondUser = bearer(signIn("second@example.com"));
         createSubscription(firstUser, request("Netflix"));
         createSubscription(secondUser, request("Netflix"));
         createSubscription(secondUser, request("Notion"));
-        saveAdmin("admin@example.com");
-        String adminAuthorization = bearer(login("admin@example.com"));
+        String adminAuthorization = bearer(signInAsAdmin("admin@example.com"));
 
         webTestClient.get()
                 .uri(API + "/admin/statistics/service-usage")

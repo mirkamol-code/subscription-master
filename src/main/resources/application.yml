@@ -29,11 +29,25 @@ spring:
   jackson:
     mapper:
       accept-case-insensitive-enums: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+            scope:
+              - openid
+              - email
+              - profile
+              - https://www.googleapis.com/auth/gmail.readonly
+              - https://www.googleapis.com/auth/gmail.send
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${GMAIL_USERNAME:-mirkamol.m.@gmail.com}
-    password: ${GMAIL_APP_PASSWORD:-wiaaqmjufspfikvh}
+    username: ${GMAIL_USERNAME:}
+    password: ${GMAIL_APP_PASSWORD:}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
@@ -48,11 +62,14 @@ app:
     refresh-token-days: 30
   seed:
     enabled: ${APP_SEED_ENABLED:false}
-  rate-limiting:
-    auth:
-      enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
-      max-failed-attempts: ${AUTH_RATE_LIMIT_MAX_ATTEMPTS:3}
-      block-duration-seconds: ${AUTH_RATE_LIMIT_BLOCK_SECONDS:60}
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  security:
+    token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
+    admin-emails: ${APP_ADMIN_EMAILS:}
+  google:
+    oauth-base-url: https://oauth2.googleapis.com
+    connect-timeout: 2s
+    read-timeout: 5s
 
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
   cbu.connect-timeout: 2s
@@ -61,7 +78,7 @@ app:
     log:
       enabled: ${LOG_NOTIFICATIONS_ENABLED:true}
     gmail:
-      enabled: ${GMAIL_NOTIFICATIONS_ENABLED:true}
+      enabled: ${GMAIL_NOTIFICATIONS_ENABLED:false}
     gmail-from: ${GMAIL_FROM:}
 springdoc:
   swagger-ui.path: /swagger-ui.html
@@ -74,6 +91,15 @@ management:
       exposure:
         include: health,info
 resilience4j:
+  retry:
+    instances:
+      googleOAuth:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - com.mirkamolcode.exception.GoogleApiUnavailableException
   circuitbreaker:
     instances:
       cbuRates:

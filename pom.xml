@@ -20,6 +20,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <shedlock.version>6.3.0</shedlock.version>
         <testcontainers.version>2.0.5</testcontainers.version>
+        <wiremock.version>3.13.2</wiremock.version>
         <docker.username>mirkamolcode</docker.username>
         <docker.image.name>subscription-master</docker.image.name>
         <docker.image.tag/>
@@ -48,6 +49,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Sign in with Google: OAuth2 / OpenID Connect authorization code flow -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
         </dependency>
 
         <!-- Email support using JavaMailSender / SMTP -->
@@ -214,6 +221,14 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- HTTP stubs replaying recorded Google API responses in adapter tests -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
 

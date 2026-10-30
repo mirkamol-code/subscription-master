@@ -16,8 +16,13 @@ public class User extends AuditableEntity {
     @Column(nullable = false, unique = true, length = 254)
     private String email;
 
-    @Column(nullable = false, length = 60)
-    private String passwordHash;
+    @Column(unique = true)
+    private String googleSubject;
+
+    private String displayName;
+
+    @Column(length = 2048)
+    private String avatarUrl;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
@@ -31,10 +36,24 @@ public class User extends AuditableEntity {
     protected User() {
     }
 
-    public User(String email, String passwordHash, Set<Role> roles) {
+    public User(String email, Set<Role> roles) {
         this.email = email;
-        this.passwordHash = passwordHash;
         this.roles = new HashSet<>(roles);
+    }
+
+    public void linkGoogleAccount(String googleSubject, String email, String displayName, String avatarUrl) {
+        this.googleSubject = googleSubject;
+        this.email = email;
+        this.displayName = displayName;
+        this.avatarUrl = avatarUrl;
+    }
+
+    public void grantRole(Role role) {
+        roles.add(role);
+    }
+
+    public void revokeRole(Role role) {
+        roles.remove(role);
     }
 
     public Long getId() {
@@ -45,8 +64,16 @@ public class User extends AuditableEntity {
         return email;
     }
 
-    public String getPasswordHash() {
-        return passwordHash;
+    public String getGoogleSubject() {
+        return googleSubject;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
     }
 
     public Set<Role> getRoles() {
