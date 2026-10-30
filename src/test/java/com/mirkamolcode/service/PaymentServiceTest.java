@@ -95,7 +95,7 @@ class PaymentServiceTest {
     }
 
     private Subscription subscription(String name, LocalDate nextPaymentDate) {
-        User user = new User("person@example.com", "hash", Set.of(Role.USER));
+        User user = new User("person@example.com", Set.of(Role.USER));
         return new Subscription(user, name, new BigDecimal("12.99"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,
                 SubscriptionCategory.ENTERTAINMENT, nextPaymentDate.minusMonths(1));

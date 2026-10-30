@@ -1,13 +1,14 @@
 package com.mirkamolcode;
 
-import com.mirkamolcode.dto.AuthDtos.LoginRequest;
-import com.mirkamolcode.dto.AuthDtos.RegisterRequest;
+import com.mirkamolcode.dto.AuthDtos.ExchangeRequest;
 import com.mirkamolcode.dto.AuthDtos.TokenResponse;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.repository.ExchangeRateRepository;
+import com.mirkamolcode.repository.GmailConnectionRepository;
+import com.mirkamolcode.repository.LoginCodeRepository;
 import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.RefreshTokenRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
@@ -18,7 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.mirkamolcode.service.LoginCodeService;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -52,33 +53,38 @@ public abstract class AbstractTestConfig {
     @Autowired
     protected ExchangeRateRepository exchangeRateRepository;
     @Autowired
-    protected PasswordEncoder passwordEncoder;
+    protected LoginCodeRepository loginCodeRepository;
+    @Autowired
+    protected GmailConnectionRepository gmailConnectionRepository;
+    @Autowired
+    protected LoginCodeService loginCodeService;
 
     @BeforeEach
     @AfterEach
     void cleanDatabase() {
         paymentHistoryRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        loginCodeRepository.deleteAll();
+        gmailConnectionRepository.deleteAll();
         subscriptionRepository.deleteAll();
         exchangeRateRepository.deleteAll();
         userRepository.deleteAll();
     }
 
-    protected TokenResponse register(String email) {
-        return webTestClient.post()
-                .uri(API + "/auth/register")
-                .bodyValue(new RegisterRequest(email, "a-long-enough-password"))
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(TokenResponse.class)
-                .returnResult()
-                .getResponseBody();
+    protected TokenResponse signIn(String email) {
+        return signIn(email, Set.of(Role.USER));
     }
 
-    protected TokenResponse login(String email) {
+    protected TokenResponse signInAsAdmin(String email) {
+        return signIn(email, Set.of(Role.ADMIN));
+    }
+
+    private TokenResponse signIn(String email, Set<Role> roles) {
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseGet(() -> userRepository.save(new User(email, roles)));
         return webTestClient.post()
-                .uri(API + "/auth/login")
-                .bodyValue(new LoginRequest(email, "a-long-enough-password"))
+                .uri(API + "/auth/exchange")
+                .bodyValue(new ExchangeRequest(loginCodeService.issue(user)))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(TokenResponse.class)
@@ -88,14 +94,6 @@ public abstract class AbstractTestConfig {
 
     protected String bearer(TokenResponse tokens) {
         return "Bearer " + tokens.accessToken();
-    }
-
-    protected User saveAdmin(String email) {
-        return userRepository.save(new User(
-                email,
-                passwordEncoder.encode("a-long-enough-password"),
-                Set.of(Role.ADMIN)
-        ));
     }
 
     protected SubscriptionResponse createSubscription(String authorization, SubscriptionRequest request) {

@@ -44,7 +44,7 @@ class ReportServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = new User("person@example.com", "hash", Set.of(Role.USER));
+        user = new User("person@example.com", Set.of(Role.USER));
         ReflectionTestUtils.setField(user, "id", 1L);
         subscription = new Subscription(user, "Netflix, Premium", new BigDecimal("10"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE,

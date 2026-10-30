@@ -3,7 +3,9 @@ package com.mirkamolcode.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mirkamolcode.dto.ErrorResponse;
 import com.mirkamolcode.security.jwt.JwtAuthenticationFilter;
-import com.mirkamolcode.security.ratelimit.AuthRateLimitFilter;
+import com.mirkamolcode.security.oauth.GoogleLoginFailureHandler;
+import com.mirkamolcode.security.oauth.GoogleLoginSuccessHandler;
+import com.mirkamolcode.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -14,8 +16,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -28,11 +31,6 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
@@ -62,8 +60,11 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             JwtAuthenticationFilter jwt,
-                                            AuthRateLimitFilter rateLimitFilter,
-                                            ObjectMapper objectMapper) throws Exception {
+                                            ObjectMapper objectMapper,
+                                            ClientRegistrationRepository clientRegistrations,
+                                            HttpCookieOAuth2AuthorizationRequestRepository authorizationRequests,
+                                            GoogleLoginSuccessHandler loginSuccessHandler,
+                                            GoogleLoginFailureHandler loginFailureHandler) throws Exception {
         return http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
@@ -79,8 +80,9 @@ public class SecurityConfig {
                                 response.setStatus(HttpStatus.FORBIDDEN.value())))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers(
-                                "/auth/register",
-                                "/auth/login",
+                                "/oauth2/authorization/**",
+                                "/login/oauth2/code/**",
+                                "/auth/exchange",
                                 "/auth/refresh",
                                 "/auth/logout",
                                 "/currencies/**",
@@ -92,8 +94,24 @@ public class SecurityConfig {
                         .requestMatchers("/auth/me").authenticated()
                         .requestMatchers("/admin/**").hasAuthority("STATISTICS_READ_ALL")
                         .anyRequest().authenticated())
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .oauth2Login(o -> o
+                        .loginPage("/oauth2/authorization/google")
+                        .authorizationEndpoint(a -> a
+                                .authorizationRequestRepository(authorizationRequests)
+                                .authorizationRequestResolver(offlineConsentResolver(clientRegistrations)))
+                        .successHandler(loginSuccessHandler)
+                        .failureHandler(loginFailureHandler))
                 .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    private static OAuth2AuthorizationRequestResolver offlineConsentResolver(ClientRegistrationRepository clientRegistrations) {
+        DefaultOAuth2AuthorizationRequestResolver resolver =
+                new DefaultOAuth2AuthorizationRequestResolver(clientRegistrations, "/oauth2/authorization");
+        resolver.setAuthorizationRequestCustomizer(request -> request.additionalParameters(parameters -> {
+            parameters.put("access_type", "offline");
+            parameters.put("prompt", "consent");
+        }));
+        return resolver;
     }
 }

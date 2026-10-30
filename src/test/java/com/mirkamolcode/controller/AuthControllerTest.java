@@ -31,6 +31,8 @@ class AuthControllerTest {
         UserProfileResponse response = new UserProfileResponse(
                 104L,
                 "user@example.com",
+                "Test User",
+                "https://lh3.googleusercontent.com/a/photo",
                 List.of("ROLE_USER"),
                 "UZS",
                 createdAt

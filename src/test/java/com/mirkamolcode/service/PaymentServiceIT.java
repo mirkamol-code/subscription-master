@@ -25,7 +25,7 @@ class PaymentServiceIT extends AbstractTestConfig {
     @Test
     void recordDuePayments_shouldSkipSubscriptionsWithoutARate_andRecordThemOnTheNextRun() {
         // given CBU is unreachable in the test profile, no USD rate is stored, and two subscriptions are due
-        User user = userRepository.save(new User("payer@example.com", "hash", Set.of(Role.USER)));
+        User user = userRepository.save(new User("payer@example.com", Set.of(Role.USER)));
         LocalDate due = LocalDate.now().minusDays(1);
         Subscription uzs = subscriptionRepository.save(dueSubscription(user, "UZS service", CurrencyCode.UZS, due));
         Subscription usd = subscriptionRepository.save(dueSubscription(user, "USD service", CurrencyCode.USD, due));

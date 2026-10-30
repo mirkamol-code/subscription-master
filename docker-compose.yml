@@ -13,12 +13,19 @@ services:
       # ── App settings ──
       APP_SEED_ENABLED: ${APP_SEED_ENABLED:-false}
       APP_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      # ── Google sign-in + Gmail access ──
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://subscriptionmaster.app/api/login/oauth2/code/google}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?TOKEN_ENCRYPTION_KEY is required}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://subscriptionmaster.app}
+      APP_ADMIN_EMAILS: ${APP_ADMIN_EMAILS:-}
       # ── SQL logging — keep off in production ──
       HIBERNATE_SHOW_SQL: "false"
       HIBERNATE_FORMAT_SQL: "false"
       # ── Notifications ──
       LOG_NOTIFICATIONS_ENABLED: ${LOG_NOTIFICATIONS_ENABLED:-true}
-      GMAIL_NOTIFICATIONS_ENABLED: ${GMAIL_NOTIFICATIONS_ENABLED:-true}
+      GMAIL_NOTIFICATIONS_ENABLED: ${GMAIL_NOTIFICATIONS_ENABLED:-false}
       GMAIL_FROM: ${GMAIL_FROM:-}
       GMAIL_USERNAME: ${GMAIL_USERNAME:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}

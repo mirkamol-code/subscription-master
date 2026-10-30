@@ -21,7 +21,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +33,6 @@ public class DataLoader implements ApplicationRunner {
     private final UserRepository users;
     private final PaymentHistoryRepository historyRepository;
     private final SubscriptionRepository subscriptions;
-    private final PasswordEncoder passwordEncoder;
 
     private record SubscriptionSeed(
             String name,
@@ -252,12 +250,10 @@ public class DataLoader implements ApplicationRunner {
 
     public DataLoader(UserRepository users,
                       PaymentHistoryRepository historyRepository,
-                      SubscriptionRepository subscriptions,
-                      PasswordEncoder passwordEncoder) {
+                      SubscriptionRepository subscriptions) {
         this.users = users;
         this.historyRepository = historyRepository;
         this.subscriptions = subscriptions;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -266,14 +262,12 @@ public class DataLoader implements ApplicationRunner {
         User admin = users.findByEmailIgnoreCase("admin@subscribemaster.local")
                 .orElseGet(() -> users.save(new User(
                         "admin@subscribemaster.local",
-                        passwordEncoder.encode("AdminPassword123!"),
                         Set.of(Role.ADMIN, Role.USER)
                 )));
 
         User mirkamol = users.findByEmailIgnoreCase("hteg9188@gmail.com")
                 .orElseGet(() -> users.save(new User(
                         "hteg9188@gmail.com",
-                        passwordEncoder.encode("DemoPassword123!"),
                         Set.of(Role.USER)
                 )));
 
