@@ -51,11 +51,11 @@ services:
     container_name: subscription_master_db
     image: postgres:16
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-mirkamol}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-subscription_master_db}
     ports:
-      - "5222:5432"   # exposed only for local DBA access — remove in production
+      - "127.0.0.1:5222:5432"   # reachable from the server itself or an SSH tunnel only
     restart: unless-stopped
     volumes:
       - subscription-master-db:/var/lib/postgresql/data
