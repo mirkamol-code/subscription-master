@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -60,6 +61,11 @@ class SubscriptionControllerTest {
                 SubscriptionCategory.ENTERTAINMENT,
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 10, 15),
+                null,
+                false,
+                false,
+                null,
+                null,
                 0L
         );
     }
@@ -75,6 +81,7 @@ class SubscriptionControllerTest {
                 eq(LocalDate.of(2026, 10, 31)),
                 any(),
                 any(),
+                anyBoolean(),
                 any()
         )).thenReturn(new PageImpl<>(List.of(sampleResponse), org.springframework.data.domain.PageRequest.of(0, 20), 1));
 
@@ -92,7 +99,7 @@ class SubscriptionControllerTest {
 
     @Test
     void listAll_shouldReturnListDirectly() throws Exception {
-        when(subscriptionService.listAll(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(subscriptionService.listAll(any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
                 .thenReturn(List.of(sampleResponse));
 
         mockMvc.perform(get("/subscriptions/all"))
@@ -133,30 +140,6 @@ class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.month").value(10))
                 .andExpect(jsonPath("$.currency").value("UZS"))
                 .andExpect(jsonPath("$.days[0].dayTotalUzs").value(166921.50));
-    }
-
-    @Test
-    void pause_shouldReturnPausedSubscription() throws Exception {
-        SubscriptionResponse paused = new SubscriptionResponse(
-                1L, "Netflix", new BigDecimal("12.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, SubscriptionStatus.PAUSED,
-                SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 10, 15), 0L
-        );
-        when(subscriptionService.pause(1L)).thenReturn(paused);
-
-        mockMvc.perform(post("/subscriptions/1/pause"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PAUSED"));
-    }
-
-    @Test
-    void resume_shouldReturnResumedSubscription() throws Exception {
-        when(subscriptionService.resume(1L)).thenReturn(sampleResponse);
-
-        mockMvc.perform(post("/subscriptions/1/resume"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test

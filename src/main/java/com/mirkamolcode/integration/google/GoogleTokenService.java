@@ -59,6 +59,19 @@ public class GoogleTokenService {
         }
     }
 
+    public void invalidate(Long userId) {
+        cache.invalidate(userId);
+    }
+
+    @Transactional
+    public void markDisconnected(Long userId) {
+        cache.invalidate(userId);
+        connections.findByUserId(userId).ifPresent(connection -> {
+            connection.disconnect();
+            connections.save(connection);
+        });
+    }
+
     private static GmailDisconnectedException reconnectRequired() {
         return new GmailDisconnectedException("Gmail access was revoked or expired; please reconnect your Google account");
     }

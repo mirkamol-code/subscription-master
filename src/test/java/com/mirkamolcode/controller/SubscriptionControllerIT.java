@@ -112,20 +112,20 @@ class SubscriptionControllerIT extends AbstractTestConfig {
     }
 
     @Test
-    void user_shouldNotPauseResumeOrReadHistoryOfAnotherUsersSubscription() {
+    void user_shouldNotHideUnhideOrReadHistoryOfAnotherUsersSubscription() {
         String ownerAuthorization = bearer(signIn("owner-actions@example.com"));
         String otherAuthorization = bearer(signIn("other-actions@example.com"));
         SubscriptionResponse ownerSubscription = createSubscription(
                 ownerAuthorization, request("Owner only", "9.99", CurrencyCode.USD));
 
         webTestClient.post()
-                .uri(API + "/subscriptions/{id}/pause", ownerSubscription.id())
+                .uri(API + "/subscriptions/{id}/hide", ownerSubscription.id())
                 .header("Authorization", otherAuthorization)
                 .exchange()
                 .expectStatus().isNotFound();
 
         webTestClient.post()
-                .uri(API + "/subscriptions/{id}/resume", ownerSubscription.id())
+                .uri(API + "/subscriptions/{id}/unhide", ownerSubscription.id())
                 .header("Authorization", otherAuthorization)
                 .exchange()
                 .expectStatus().isNotFound();
@@ -262,36 +262,6 @@ class SubscriptionControllerIT extends AbstractTestConfig {
                 .expectBody()
                 .jsonPath("$.length()").isEqualTo(1)
                 .jsonPath("$[0].name").isEqualTo("My_Box");
-    }
-
-    @Test
-    void pauseAndResume_shouldReturnConflict_whenSubscriptionIsInWrongState() {
-        String authorization = bearer(signIn("owner-conflict@example.com"));
-        SubscriptionResponse subscription = createSubscription(authorization, request("Netflix", "12.99", CurrencyCode.USD));
-
-        webTestClient.post()
-                .uri(API + "/subscriptions/{id}/resume", subscription.id())
-                .header("Authorization", authorization)
-                .exchange()
-                .expectStatus().isEqualTo(409)
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("CONFLICT");
-
-        webTestClient.post()
-                .uri(API + "/subscriptions/{id}/pause", subscription.id())
-                .header("Authorization", authorization)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("PAUSED");
-
-        webTestClient.post()
-                .uri(API + "/subscriptions/{id}/pause", subscription.id())
-                .header("Authorization", authorization)
-                .exchange()
-                .expectStatus().isEqualTo(409)
-                .expectBody()
-                .jsonPath("$.code").isEqualTo("CONFLICT");
     }
 
     @Test

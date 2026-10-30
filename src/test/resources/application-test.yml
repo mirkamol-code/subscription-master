@@ -24,6 +24,11 @@ app:
     admin-emails: admin@example.com
   google:
     oauth-base-url: http://localhost:9998
+  gmail:
+    api-base-url: http://localhost:9997
+    retry-initial-backoff: 1ms
+    sync:
+      async-enabled: false
   seed:
     enabled: false
   jwt:
@@ -38,3 +43,8 @@ app:
     gmail:
       enabled: false
     gmail-from: mirkamol.m.a@gmail.com
+resilience4j:
+  retry:
+    instances:
+      googleOAuth:
+        wait-duration: 1ms

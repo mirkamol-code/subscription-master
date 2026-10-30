@@ -1,0 +1,93 @@
+{
+  "id": "18c2a1f0adobe0001",
+  "threadId": "18c2a1f0adobe0001",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Hi Alex,\nThanks for your purchase. Your invoice for Creative Cloud All Apps is a",
+  "historyId": "184467",
+  "internalDate": "1791815400000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/mixed",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Adobe <message@adobe.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Adobe invoice is ready"
+      },
+      {
+        "name": "Date",
+        "value": "Mon, 12 Oct 2026 14:30:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [],
+        "body": {
+          "size": 0
+        },
+        "parts": [
+          {
+            "partId": "0.0",
+            "mimeType": "text/plain",
+            "filename": "",
+            "headers": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=UTF-8"
+              }
+            ],
+            "body": {
+              "size": 188,
+              "data": "SGkgQWxleCwKVGhhbmtzIGZvciB5b3VyIHB1cmNoYXNlLiBZb3VyIGludm9pY2UgZm9yIENyZWF0aXZlIENsb3VkIEFsbCBBcHBzIGlzIGF0dGFjaGVkLgpQbGFuOiBDcmVhdGl2ZSBDbG91ZCBBbGwgQXBwcyAoYmlsbGVkIG1vbnRobHkpClRvdGFsIFVTJDU5Ljk5Ckludm9pY2UgbnVtYmVyOiAxMjM0NTY3ODkwCkFkb2JlIEluYy4"
+            }
+          }
+        ]
+      },
+      {
+        "partId": "1",
+        "mimeType": "application/pdf",
+        "filename": "Invoice_1234567890.pdf",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/pdf; name=\"Invoice_1234567890.pdf\""
+          },
+          {
+            "name": "Content-Disposition",
+            "value": "attachment; filename=\"Invoice_1234567890.pdf\""
+          }
+        ],
+        "body": {
+          "attachmentId": "ANGjdJ8_recorded_attachment_id_adobe",
+          "size": 48213
+        }
+      }
+    ]
+  }
+}

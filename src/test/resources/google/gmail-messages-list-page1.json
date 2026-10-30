@@ -1,0 +1,8 @@
+{
+  "messages": [
+    { "id": "18c2a1f0netflix01", "threadId": "18c2a1f0netflix01" },
+    { "id": "18c2a1f0adobe0001", "threadId": "18c2a1f0adobe0001" }
+  ],
+  "nextPageToken": "09876543210987654321",
+  "resultSizeEstimate": 3
+}

@@ -1,6 +1,6 @@
 package com.mirkamolcode.model;
 public enum SubscriptionStatus {
     ACTIVE,
-    PAUSED,
-    CANCELLED
+    CANCELLED,
+    BILLING_REQUIRED
 }

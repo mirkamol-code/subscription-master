@@ -18,6 +18,11 @@ public record SubscriptionResponse(
         SubscriptionCategory category,
         LocalDate startDate,
         LocalDate nextPaymentDate,
+        String merchantKey,
+        boolean needsReview,
+        boolean hidden,
+        LocalDate lastPaymentDate,
+        String logoDomain,
         long version
 ){
 }

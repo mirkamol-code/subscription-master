@@ -6,6 +6,7 @@ import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.model.Role;
+import com.mirkamolcode.repository.BillingEmailRepository;
 import com.mirkamolcode.repository.ExchangeRateRepository;
 import com.mirkamolcode.repository.GmailConnectionRepository;
 import com.mirkamolcode.repository.LoginCodeRepository;
@@ -55,6 +56,8 @@ public abstract class AbstractTestConfig {
     @Autowired
     protected LoginCodeRepository loginCodeRepository;
     @Autowired
+    protected BillingEmailRepository billingEmailRepository;
+    @Autowired
     protected GmailConnectionRepository gmailConnectionRepository;
     @Autowired
     protected LoginCodeService loginCodeService;
@@ -63,6 +66,7 @@ public abstract class AbstractTestConfig {
     @AfterEach
     void cleanDatabase() {
         paymentHistoryRepository.deleteAll();
+        billingEmailRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         loginCodeRepository.deleteAll();
         gmailConnectionRepository.deleteAll();

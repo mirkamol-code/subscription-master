@@ -1,0 +1,19 @@
+{
+  "history": [
+    {
+      "id": "184470",
+      "messages": [ { "id": "18c2a1f0openai001", "threadId": "18c2a1f0openai001" } ],
+      "messagesAdded": [
+        { "message": { "id": "18c2a1f0openai001", "threadId": "18c2a1f0openai001", "labelIds": [ "UNREAD", "CATEGORY_UPDATES", "INBOX" ] } }
+      ]
+    },
+    {
+      "id": "184471",
+      "messages": [ { "id": "18c2a1f0netflix01", "threadId": "18c2a1f0netflix01" } ],
+      "labelsRemoved": [
+        { "message": { "id": "18c2a1f0netflix01", "threadId": "18c2a1f0netflix01", "labelIds": [ "INBOX" ] }, "labelIds": [ "UNREAD" ] }
+      ]
+    }
+  ],
+  "historyId": "184475"
+}

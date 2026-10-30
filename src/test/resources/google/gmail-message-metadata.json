@@ -1,0 +1,16 @@
+{
+  "id": "18c2a1f0netflix01",
+  "threadId": "18c2a1f0netflix01",
+  "labelIds": [ "INBOX", "CATEGORY_UPDATES" ],
+  "snippet": "Thanks for your payment Hi Alex, Membership: Premium",
+  "historyId": "184467",
+  "internalDate": "1793350800000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "mimeType": "multipart/alternative",
+    "headers": [
+      { "name": "From", "value": "Netflix <info@account.netflix.com>" },
+      { "name": "Subject", "value": "Your Netflix membership receipt" }
+    ]
+  }
+}

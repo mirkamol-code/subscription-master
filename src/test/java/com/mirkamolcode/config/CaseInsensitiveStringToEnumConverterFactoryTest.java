@@ -20,7 +20,7 @@ class CaseInsensitiveStringToEnumConverterFactoryTest {
         assertThat(converter.convert("active")).isEqualTo(SubscriptionStatus.ACTIVE);
         assertThat(converter.convert("ACTIVE")).isEqualTo(SubscriptionStatus.ACTIVE);
         assertThat(converter.convert("Active")).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(converter.convert("paused")).isEqualTo(SubscriptionStatus.PAUSED);
+        assertThat(converter.convert("billing_required")).isEqualTo(SubscriptionStatus.BILLING_REQUIRED);
         assertThat(converter.convert("cancelled")).isEqualTo(SubscriptionStatus.CANCELLED);
     }
 

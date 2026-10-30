@@ -217,72 +217,6 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void pause_shouldChangeStatusToPaused() {
-        Subscription subscription = subscription(owner, "Netflix");
-        givenOwnerCanUpdate(subscription);
-        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
-
-        SubscriptionResponse result = underTest.pause(7L);
-
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAUSED);
-    }
-
-    @Test
-    void pause_shouldThrowWhenAlreadyPaused() {
-        Subscription subscription = subscription(owner, "Netflix");
-        subscription.pause();
-        givenOwnerCanUpdate(subscription);
-
-        assertThatThrownBy(() -> underTest.pause(7L))
-                .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("already paused");
-    }
-
-    @Test
-    void resume_shouldChangeStatusToActive() {
-        Subscription subscription = subscription(owner, "Netflix");
-        subscription.pause();
-        givenOwnerCanUpdate(subscription);
-        when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
-
-        SubscriptionResponse result = underTest.resume(7L);
-
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-    }
-
-    @Test
-    void resume_shouldThrowWhenAlreadyActive() {
-        Subscription subscription = subscription(owner, "Netflix");
-        givenOwnerCanUpdate(subscription);
-
-        assertThatThrownBy(() -> underTest.resume(7L))
-                .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("already active");
-    }
-
-    @Test
-    void pause_shouldThrowWhenCancelled() {
-        Subscription subscription = subscription(owner, "Netflix", SubscriptionStatus.CANCELLED);
-        givenOwnerCanUpdate(subscription);
-
-        assertThatThrownBy(() -> underTest.pause(7L))
-                .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("Only active subscriptions can be paused");
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
-    }
-
-    @Test
-    void resume_shouldThrowWhenCancelled() {
-        Subscription subscription = subscription(owner, "Netflix", SubscriptionStatus.CANCELLED);
-        givenOwnerCanUpdate(subscription);
-
-        assertThatThrownBy(() -> underTest.resume(7L))
-                .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("Only paused subscriptions can be resumed");
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
-    }
-
-    @Test
     void upcoming_shouldReturnActiveSubscriptionsWithinDays() {
         Subscription subscription = subscription(owner, "Netflix");
         when(currentUserService.hasPermission(Permission.SUBSCRIPTION_READ_ALL)).thenReturn(false);
@@ -326,7 +260,7 @@ class SubscriptionServiceTest {
         when(subscriptionMapper.toResponse(subscription)).thenReturn(response(subscription));
 
         java.util.List<SubscriptionResponse> results = underTest.listAll(
-                SubscriptionStatus.ACTIVE, CurrencyCode.USD, SubscriptionCategory.ENTERTAINMENT, "Net", null, null, null, null
+                SubscriptionStatus.ACTIVE, CurrencyCode.USD, SubscriptionCategory.ENTERTAINMENT, "Net", null, null, null, null, false
         );
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
@@ -402,6 +336,7 @@ class SubscriptionServiceTest {
         return new SubscriptionResponse(subscription.getId(), subscription.getName(), subscription.getPrice(),
                 subscription.getCurrency(), subscription.getFrequency(), subscription.getStatus(),
                 subscription.getCategory(), subscription.getStartDate(), subscription.getNextPaymentDate(),
-                subscription.getVersion());
+                subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.isHidden(),
+                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getVersion());
     }
 }

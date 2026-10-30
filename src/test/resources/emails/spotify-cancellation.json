@@ -1,0 +1,63 @@
+{
+  "id": "18c2a1f0spotify01",
+  "threadId": "18c2a1f0spotify01",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Hi Alex,\nWe're sorry to see you go. Your Premium subscription has been canceled ",
+  "historyId": "184467",
+  "internalDate": "1793607300000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "From",
+        "value": "Spotify <no-reply@spotify.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Premium subscription has been canceled"
+      },
+      {
+        "name": "Date",
+        "value": "Mon, 2 Nov 2026 08:15:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 257,
+          "data": "SGkgQWxleCwKV2UncmUgc29ycnkgdG8gc2VlIHlvdSBnby4gWW91ciBQcmVtaXVtIHN1YnNjcmlwdGlvbiBoYXMgYmVlbiBjYW5jZWxlZCBhbmQgeW91IHdvbid0IGJlIGNoYXJnZWQgYWdhaW4uCllvdSdsbCBrZWVwIFByZW1pdW0gdW50aWwgRGVjZW1iZXIgMSwgMjAyNi4gQWZ0ZXIgdGhhdCB5b3VyIGFjY291bnQgc3dpdGNoZXMgdG8gU3BvdGlmeSBGcmVlLgpDaGFuZ2VkIHlvdXIgbWluZD8gWW91IGNhbiByZXN0YXJ0IFByZW1pdW0gYW55dGltZS4"
+        }
+      }
+    ]
+  }
+}
