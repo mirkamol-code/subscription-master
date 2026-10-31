@@ -24,6 +24,9 @@ jobs:
       VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       APP_ADMIN_EMAILS: ${{ secrets.APP_ADMIN_EMAILS }}
+      SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+      SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+      SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,7 +73,7 @@ jobs:
         run: |
           encode() { printf '%s' "$1" | base64 -w0; }
           SERVER_ENV=""
-          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET POSTGRES_USER POSTGRES_PASSWORD VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS; do
+          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET POSTGRES_USER POSTGRES_PASSWORD VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; do
             if [ -n "${!name}" ]; then
               encoded=$(encode "${!name}")
               echo "::add-mask::$encoded"
