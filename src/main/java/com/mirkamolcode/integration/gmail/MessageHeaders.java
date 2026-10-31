@@ -13,6 +13,10 @@ public record MessageHeaders(
         return listId != null && !listId.isBlank();
     }
 
+    public boolean hasUnsubscribeLink() {
+        return listUnsubscribe != null && !listUnsubscribe.isBlank();
+    }
+
     public MessageHeaders withAuthenticationResults(String results) {
         return new MessageHeaders(listId, listUnsubscribe, results);
     }

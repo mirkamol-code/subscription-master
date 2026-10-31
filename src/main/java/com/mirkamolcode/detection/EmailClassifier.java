@@ -14,6 +14,9 @@ public class EmailClassifier {
     private static final Pattern REPOSITORY_TAG = Pattern.compile("\\[\\p{Alpha}[\\w.-]*/[\\w.-]+\\]");
 
     private final Pattern receiptSubject;
+    private final Pattern subscriptionSubject;
+    private final Pattern paymentDue;
+    private final Pattern freePlan;
     private final Pattern paymentConfirmation;
     private final Pattern cancellation;
     private final Pattern paymentFailed;
@@ -23,6 +26,9 @@ public class EmailClassifier {
     public EmailClassifier(DetectionProperties properties) {
         DetectionProperties.Keywords keywords = properties.keywords();
         this.receiptSubject = anyPhrase(keywords.receiptSubject());
+        this.subscriptionSubject = anyPhrase(keywords.subscriptionSubject());
+        this.paymentDue = anyPhrase(keywords.paymentDue());
+        this.freePlan = anyPhrase(keywords.freePlan());
         this.paymentConfirmation = anyPhrase(keywords.paymentConfirmation());
         this.cancellation = anyPhrase(keywords.cancellation());
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
@@ -40,9 +46,24 @@ public class EmailClassifier {
             return EmailKind.PAYMENT_FAILED;
         if (cancellation.matcher(subject).find() || cancellation.matcher(body).find())
             return EmailKind.CANCELLATION;
-        if (receiptSubject.matcher(subject).find() || confirmsPayment)
+        if (paymentDue.matcher(subject).find() && !confirmsPayment)
+            return EmailKind.IRRELEVANT;
+        boolean isTransaction = receiptSubject.matcher(subject).find() || confirmsPayment;
+        if (isMarketing(message, isTransaction))
+            return EmailKind.IRRELEVANT;
+        if (isTransaction || subscriptionSubject.matcher(subject).find())
             return EmailKind.RECEIPT;
         return EmailKind.IRRELEVANT;
+    }
+
+    public boolean mentionsFreePlan(GmailMessage message) {
+        return freePlan.matcher(message.subject()).find() || freePlan.matcher(message.bodyText()).find();
+    }
+
+    private boolean isMarketing(GmailMessage message, boolean isTransaction) {
+        return message.headers().hasUnsubscribeLink()
+                && !isTransaction
+                && promotion.matcher(message.subject() + " " + message.bodyText()).find();
     }
 
     public boolean isConversation(GmailMessage message) {
@@ -59,7 +80,9 @@ public class EmailClassifier {
     public boolean hasBillingSubject(GmailMessage headers) {
         String subject = headers.subject();
         return !promotion.matcher(subject).find()
-                && (receiptSubject.matcher(subject).find() || cancellation.matcher(subject).find() || paymentFailed.matcher(subject).find());
+                && !paymentDue.matcher(subject).find()
+                && (receiptSubject.matcher(subject).find() || subscriptionSubject.matcher(subject).find()
+                || cancellation.matcher(subject).find() || paymentFailed.matcher(subject).find());
     }
 
     private static Pattern anyPhrase(List<String> phrases) {

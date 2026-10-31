@@ -84,9 +84,12 @@ app:
       query: 'subject:(receipt OR invoice OR subscription OR renewal OR renewed OR "payment received" OR "your plan" OR billing OR "payment failed" OR declined OR canceled OR cancelled)'
       lookback: 1y
       keywords:
-        receipt-subject: [receipt, invoice, "payment received", "payment confirmation", "your plan", renewal, renewed, billing, subscription, "order confirmation", "thanks for your payment"]
+        receipt-subject: [receipt, invoice, "payment received", "payment confirmation", "order confirmation", "thanks for your payment", "your receipt"]
+        subscription-subject: ["your subscription", renewal, renewed]
+        payment-due: ["payment due", "payment is due", "due soon", "upcoming payment", "upcoming renewal", "renews soon", "will be charged", "we will charge"]
+        free-plan: [free, "at no cost", "no charge"]
         payment-confirmation: ["thanks for your payment", "thank you for your payment", "payment received", "amount charged", "you paid", "we charged", "your card was charged", "payment confirmation"]
-        cancellation: ["has been canceled", "has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
+        cancellation: ["has been canceled", "has been cancelled", "subscription was canceled", "subscription was cancelled", "subscription canceled", "subscription cancelled", "won't renew", "will not renew", "plan ended", "plan has ended", "plan has been canceled", "plan has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
         promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, "free trial", webinar, newsletter]
         access-ends: [until, "ends on", "end on", "will end", "expires on", "expire on", "access until", "active until"]

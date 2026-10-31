@@ -63,6 +63,62 @@ class EmailClassifierTest {
         assertThat(conversation).isTrue();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Your Claude Pro subscription was canceled",
+            "Your ChatGPT Plus subscription cancelled",
+            "Your plan won't renew",
+            "Your Google One plan will not renew",
+            "Your Gemini plan ended",
+            "Your plan has ended"
+    })
+    void classify_shouldDetectCancellationWording(String subject) {
+        // given
+        GmailMessage message = messageWith(subject, MessageHeaders.none());
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isEqualTo(EmailKind.CANCELLATION);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Your receipt from Anthropic",
+            "Payment received for your Google One plan",
+            "Your invoice for October",
+            "Your subscription renewal"
+    })
+    void classify_shouldTreatReceiptWordingAsReceipt(String subject) {
+        // given
+        GmailMessage message = messageWith(subject, MessageHeaders.none());
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isEqualTo(EmailKind.RECEIPT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Billing information for your workspace",
+            "Your plan is waiting",
+            "Subscription payment due soon: Netflix",
+            "Upcoming payment for Spotify Premium"
+    })
+    void classify_shouldIgnoreSubjectsWithoutTransaction(String subject) {
+        // given
+        GmailMessage message = messageWith(subject, MessageHeaders.none());
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
     private static GmailMessage messageWith(String subject, MessageHeaders headers) {
         return new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"), "Sender <billing@sender.example>", subject,
                 null, null, List.of(), headers);

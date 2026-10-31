@@ -1,0 +1,58 @@
+{
+  "id": "19a0notion0news01",
+  "threadId": "19a0notion0news01",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Notion AI is now part of every Business plan.\n\nUpgrade today and save 20% with annual billing: just ",
+  "historyId": "190001",
+  "internalDate": "1792756800000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Notion <team@mail.notion.so>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@mail.notion.so header.s=s1 header.b=abc; spf=pass (google.com: domain of bounce@mail.notion.so designates 198.51.100.9 as permitted sender) smtp.mailfrom=bounce@mail.notion.so; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=mail.notion.so"
+      },
+      {
+        "name": "List-Unsubscribe",
+        "value": "<https://www.notion.so/unsubscribe?u=abc>, <mailto:unsubscribe@mail.notion.so>"
+      },
+      {
+        "name": "Subject",
+        "value": "Your plan just got better: Notion AI for everyone"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 258,
+          "data": "Tm90aW9uIEFJIGlzIG5vdyBwYXJ0IG9mIGV2ZXJ5IEJ1c2luZXNzIHBsYW4uCgpVcGdyYWRlIHRvZGF5IGFuZCBzYXZlIDIwJSB3aXRoIGFubnVhbCBiaWxsaW5nOiBqdXN0ICQxMCBwZXIgbW9udGguClRoaXMgb2ZmZXIgZW5kcyBOb3ZlbWJlciAzMC4KClJlYWQgdGhlIHJlbGVhc2Ugbm90ZXMKCllvdSBhcmUgcmVjZWl2aW5nIHRoaXMgbmV3c2xldHRlciBiZWNhdXNlIHlvdSBzaWduZWQgdXAgZm9yIHByb2R1Y3QgdXBkYXRlcy4gVW5zdWJzY3JpYmUu"
+        }
+      }
+    ]
+  }
+}

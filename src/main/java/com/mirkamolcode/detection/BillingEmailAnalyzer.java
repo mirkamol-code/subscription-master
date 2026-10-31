@@ -38,7 +38,9 @@ public class BillingEmailAnalyzer {
         if (kind != EmailKind.RECEIPT)
             return new BillingEmailAnalysis(kind, merchant, null, null);
 
-        Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message);
+        Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message).map(BillingEmailAnalyzer::dropNonPositiveAmount);
+        if (classifier.mentionsFreePlan(message) && !hasAmount(parsed))
+            return BillingEmailAnalysis.irrelevant();
         if (!merchant.known() && !hasRecurringBilling(parsed))
             return BillingEmailAnalysis.irrelevant();
         return new BillingEmailAnalysis(kind, merchant, complete(parsed, merchant, message), null);
@@ -48,6 +50,16 @@ public class BillingEmailAnalyzer {
         if (classifier.isConversation(headers) || !senders.isTrusted(headers))
             return false;
         return merchants.isKnownSender(headers) || classifier.hasBillingSubject(headers);
+    }
+
+    private static ParsedBilling dropNonPositiveAmount(ParsedBilling billing) {
+        if (billing.amount() == null || billing.amount().signum() > 0)
+            return billing;
+        return new ParsedBilling(null, null, billing.cycle(), billing.paymentDate(), billing.nextBillingDate(), billing.confidence());
+    }
+
+    private static boolean hasAmount(Optional<ParsedBilling> parsed) {
+        return parsed.map(billing -> billing.amount() != null).orElse(false);
     }
 
     private static boolean hasRecurringBilling(Optional<ParsedBilling> parsed) {

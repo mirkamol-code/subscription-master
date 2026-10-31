@@ -311,4 +311,95 @@ class BillingEmailAnalyzerTest {
         // then
         assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
     }
+
+    @Test
+    void analyze_shouldIgnoreFreePlanOnboarding_evenWhenItShowsZeroCharge() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("copilot-free-access.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void analyze_shouldIgnoreNewsletter_withUnsubscribeLinkAndNoTransaction() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("notion-newsletter.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void analyze_shouldIgnorePromotionalSubscriptionEmail_whenOnlyTheBodyAdvertises() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Spotify <no-reply@spotify.com>", "Your subscription, upgraded", null,
+                "Upgrade to Premium Family and save 25%: $16.99 per month.", List.of(),
+                new MessageHeaders(null, "<https://www.spotify.com/unsubscribe>", null)));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void analyze_shouldKeepReceipt_whenItAlsoCarriesUnsubscribeLinkAndPromoFooter() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Spotify <no-reply@spotify.com>", "Your Spotify Premium receipt", null,
+                "Thanks for your payment. Amount charged: $10.99 per month. Upgrade to Family and save.", List.of(),
+                new MessageHeaders(null, "<https://www.spotify.com/unsubscribe>", null)));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("10.99");
+    }
+
+    @Test
+    void analyze_shouldIgnorePaymentDueReminder_fromRealMerchant() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Upcoming renewal: your Netflix payment is due soon", null,
+                "Your membership renews on November 5, 2026. We will charge $15.49 to your card on file."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void analyze_shouldKeepRenewalReceipt_thatAlsoNamesTheNextRenewalDate() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Your Netflix membership receipt", null,
+                "Thanks for your payment. Amount charged: $15.49 per month. Your membership renews on November 30, 2026."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+    }
+
+    @Test
+    void analyze_shouldNotTreatZeroAmountAsPrice() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Your Netflix membership receipt", null,
+                "Thanks for your payment. Amount charged: $0.00 this month thanks to your gift card."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.isPayment()).isFalse();
+    }
 }

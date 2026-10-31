@@ -21,6 +21,9 @@ public record DetectionProperties(
 
     public record Keywords(
             List<String> receiptSubject,
+            List<String> subscriptionSubject,
+            List<String> paymentDue,
+            List<String> freePlan,
             List<String> paymentConfirmation,
             List<String> cancellation,
             List<String> paymentFailed,
