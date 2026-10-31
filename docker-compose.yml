@@ -40,6 +40,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
     # Published on the loopback interface only, for the host's Nginx; not reachable from outside
     ports:
       - "127.0.0.1:${APP_HOST_PORT:-8080}:8080"
@@ -52,7 +53,9 @@ services:
       retries: 5
       start_period: 30s
 
+  # Only when the app uses the local database instead of RDS: docker compose --profile local-db up -d
   db:
+    profiles: ["local-db"]
     container_name: subscription_master_db
     image: postgres:16
     environment:

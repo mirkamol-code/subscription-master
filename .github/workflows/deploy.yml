@@ -132,9 +132,13 @@ jobs:
               sed -i -E "s|image: .*(subscription-master).*|image: $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER|" docker-compose.yml
             fi
 
-            # 5. Pull and restart the app service (and the database it depends on), nothing else
-            docker compose pull $DOCKER_COMPOSE_APP_SERVICE_NAME
-            docker compose up -d $DOCKER_COMPOSE_APP_SERVICE_NAME
+            # 5. Pull and restart the app service, plus the local database when no RDS datasource is configured
+            PROFILE_ARGS=""
+            if ! grep -q "^SPRING_DATASOURCE_URL=" .env; then
+              PROFILE_ARGS="--profile local-db"
+            fi
+            docker compose \$PROFILE_ARGS pull $DOCKER_COMPOSE_APP_SERVICE_NAME
+            docker compose \$PROFILE_ARGS up -d $DOCKER_COMPOSE_APP_SERVICE_NAME
 
             # 6. Fail the deploy unless the container compose just started becomes healthy
             APP_CONTAINER=\$(docker compose ps -q $DOCKER_COMPOSE_APP_SERVICE_NAME)

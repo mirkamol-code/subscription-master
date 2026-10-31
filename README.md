@@ -193,7 +193,7 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 mvn clean verify
 ```
 
-To run the full stack in containers instead, put the same variables in `.env` and run `docker compose up --build -d`.
+To run the full stack in containers instead, put the same variables in `.env` and run `docker compose --profile local-db up --build -d`. Leave out `--profile local-db` when `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` in `.env` point to an external database such as RDS.
 
 ## Tech stack
 
