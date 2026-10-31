@@ -1,6 +1,7 @@
 services:
   app:
     container_name: subscription-master
+    restart: unless-stopped
     image: subscription-master:latest
     build:
       context: .
