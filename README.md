@@ -49,7 +49,10 @@ The Google refresh token never leaves the server. Access tokens are refreshed au
 ### Gmail sync
 
 - **Full sync** runs right after the first Gmail connection, **incremental sync** runs every 6 hours (Gmail history), and `POST /api/gmail/sync` starts one on demand. Exactly one sync runs per user at a time.
-- Billing emails are found with a configurable Gmail query plus a list of known senders (Netflix, Spotify, Apple, Google Play, YouTube, Amazon Prime, Microsoft, Adobe, ChatGPT/OpenAI, Notion, GitHub, Canva, Dropbox, …) in `application.yml` under `app.gmail.detection`.
+- Billing emails are found with a configurable Gmail query over the last 13 months, plus a list of known senders (Netflix, Spotify, Apple, YouTube, Amazon Prime, Microsoft, Adobe, ChatGPT/OpenAI, Claude, Notion, GitHub, Canva, Dropbox, …) and payment processors (Stripe, Paddle, Google Payments, Google Play, Apple) in `application.yml` under `app.gmail.detection`.
+- A billing email counts only when Gmail's own `Authentication-Results` show an SPF, DKIM or DMARC pass for the sender's organization, and never from a personal mailbox (gmail.com, outlook.com, …). Mailing-list threads (`List-Id`), replies and forwards, GitHub-style `[owner/repo]` threads, payment-due reminders, free-plan onboarding and newsletters without a transaction are skipped.
+- Receipts sent through a payment processor are matched to the merchant named in the subject or body (for example Claude on a Stripe receipt, Google One on a Google Play receipt). A known merchant's name in the subject of an email from an unrelated sender is rejected.
+- Every subscription comes from at least one receipt with an amount, currency and date; its source Gmail messages are listed under `GET /subscriptions/{id}/emails`. Subscriptions cannot be added by hand.
 - Each email is classified (receipt, cancellation, payment failure, irrelevant) and parsed in this order: **schema.org JSON-LD → sender-specific parser → heuristics** for amounts, currencies (including `UZS 120 000`, `so'm`, `сум`), billing cycles and dates. Guessed values mark the subscription **Needs review**.
 - Promotions and one-off purchases (newsletters, bank offers, ride or shop receipts from unknown senders) are ignored on purpose: a missed subscription is better than a false one.
 - Emails from one merchant become one subscription with one payment per receipt. Re-running a sync never duplicates anything; a failing email is retried up to three times without blocking newer mail.
@@ -78,7 +81,7 @@ The newest evidence always wins, and every change is kept in the status history 
 | Auth | `GET /oauth2/authorization/google`, `POST /auth/exchange`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` |
 | Gmail | `GET /me/gmail`, `POST /gmail/sync`, `GET /gmail/sync-status`, `DELETE /me/gmail` (disconnect and delete data) |
 | Account | `DELETE /me` (delete the account and everything in it) |
-| Subscriptions | `GET /subscriptions` (filters, `?hidden=true`), `GET /subscriptions/all`, `GET /subscriptions/upcoming`, `GET /subscriptions/calendar`, `GET/PUT/DELETE /subscriptions/{id}`, `POST /subscriptions` (manual entry) |
+| Subscriptions | `GET /subscriptions` (filters, `?hidden=true`), `GET /subscriptions/all`, `GET /subscriptions/upcoming`, `GET /subscriptions/calendar`, `GET/PUT/DELETE /subscriptions/{id}` |
 | Subscription details | `GET /{id}/history` (payments), `GET /{id}/emails`, `GET /{id}/status-history`, `PUT /{id}/status`, `POST /{id}/hide`, `POST /{id}/unhide` |
 | Emails | `GET /emails/{id}/attachments/{attachmentId}[?download=true]` (invoice PDF), `GET /emails/{id}/content[?images=true]` (sanitized HTML) |
 | Notifications | `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/{id}/read`, `POST /notifications/read-all` |
@@ -119,7 +122,7 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 | `REMINDER_CRON` / `REMINDER_HOUR` | no | Reminder job schedule (hourly) and local hour reminders start (9) |
 | `STATUS_RULES_CRON` / `OVERDUE_GRACE_DAYS` | no | Status rules schedule (hourly) and overdue grace (5 days) |
 | `GMAIL_ATTACHMENT_MAX_BYTES` | no | Largest invoice PDF served, default 25 MB |
-| `APP_SEED_ENABLED` | no | Demo data, local only |
+| `APP_SEED_ENABLED` | no | Demo data for `demo@subscribemaster.local`, local only |
 | `SERVER_PORT` | no | HTTP port, default `8080` |
 | `HIBERNATE_SHOW_SQL` / `HIBERNATE_FORMAT_SQL` | no | SQL logging for debugging, default off |
 

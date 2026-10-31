@@ -3,7 +3,6 @@ package com.mirkamolcode.repository;
 import com.mirkamolcode.entity.Subscription;
 
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +14,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long>, JpaSpecificationExecutor<Subscription> {
+    boolean existsByUserId(Long userId);
+
     List<Subscription> findByIsDeletedFalseAndStatusAndNextPaymentDateLessThanEqual(SubscriptionStatus status, LocalDate date);
 
     List<Subscription> findByIsDeletedFalseAndStatusAndNextPaymentDate(SubscriptionStatus status, LocalDate date);
@@ -39,14 +40,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             """)
     List<Long> findDailyRuleCandidateIds(@Param("latestLocalDate") LocalDate latestLocalDate,
                                          @Param("overdueBefore") LocalDate overdueBefore);
-
-    @Query("""
-            select s from Subscription s
-             where s.user.id = :userId and s.merchantKey is null and s.isDeleted = false
-               and lower(s.name) in :lowercaseNames
-             order by s.id
-            """)
-    List<Subscription> findManualByNames(@Param("userId") Long userId, @Param("lowercaseNames") Collection<String> lowercaseNames);
 
     @Modifying
     @Query("delete from Subscription e where e.user.id = :userId")

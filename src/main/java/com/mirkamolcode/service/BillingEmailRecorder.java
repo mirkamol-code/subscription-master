@@ -26,7 +26,6 @@ import com.mirkamolcode.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -140,9 +139,6 @@ public class BillingEmailRecorder {
         Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), merchant.key());
         if (existing.isPresent())
             return Optional.of(new TrackedSubscription(existing.get(), false));
-        Optional<Subscription> adopted = adoptManualSubscription(user, merchant);
-        if (adopted.isPresent())
-            return Optional.of(new TrackedSubscription(adopted.get(), true));
         if (!analysis.isPayment())
             return Optional.empty();
         Subscription created = subscriptions.save(createSubscription(user, merchant, analysis.billing()));
@@ -162,16 +158,6 @@ public class BillingEmailRecorder {
         if (billing.confidence() == Confidence.LOW)
             subscription.flagForReview();
         return subscription;
-    }
-
-    private Optional<Subscription> adoptManualSubscription(User user, Merchant merchant) {
-        Optional<Subscription> manual = subscriptions.findManualByNames(user.getId(), merchant.namesForMatching().stream()
-                        .map(name -> name.toLowerCase(Locale.ROOT))
-                        .toList())
-                .stream()
-                .findFirst();
-        manual.ifPresent(subscription -> subscription.linkMerchant(merchant.key(), merchant.logoDomain()));
-        return manual;
     }
 
     private void recordPayment(Subscription subscription, BillingEmail email, ParsedBilling billing) {

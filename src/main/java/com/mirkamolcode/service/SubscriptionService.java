@@ -19,7 +19,6 @@ import com.mirkamolcode.mapper.SubscriptionMapper;
 import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.entity.Subscription;
-import com.mirkamolcode.entity.User;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.PaymentHistoryRepository;
@@ -84,21 +83,6 @@ public class SubscriptionService {
         this.statusChangeRepository = statusChangeRepository;
         this.statusService = statusService;
         this.clock = clock;
-    }
-
-    @Transactional
-    public SubscriptionResponse create(SubscriptionRequest request) {
-        User user = currentUser.requiredUser();
-        return mapper.toResponse(repository.save(new Subscription(
-                user,
-                request.name(),
-                request.price(),
-                request.currency(),
-                request.frequency(),
-                request.status(),
-                request.category(),
-                request.startDate()
-        )));
     }
 
     public Page<SubscriptionResponse> list(SubscriptionStatus status,

@@ -3,7 +3,12 @@ package com.mirkamolcode;
 import com.mirkamolcode.dto.AuthDtos.ExchangeRequest;
 import com.mirkamolcode.dto.AuthDtos.TokenResponse;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
+import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.EmailKind;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
+import com.mirkamolcode.dto.response.UserProfileResponse;
+import com.mirkamolcode.entity.BillingEmail;
+import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.repository.BillingEmailRepository;
@@ -14,6 +19,7 @@ import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.RefreshTokenRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
 import com.mirkamolcode.repository.UserRepository;
+import java.time.ZoneOffset;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,14 +107,33 @@ public abstract class AbstractTestConfig {
     }
 
     protected SubscriptionResponse createSubscription(String authorization, SubscriptionRequest request) {
-        return webTestClient.post()
-                .uri(API + "/subscriptions")
+        User user = userRepository.findById(currentUserId(authorization)).orElseThrow();
+        Subscription subscription = subscriptionRepository.save(new Subscription(user, request.name(), request.price(),
+                request.currency(), request.frequency(), request.status(), request.category(), request.startDate()));
+        BillingEmail receipt = BillingEmail.relevant(user, "receipt-" + subscription.getId(), null, EmailKind.RECEIPT,
+                request.name() + " <billing@merchant.example>", "Your " + request.name() + " receipt",
+                request.startDate().atStartOfDay(ZoneOffset.UTC).toInstant(), Confidence.HIGH, null, null);
+        receipt.attachTo(subscription);
+        billingEmailRepository.save(receipt);
+        return webTestClient.get()
+                .uri(API + "/subscriptions/{id}", subscription.getId())
                 .header("Authorization", authorization)
-                .bodyValue(request)
                 .exchange()
-                .expectStatus().isCreated()
+                .expectStatus().isOk()
                 .expectBody(SubscriptionResponse.class)
                 .returnResult()
                 .getResponseBody();
+    }
+
+    private Long currentUserId(String authorization) {
+        return webTestClient.get()
+                .uri(API + "/auth/me")
+                .header("Authorization", authorization)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(UserProfileResponse.class)
+                .returnResult()
+                .getResponseBody()
+                .id();
     }
 }

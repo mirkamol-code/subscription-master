@@ -37,13 +37,6 @@ public class SubscriptionController {
         this.service = service;
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('SUBSCRIPTION_CREATE')")
-    public SubscriptionResponse create(@Valid @RequestBody SubscriptionRequest request) {
-        return service.create(request);
-    }
-
     @GetMapping
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_READ_OWN', 'SUBSCRIPTION_READ_ALL')")
     public Page<SubscriptionResponse> list(

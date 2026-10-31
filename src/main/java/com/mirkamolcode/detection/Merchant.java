@@ -13,8 +13,4 @@ public record Merchant(
         SubscriptionCategory category,
         BillingFrequency defaultCycle,
         boolean known
-) {
-    public List<String> namesForMatching() {
-        return java.util.stream.Stream.concat(java.util.stream.Stream.of(displayName), aliases.stream()).toList();
-    }
-}
+) {}

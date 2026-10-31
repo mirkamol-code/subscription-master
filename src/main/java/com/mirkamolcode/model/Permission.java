@@ -1,7 +1,6 @@
 package com.mirkamolcode.model;
 
 public enum Permission {
-    SUBSCRIPTION_CREATE,
     SUBSCRIPTION_READ_OWN,
     SUBSCRIPTION_READ_ALL,
     SUBSCRIPTION_UPDATE_OWN,
