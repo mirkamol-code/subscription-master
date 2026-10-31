@@ -113,8 +113,8 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 | `JWT_SECRET` | yes in production | JWT signing secret, at least 32 bytes |
 | `GOOGLE_REDIRECT_URI` | no | Defaults to `{baseUrl}/api/login/oauth2/code/google`; set it when behind a proxy |
 | `FRONTEND_BASE_URL` | no | Where login redirects with the one-time code; default `http://localhost:5173` |
-| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | no | PostgreSQL connection (local defaults provided) |
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | docker-compose | Database container settings |
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | docker-compose | PostgreSQL connection; Amazon RDS in production (local defaults provided for `mvn spring-boot:run`) |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | docker-compose-db-only | Local development database container |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | no | Web Push keys; push is disabled while empty (`npx web-push generate-vapid-keys`) |
 | `VAPID_SUBJECT` | no | Contact for push services, default `mailto:admin@subscriptionmaster.app` |
 | `APP_ADMIN_EMAILS` | no | Comma-separated emails that get the ADMIN role |
@@ -193,7 +193,7 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 mvn clean verify
 ```
 
-To run the full stack in containers instead, put the same variables in `.env` and run `docker compose --profile local-db up --build -d`. Leave out `--profile local-db` when `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` in `.env` point to an external database such as RDS.
+To run the app in a container instead, put the same variables in `.env` and run `docker compose up --build -d`. `docker-compose.yml` has no database of its own: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` must point to one (Amazon RDS in production).
 
 ## Tech stack
 

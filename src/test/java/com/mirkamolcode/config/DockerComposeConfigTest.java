@@ -61,12 +61,13 @@ class DockerComposeConfigTest {
     }
 
     @Test
-    void database_shouldBePublishedOnLocalhostOnly() {
+    void app_shouldUseExternalDatabaseOnly() {
         // when
-        Map<String, Object> db = service("db");
+        Map<String, Object> app = service("app");
 
         // then
-        assertThat((List<?>) db.get("ports")).singleElement().asString().startsWith("127.0.0.1:");
+        assertThat(service("db")).isNull();
+        assertThat(app).doesNotContainKey("depends_on");
     }
 
     @Test
@@ -76,38 +77,6 @@ class DockerComposeConfigTest {
 
         // then
         assertThat(String.valueOf(nginx.get("profiles"))).isEqualTo("[bundled-nginx]");
-    }
-
-    @Test
-    void localDatabase_shouldStartOnlyWhenItsProfileIsRequested() {
-        // when
-        Map<String, Object> db = service("db");
-
-        // then
-        assertThat(String.valueOf(db.get("profiles"))).isEqualTo("[local-db]");
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void app_shouldStartWithoutLocalDatabase_whenItUsesAnExternalOne() {
-        // when
-        Map<String, Object> dependsOn = (Map<String, Object>) service("app").get("depends_on");
-
-        // then
-        assertThat((Map<String, Object>) dependsOn.get("db"))
-                .containsEntry("condition", "service_healthy")
-                .containsEntry("required", false);
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void database_shouldFailToStart_whenCredentialIsMissing() {
-        // when
-        Map<String, Object> environment = (Map<String, Object>) service("db").get("environment");
-
-        // then
-        List.of("POSTGRES_USER", "POSTGRES_PASSWORD").forEach(name ->
-                assertThat(String.valueOf(environment.get(name))).as(name).contains(":?"));
     }
 
     private static Set<String> placeholdersWithoutDefault(PropertySource<?> source) {
