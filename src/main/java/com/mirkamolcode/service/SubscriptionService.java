@@ -212,9 +212,10 @@ public class SubscriptionService {
 
     public List<BillingEmailResponse> findEmails(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_READ_ALL);
+        Set<Long> pricedEmailIds = paymentHistoryRepository.findBillingEmailIdsBySubscriptionId(subscription.getId());
         return billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(subscription.getId())
                 .stream()
-                .map(SubscriptionService::mapToBillingEmailResponse)
+                .map(email -> mapToBillingEmailResponse(email, pricedEmailIds))
                 .toList();
     }
 
@@ -333,13 +334,14 @@ public class SubscriptionService {
                 email == null ? null : email.getReceivedAt());
     }
 
-    private static BillingEmailResponse mapToBillingEmailResponse(BillingEmail email) {
+    private static BillingEmailResponse mapToBillingEmailResponse(BillingEmail email, Set<Long> pricedEmailIds) {
         List<BillingEmailResponse.Attachment> attachments = email.getAttachments().stream()
                 .map(attachment -> new BillingEmailResponse.Attachment(
                         attachment.getId(), attachment.getFilename(), attachment.getMimeType(), attachment.getSizeBytes()))
                 .toList();
         return new BillingEmailResponse(email.getId(), email.getGmailMessageId(), email.getKind(), email.getSender(),
-                email.getSubject(), email.getReceivedAt(), email.getConfidence(), attachments);
+                email.getSubject(), email.getReceivedAt(), email.getConfidence(),
+                email.getKind() == EmailKind.RECEIPT && !pricedEmailIds.contains(email.getId()), attachments);
     }
 
     private Subscription requiredAccessible(Long id, Permission allPermission) {

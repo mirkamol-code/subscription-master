@@ -359,6 +359,11 @@ class SubscriptionStatusIT extends AbstractTestConfig {
                 .expectBody()
                 .jsonPath("$.needsReview").isEqualTo(true)
                 .jsonPath("$.reviewNote").isEqualTo("Receipt found, amount unreadable.");
+        webTestClient.get().uri(API + "/subscriptions/" + openai.getId() + "/emails").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[?(@.gmailMessageId == 'openai-nov-no-amount')].amountUnreadable").isEqualTo(true)
+                .jsonPath("$[?(@.gmailMessageId == 'openai-oct')].amountUnreadable").isEqualTo(false);
     }
 
     @Test
@@ -396,6 +401,10 @@ class SubscriptionStatusIT extends AbstractTestConfig {
                 .expectBody()
                 .jsonPath("$.needsReview").isEqualTo(false)
                 .jsonPath("$.reviewNote").doesNotExist();
+        webTestClient.get().uri(API + "/subscriptions/" + openai.getId() + "/emails").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[?(@.gmailMessageId == 'openai-nov-no-amount')].amountUnreadable").isEqualTo(false);
 
         // then
         Subscription confirmed = subscription("openai");
