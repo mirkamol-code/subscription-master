@@ -19,8 +19,6 @@ jobs:
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       APP_ADMIN_EMAILS: ${{ secrets.APP_ADMIN_EMAILS }}
@@ -40,7 +38,7 @@ jobs:
       - name: Check Required Secrets
         run: |
           missing=""
-          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET POSTGRES_USER POSTGRES_PASSWORD; do
+          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; do
             if [ -z "${!name}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
@@ -73,7 +71,7 @@ jobs:
         run: |
           encode() { printf '%s' "$1" | base64 -w0; }
           SERVER_ENV=""
-          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET POSTGRES_USER POSTGRES_PASSWORD VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; do
+          for name in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET TOKEN_ENCRYPTION_KEY JWT_SECRET VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY APP_ADMIN_EMAILS SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; do
             if [ -n "${!name}" ]; then
               encoded=$(encode "${!name}")
               echo "::add-mask::$encoded"
@@ -132,10 +130,7 @@ jobs:
               sed -i -E "s|image: .*(subscription-master).*|image: $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER|" docker-compose.yml
             fi
 
-            # 5. Pull and restart the app service, plus the local database when no RDS datasource is configured
-            if ! grep -q "^SPRING_DATASOURCE_URL=" .env; then
-              export COMPOSE_PROFILES=local-db
-            fi
+            # 5. Pull and restart the app service, nothing else
             docker compose pull $DOCKER_COMPOSE_APP_SERVICE_NAME
             docker compose up -d $DOCKER_COMPOSE_APP_SERVICE_NAME
 
