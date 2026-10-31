@@ -358,6 +358,7 @@ class SubscriptionStatusIT extends AbstractTestConfig {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.needsReview").isEqualTo(true)
+                .jsonPath("$.reviewReason").isEqualTo("AMOUNT_UNREADABLE")
                 .jsonPath("$.reviewNote").isEqualTo("Receipt found, amount unreadable.");
         webTestClient.get().uri(API + "/subscriptions/" + openai.getId() + "/emails").header("Authorization", bearer(tokens)).exchange()
                 .expectStatus().isOk()
@@ -400,6 +401,7 @@ class SubscriptionStatusIT extends AbstractTestConfig {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.needsReview").isEqualTo(false)
+                .jsonPath("$.reviewReason").doesNotExist()
                 .jsonPath("$.reviewNote").doesNotExist();
         webTestClient.get().uri(API + "/subscriptions/" + openai.getId() + "/emails").header("Authorization", bearer(tokens)).exchange()
                 .expectStatus().isOk()

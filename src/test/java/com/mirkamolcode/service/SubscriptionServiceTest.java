@@ -321,7 +321,7 @@ class SubscriptionServiceTest {
         return new SubscriptionResponse(subscription.getId(), subscription.getName(), subscription.getPrice(),
                 subscription.getCurrency(), subscription.getFrequency(), subscription.getStatus(),
                 subscription.getCategory(), subscription.getStartDate(), subscription.getNextPaymentDate(),
-                subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.getReviewNote(), subscription.isHidden(),
+                subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.getReviewReason(), subscription.getReviewNote(), subscription.isHidden(),
                 subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getVersion());
     }
 }

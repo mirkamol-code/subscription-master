@@ -2,6 +2,7 @@ package com.mirkamolcode.dto.response;
 
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
 
@@ -20,6 +21,7 @@ public record SubscriptionResponse(
         LocalDate nextPaymentDate,
         String merchantKey,
         boolean needsReview,
+        ReviewReason reviewReason,
         String reviewNote,
         boolean hidden,
         LocalDate lastPaymentDate,
