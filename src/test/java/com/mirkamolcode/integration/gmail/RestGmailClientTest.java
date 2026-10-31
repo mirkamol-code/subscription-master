@@ -59,6 +59,19 @@ class RestGmailClientTest {
     }
 
     @Test
+    void listMessageIds_shouldSendBracedQueryUnchanged() {
+        // given
+        String bracedQuery = "{subject:(receipt OR \"payment received\") from:(netflix.com OR spotify.com)} newer_than:1y";
+        gmail.stubFor(get(urlPathEqualTo(MESSAGES)).willReturn(okJson(recorded("google/gmail-messages-list-page1.json"))));
+
+        // when
+        underTest.listMessageIds(TOKEN, bracedQuery, null);
+
+        // then
+        gmail.verify(getRequestedFor(urlPathEqualTo(MESSAGES)).withQueryParam("q", equalTo(bracedQuery)));
+    }
+
+    @Test
     void listMessageIds_shouldPassPageToken_andReturnLastPageWithoutToken() {
         // given
         gmail.stubFor(get(urlPathEqualTo(MESSAGES)).withQueryParam("pageToken", equalTo("09876543210987654321"))
