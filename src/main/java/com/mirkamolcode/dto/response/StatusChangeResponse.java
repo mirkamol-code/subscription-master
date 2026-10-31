@@ -16,7 +16,9 @@ public record StatusChangeResponse(
         Instant effectiveAt,
         LocalDate endsOn,
         Long billingEmailId,
+        String gmailMessageId,
         String emailSender,
+        String emailSubject,
         Instant emailReceivedAt
 ) {
 }

@@ -23,6 +23,7 @@ public class EmailClassifier {
     private final Pattern paymentFailed;
     private final Pattern promotion;
     private final Pattern accessEnds;
+    private final Pattern accessEndsNow;
 
     public EmailClassifier(DetectionProperties properties) {
         DetectionProperties.Keywords keywords = properties.keywords();
@@ -36,6 +37,7 @@ public class EmailClassifier {
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
         this.promotion = anyPhrase(keywords.promotion());
         this.accessEnds = anyPhrase(keywords.accessEnds());
+        this.accessEndsNow = anyPhrase(keywords.accessEndsNow());
     }
 
     public EmailKind classify(GmailMessage message) {
@@ -80,6 +82,8 @@ public class EmailClassifier {
     }
 
     public LocalDate findAccessEndDate(GmailMessage message) {
+        if (accessEndsNow.matcher(message.bodyText()).find())
+            return message.receivedOnUtc();
         return DateFinder.findDateAfter(message.bodyText(), accessEnds, message.receivedOnUtc());
     }
 

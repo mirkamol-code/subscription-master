@@ -19,12 +19,16 @@ _Avoid_: Auth code, ticket
 ## Subscriptions
 
 **Subscription**:
-A recurring paid service from one Merchant that a User is billed for.
+A recurring paid service from one Merchant that a User is billed for. Every Subscription comes from at least one receipt Billing email; Users cannot add one by hand.
 _Avoid_: Plan, membership, service
 
 **Merchant**:
 The company that bills a User for a Subscription, such as Netflix or Spotify.
 _Avoid_: Vendor, provider, sender
+
+**Payment processor**:
+A company that sends receipts on a Merchant's behalf, such as Stripe, Paddle, Google Play or Apple; the Merchant is read from the receipt, not from the sender.
+_Avoid_: Gateway, reseller
 
 **Billing cycle**:
 How often a Subscription charges: weekly, monthly or annually.
@@ -35,7 +39,7 @@ One charge for a Subscription, evidenced by one receipt or invoice.
 _Avoid_: Transaction, charge record
 
 **Billing email**:
-An email from a Merchant about a Subscription: a receipt, a cancellation, or a payment failure.
+An email from a Merchant or its Payment processor about a Subscription: a receipt, a cancellation, or a payment failure. It counts only when Gmail confirms the sender's domain and it is not a reply, forward, mailing-list thread, payment-due reminder, free-plan notice or newsletter.
 _Avoid_: Receipt (when meaning any billing email), message
 
 **Sync**:
@@ -53,10 +57,10 @@ _Avoid_: Unverified, unconfirmed
 ## Status
 
 **Active**:
-A Subscription that is being paid normally.
+A Subscription whose latest receipt covers the current Billing cycle.
 
 **Cancelled**:
-A Subscription the Merchant or the User has ended.
+A Subscription the Merchant or the User has ended, and whose paid Billing cycle has run out.
 _Avoid_: Canceled, ended, inactive
 
 **Billing required**:
@@ -64,7 +68,7 @@ A Subscription whose last payment failed, or whose expected Payment is overdue w
 _Avoid_: Past due, failed, on hold
 
 **Access end**:
-The day a cancelled Subscription stops being usable; until then it is still Active and is never treated as overdue.
+The day a cancelled Subscription stops being usable: the date the cancellation email names, or else the end of the paid Billing cycle. Until then it is still Active and is never treated as overdue.
 _Avoid_: Expiry, period end, end date
 
 **Status change**:

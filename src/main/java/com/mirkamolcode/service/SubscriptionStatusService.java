@@ -43,7 +43,8 @@ public class SubscriptionStatusService {
     }
 
     public void apply(Subscription subscription, StatusEvidence evidence, BillingEmail source) {
-        StatusSnapshot current = new StatusSnapshot(subscription.getStatus(), subscription.getStatusEvidenceAt(), subscription.getEndsOn());
+        StatusSnapshot current = new StatusSnapshot(subscription.getStatus(), subscription.getStatusEvidenceAt(), subscription.getEndsOn(),
+                subscription.getNextPaymentDate());
         policy.evaluate(current, evidence, calculateUsersToday(subscription)).ifPresent(decision -> {
             SubscriptionStatus from = subscription.getStatus();
             subscription.applyStatus(decision.status(), decision.endsOn(), decision.evidenceAt());

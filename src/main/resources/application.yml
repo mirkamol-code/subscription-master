@@ -94,6 +94,7 @@ app:
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
         promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, "free trial", webinar, newsletter]
         access-ends: [until, "ends on", "end on", "will end", "expires on", "expire on", "access until", "active until"]
+        access-ends-now: ["effective immediately", "ends immediately", "ended immediately", "with immediate effect"]
       processors: [stripe.com, paddle.com, paddle.net, payments-noreply@google.com, googleplay-noreply@google.com, apple.com]
       personal-mailbox-domains: [gmail.com, googlemail.com, outlook.com, hotmail.com, live.com, msn.com, yahoo.com, ymail.com, icloud.com, me.com, mac.com, aol.com, proton.me, protonmail.com, gmx.com, gmx.net, mail.com, zoho.com, yandex.ru, yandex.com, ya.ru, mail.ru, inbox.ru, list.ru, bk.ru, rambler.ru]
       merchants:

@@ -113,7 +113,9 @@ class SubscriptionStatusIT extends AbstractTestConfig {
                 .jsonPath("$[0].reason").isEqualTo("CANCELLATION_SCHEDULED")
                 .jsonPath("$[0].endsOn").isEqualTo("2026-12-01")
                 .jsonPath("$[0].emailSender").isEqualTo("Spotify <no-reply@spotify.com>")
-                .jsonPath("$[0].emailReceivedAt").isEqualTo("2026-11-02T08:15:00Z");
+                .jsonPath("$[0].emailReceivedAt").isEqualTo("2026-11-02T08:15:00Z")
+                .jsonPath("$[0].gmailMessageId").isEqualTo(SPOTIFY_CANCELLED.id())
+                .jsonPath("$[0].emailSubject").isEqualTo(SPOTIFY_CANCELLED.subject());
     }
 
     @Test

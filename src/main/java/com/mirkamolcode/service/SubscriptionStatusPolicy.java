@@ -36,7 +36,7 @@ public class SubscriptionStatusPolicy {
     }
 
     private static Optional<StatusDecision> decideCancellation(StatusSnapshot current, StatusEvidence evidence, LocalDate today) {
-        LocalDate accessEndsOn = evidence.accessEndsOn();
+        LocalDate accessEndsOn = evidence.accessEndsOn() != null ? evidence.accessEndsOn() : current.paidThrough();
         if (accessEndsOn != null && today.isBefore(accessEndsOn))
             return decide(current, evidence, ACTIVE, accessEndsOn, StatusChangeReason.CANCELLATION_SCHEDULED);
         return decide(current, evidence, CANCELLED, null, StatusChangeReason.EMAIL_CANCELLATION);

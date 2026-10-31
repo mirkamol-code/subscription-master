@@ -108,11 +108,25 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
-    void analyze_shouldLeaveAccessEndDateEmpty_whenCancellationTakesEffectNow() {
+    void analyze_shouldEndAccessOnTheEmailDate_whenCancellationTakesEffectImmediately() {
         // given
         GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
                 "Spotify <no-reply@spotify.com>", "Your subscription has been cancelled", null,
                 "Your subscription has been cancelled effective immediately."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.accessEndsOn()).isEqualTo(LocalDate.of(2026, 11, 2));
+    }
+
+    @Test
+    void analyze_shouldLeaveAccessEndDateEmpty_whenCancellationNamesNoDate() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Spotify <no-reply@spotify.com>", "Your subscription has been cancelled", null,
+                "Your subscription has been cancelled. We're sorry to see you go."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);

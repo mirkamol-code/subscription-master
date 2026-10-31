@@ -309,7 +309,8 @@ public class SubscriptionService {
         BillingEmail email = change.getBillingEmail();
         return new StatusChangeResponse(change.getId(), change.getFromStatus(), change.getToStatus(), change.getReason(),
                 change.getReason().source(), change.getEffectiveAt(), change.getEndsOn(),
-                email == null ? null : email.getId(), email == null ? null : email.getSender(),
+                email == null ? null : email.getId(), email == null ? null : email.getGmailMessageId(),
+                email == null ? null : email.getSender(), email == null ? null : email.getSubject(),
                 email == null ? null : email.getReceivedAt());
     }
 
