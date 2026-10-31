@@ -16,11 +16,13 @@ import org.springframework.stereotype.Service;
 public class BillingEmailAnalyzer {
     private final EmailClassifier classifier;
     private final MerchantResolver merchants;
+    private final SenderVerifier senders;
     private final List<EmailParser> parsers;
 
-    public BillingEmailAnalyzer(EmailClassifier classifier, MerchantResolver merchants, List<EmailParser> parsers) {
+    public BillingEmailAnalyzer(EmailClassifier classifier, MerchantResolver merchants, SenderVerifier senders, List<EmailParser> parsers) {
         this.classifier = classifier;
         this.merchants = merchants;
+        this.senders = senders;
         List<EmailParser> ordered = new ArrayList<>(parsers);
         AnnotationAwareOrderComparator.sort(ordered);
         this.parsers = List.copyOf(ordered);
@@ -28,7 +30,7 @@ public class BillingEmailAnalyzer {
 
     public BillingEmailAnalysis analyze(GmailMessage message) {
         EmailKind kind = classifier.classify(message);
-        if (kind == EmailKind.IRRELEVANT)
+        if (kind == EmailKind.IRRELEVANT || !senders.isTrusted(message))
             return BillingEmailAnalysis.irrelevant();
         Merchant merchant = merchants.resolve(message);
         if (kind == EmailKind.CANCELLATION)
@@ -43,6 +45,8 @@ public class BillingEmailAnalyzer {
     }
 
     public boolean isCandidate(GmailMessage headers) {
+        if (classifier.isConversation(headers) || !senders.isTrusted(headers))
+            return false;
         return merchants.isKnownSender(headers) || classifier.hasBillingSubject(headers);
     }
 

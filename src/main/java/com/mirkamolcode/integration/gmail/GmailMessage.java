@@ -16,15 +16,22 @@ public record GmailMessage(
         String subject,
         String htmlBody,
         String textBody,
-        List<GmailAttachment> attachments
+        List<GmailAttachment> attachments,
+        MessageHeaders headers
 ) {
     public GmailMessage(String id, String threadId, Instant receivedAt, String from, String subject, String htmlBody, String textBody) {
         this(id, threadId, receivedAt, from, subject, htmlBody, textBody, List.of());
     }
 
+    public GmailMessage(String id, String threadId, Instant receivedAt, String from, String subject, String htmlBody, String textBody,
+                        List<GmailAttachment> attachments) {
+        this(id, threadId, receivedAt, from, subject, htmlBody, textBody, attachments, MessageHeaders.none());
+    }
+
     public GmailMessage {
         subject = subject == null ? "" : subject;
         attachments = attachments == null ? List.of() : List.copyOf(attachments);
+        headers = headers == null ? MessageHeaders.none() : headers;
     }
 
     public LocalDate receivedOnUtc() {

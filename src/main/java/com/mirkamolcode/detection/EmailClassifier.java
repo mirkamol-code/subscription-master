@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EmailClassifier {
+    private static final Pattern REPLY_OR_FORWARD = Pattern.compile("(?iu)^\\s*(?:re|fwd?)\\s*:");
+    private static final Pattern REPOSITORY_TAG = Pattern.compile("\\[\\p{Alpha}[\\w.-]*/[\\w.-]+\\]");
+
     private final Pattern receiptSubject;
     private final Pattern paymentConfirmation;
     private final Pattern cancellation;
@@ -30,7 +33,7 @@ public class EmailClassifier {
     public EmailKind classify(GmailMessage message) {
         String subject = message.subject();
         String body = message.bodyText();
-        if (promotion.matcher(subject).find())
+        if (isConversation(message) || promotion.matcher(subject).find())
             return EmailKind.IRRELEVANT;
         boolean confirmsPayment = paymentConfirmation.matcher(subject + " " + body).find();
         if (paymentFailed.matcher(subject).find() || (!confirmsPayment && paymentFailed.matcher(body).find()))
@@ -40,6 +43,13 @@ public class EmailClassifier {
         if (receiptSubject.matcher(subject).find() || confirmsPayment)
             return EmailKind.RECEIPT;
         return EmailKind.IRRELEVANT;
+    }
+
+    public boolean isConversation(GmailMessage message) {
+        String subject = message.subject();
+        return message.headers().isMailingList()
+                || REPLY_OR_FORWARD.matcher(subject).find()
+                || REPOSITORY_TAG.matcher(subject).find();
     }
 
     public LocalDate findAccessEndDate(GmailMessage message) {

@@ -23,6 +23,10 @@
         "value": "Spotify <no-reply@spotify.com>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@spotify.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@spotify.com designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@spotify.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=spotify.com"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },

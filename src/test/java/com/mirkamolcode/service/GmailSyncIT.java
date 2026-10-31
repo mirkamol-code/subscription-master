@@ -140,6 +140,18 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldNotCreateSubscriptions_fromPullRequestNotificationsOrLookalikeSenders() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("github-pr-notification.json"), EmailFixtures.load("netflix-due-soon-from-gmail.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
     void sync_shouldAdoptMatchingManualSubscription_insteadOfCreatingDuplicate() {
         // given
         User user = userRepository.findById(userId).orElseThrow();

@@ -1,6 +1,7 @@
 package com.mirkamolcode.detection;
 
 import com.mirkamolcode.integration.gmail.GmailMessage;
+import com.mirkamolcode.integration.gmail.MessageHeaders;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.SubscriptionCategory;
@@ -16,6 +17,7 @@ class BillingEmailAnalyzerTest {
     private final BillingEmailAnalyzer underTest = new BillingEmailAnalyzer(
             new EmailClassifier(properties),
             new MerchantResolver(properties),
+            new SenderVerifier(properties),
             List.of(new HeuristicParser(), new NetflixParser(), new SchemaOrgParser()));
 
     @Test
@@ -79,9 +81,9 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldInferYearOfAccessEndDate_whenEmailOmitsIt() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
                 "Netflix <info@account.netflix.com>", "Your membership has been cancelled", null,
-                "We're sorry to see you go. Your plan ends on Nov 20 and you won't be charged again.");
+                "We're sorry to see you go. Your plan ends on Nov 20 and you won't be charged again."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
@@ -94,9 +96,9 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldRollAccessEndDateIntoNextYear_whenMonthAlreadyPassed() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-12-28T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-12-28T09:00:00Z"),
                 "Netflix <info@account.netflix.com>", "Your membership has been cancelled", null,
-                "Your membership has been cancelled. You can keep watching until Jan 15.");
+                "Your membership has been cancelled. You can keep watching until Jan 15."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
@@ -108,9 +110,9 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldLeaveAccessEndDateEmpty_whenCancellationTakesEffectNow() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
                 "Spotify <no-reply@spotify.com>", "Your subscription has been cancelled", null,
-                "Your subscription has been cancelled effective immediately.");
+                "Your subscription has been cancelled effective immediately."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
@@ -164,9 +166,9 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldIgnoreReceiptLikeEmailFromUnknownSender_whenItHasNoAmount() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
                 "Random App <hello@random.example>", "Your plan is waiting", null,
-                "Come back and finish setting up your plan.");
+                "Come back and finish setting up your plan."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
@@ -178,9 +180,9 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldMarkReceiptForReview_whenKnownMerchantReceiptCannotBeParsed() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
                 "Netflix <info@account.netflix.com>", "Your Netflix membership receipt", null,
-                "Thanks for being a member. See your account page for details.");
+                "Thanks for being a member. See your account page for details."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
@@ -213,11 +215,11 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldKeepReceiptAsReceipt_whenFooterMentionsUpdatingPaymentMethod() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
                 "Netflix <info@account.netflix.com>", "Your Netflix membership receipt", null,
                 "Thanks for your payment. Amount charged: $22.99 per month. "
                         + "If this charge looks wrong or your card changed, update your payment method in Account settings. "
-                        + "Having a billing issue? Visit the Help Center.");
+                        + "Having a billing issue? Visit the Help Center."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
@@ -229,14 +231,84 @@ class BillingEmailAnalyzerTest {
     @Test
     void analyze_shouldStillDetectPaymentFailure_whenOnlyBodySaysSo() {
         // given
-        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
                 "Spotify <no-reply@spotify.com>", "Action needed on your account", null,
-                "We couldn't process your payment for Premium. Please update your payment method within 7 days.");
+                "We couldn't process your payment for Premium. Please update your payment method within 7 days."));
 
         // when
         BillingEmailAnalysis analysis = underTest.analyze(message);
 
         // then
         assertThat(analysis.kind()).isEqualTo(EmailKind.PAYMENT_FAILED);
+    }
+
+    @Test
+    void analyze_shouldIgnoreGithubPullRequestNotification_evenWhenItQuotesPaymentsAndAmounts() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("github-pr-notification.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void isCandidate_shouldRejectMailingListThread_fromKnownSender() {
+        // given
+        GmailMessage notification = EmailFixtures.load("github-pr-notification.json");
+
+        // when
+        boolean candidate = underTest.isCandidate(notification);
+
+        // then
+        assertThat(candidate).isFalse();
+    }
+
+    @Test
+    void isCandidate_shouldRejectReply_toBillingThread() {
+        // given
+        GmailMessage reply = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "RE: Your Netflix membership receipt", null, null));
+
+        // when
+        boolean candidate = underTest.isCandidate(reply);
+
+        // then
+        assertThat(candidate).isFalse();
+    }
+
+    @Test
+    void analyze_shouldIgnoreMerchantLookalike_sentFromPersonalMailbox() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("netflix-due-soon-from-gmail.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void isCandidate_shouldRejectPersonalMailbox_atHeaderStage() {
+        // given
+        GmailMessage headers = EmailFixtures.load("netflix-due-soon-from-gmail.json");
+
+        // when
+        boolean candidate = underTest.isCandidate(headers);
+
+        // then
+        assertThat(candidate).isFalse();
+    }
+
+    @Test
+    void analyze_shouldIgnoreReceipt_whenSenderFailsAuthentication() {
+        // given
+        GmailMessage message = new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Your Netflix membership receipt", null,
+                "Thanks for your payment. Amount charged: $22.99 per month.", List.of(),
+                new MessageHeaders(null, null, "mx.google.com; dkim=fail header.i=@netflix.com; spf=fail smtp.mailfrom=info@account.netflix.com"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
     }
 }

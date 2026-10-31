@@ -23,6 +23,10 @@
         "value": "Adobe <message@adobe.com>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@adobe.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@adobe.com designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@adobe.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=adobe.com"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },

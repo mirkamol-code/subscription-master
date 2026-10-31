@@ -24,7 +24,11 @@ public final class GmailMessageMapper {
                 header(payload, "Subject"),
                 bodies.html,
                 bodies.text,
-                bodies.attachments);
+                bodies.attachments,
+                new MessageHeaders(
+                        header(payload, "List-Id"),
+                        header(payload, "List-Unsubscribe"),
+                        header(payload, "Authentication-Results")));
     }
 
     private static void collectParts(JsonNode part, Bodies bodies) {

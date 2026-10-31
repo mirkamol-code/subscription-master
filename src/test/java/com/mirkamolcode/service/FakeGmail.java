@@ -1,5 +1,6 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.detection.EmailFixtures;
 import com.mirkamolcode.integration.gmail.GmailClient;
 import com.mirkamolcode.integration.gmail.GmailHistoryExpiredException;
 import com.mirkamolcode.integration.gmail.GmailHistoryPage;
@@ -74,7 +75,7 @@ public final class FakeGmail implements GmailClient {
     public void mailbox(GmailMessage... newestFirst) {
         List<String> ids = new ArrayList<>();
         for (GmailMessage message : newestFirst) {
-            messages.put(message.id(), message);
+            messages.put(message.id(), stampAuthentication(message));
             ids.add(message.id());
         }
         listedIds = List.copyOf(ids);
@@ -106,7 +107,11 @@ public final class FakeGmail implements GmailClient {
     }
 
     public void deliver(GmailMessage message) {
-        messages.put(message.id(), message);
+        messages.put(message.id(), stampAuthentication(message));
+    }
+
+    private static GmailMessage stampAuthentication(GmailMessage message) {
+        return message.headers().authenticationResults() == null ? EmailFixtures.authenticated(message) : message;
     }
 
     public void historyAdds(String... ids) {
@@ -188,7 +193,8 @@ public final class FakeGmail implements GmailClient {
         if (failingHeaderIds.contains(messageId))
             throw new GmailTransientException("Gmail API failed with 500");
         GmailMessage message = messages.get(messageId);
-        return new GmailMessage(message.id(), message.threadId(), message.receivedAt(), message.from(), message.subject(), null, null);
+        return new GmailMessage(message.id(), message.threadId(), message.receivedAt(), message.from(), message.subject(), null, null,
+                List.of(), message.headers());
     }
 
     @Override

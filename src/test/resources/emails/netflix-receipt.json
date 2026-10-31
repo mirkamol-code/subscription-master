@@ -23,6 +23,10 @@
         "value": "Netflix <info@account.netflix.com>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@account.netflix.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@account.netflix.com designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@account.netflix.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=account.netflix.com"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },

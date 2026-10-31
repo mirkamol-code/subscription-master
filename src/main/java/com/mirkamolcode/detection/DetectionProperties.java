@@ -12,8 +12,13 @@ public record DetectionProperties(
         String query,
         String lookback,
         Keywords keywords,
-        List<MerchantConfig> merchants
+        List<MerchantConfig> merchants,
+        List<String> personalMailboxDomains
 ) {
+    public DetectionProperties {
+        personalMailboxDomains = personalMailboxDomains == null ? List.of() : List.copyOf(personalMailboxDomains);
+    }
+
     public record Keywords(
             List<String> receiptSubject,
             List<String> paymentConfirmation,
