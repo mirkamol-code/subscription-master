@@ -4,6 +4,7 @@ import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.SubscriptionCategory;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -53,7 +54,7 @@ public record DetectionProperties(
         }
 
         public List<String> namesForMatching() {
-            return java.util.stream.Stream.concat(java.util.stream.Stream.of(displayName), aliases.stream()).toList();
+            return Stream.concat(Stream.of(displayName), aliases.stream()).toList();
         }
 
         private static String toDomain(String sender) {

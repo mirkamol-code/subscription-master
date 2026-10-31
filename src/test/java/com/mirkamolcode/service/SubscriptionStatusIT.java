@@ -202,6 +202,40 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldEndCancelled_whenOldReceiptsAreFollowedByCancellationWhoseAccessHasEnded() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("chatgpt-cancellation.json"),
+                message("chatgpt-jul", "2026-07-21T03:00:00Z", "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
+                        "Thanks for your payment. Amount charged: $20.00 per month."),
+                message("chatgpt-jun", "2026-06-21T03:00:00Z", "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
+                        "Thanks for your payment. Amount charged: $20.00 per month."));
+
+        // when
+        syncService.sync(userId);
+        statusJob.applyDailyRules();
+
+        // then
+        assertThat(subscription("openai").getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
+    void applyDailyRules_shouldRequireBilling_whenOldReceiptsHaveNoCancellation() {
+        // given
+        GMAIL.mailbox(
+                message("chatgpt-jul", "2026-07-21T03:00:00Z", "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
+                        "Thanks for your payment. Amount charged: $20.00 per month."),
+                message("chatgpt-jun", "2026-06-21T03:00:00Z", "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
+                        "Thanks for your payment. Amount charged: $20.00 per month."));
+
+        // when
+        syncService.sync(userId);
+        statusJob.applyDailyRules();
+
+        // then
+        assertThat(subscription("openai").getStatus()).isEqualTo(SubscriptionStatus.BILLING_REQUIRED);
+    }
+
+    @Test
     void sync_shouldCancel_whenCancellationGivesNoAccessEndDate() {
         // given
         GmailMessage cancelledNow = message("spotify-now", "2026-11-02T08:15:00Z", "Spotify <no-reply@spotify.com>",

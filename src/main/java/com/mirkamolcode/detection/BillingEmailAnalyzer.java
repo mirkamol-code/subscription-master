@@ -56,17 +56,15 @@ public class BillingEmailAnalyzer {
     }
 
     private static ParsedBilling dropNonPositiveAmount(ParsedBilling billing) {
-        if (billing.amount() == null || billing.amount().signum() > 0)
-            return billing;
-        return new ParsedBilling(null, null, billing.cycle(), billing.paymentDate(), billing.nextBillingDate(), billing.confidence());
+        return billing.hasAmount() && billing.amount().signum() <= 0 ? billing.withoutAmount() : billing;
     }
 
     private static boolean hasAmount(Optional<ParsedBilling> parsed) {
-        return parsed.map(billing -> billing.amount() != null).orElse(false);
+        return parsed.map(ParsedBilling::hasAmount).orElse(false);
     }
 
     private boolean hasRecurringBilling(Optional<ParsedBilling> parsed, GmailMessage message) {
-        boolean hasCycle = parsed.map(billing -> billing.cycle() != null).orElse(false);
+        boolean hasCycle = parsed.map(ParsedBilling::hasCycle).orElse(false);
         return hasAmount(parsed) && (hasCycle || classifier.mentionsRecurringBilling(message));
     }
 

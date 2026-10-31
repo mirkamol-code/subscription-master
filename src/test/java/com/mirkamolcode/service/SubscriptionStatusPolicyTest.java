@@ -34,7 +34,7 @@ class SubscriptionStatusPolicyTest {
     @Test
     void evaluate_shouldStayActiveUntilPaidPeriodEnds_whenCancellationEmailHasNoAccessEndDate() {
         // when
-        StatusDecision decision = decide(activePaidThrough(LocalDate.of(2026, 11, 30)), StatusEvidence.cancellation(LATER, null)).orElseThrow();
+        StatusDecision decision = decide(activeDueOn(LocalDate.of(2026, 11, 30)), StatusEvidence.cancellation(LATER, null)).orElseThrow();
 
         // then
         assertThat(decision.status()).isEqualTo(ACTIVE);
@@ -45,7 +45,7 @@ class SubscriptionStatusPolicyTest {
     @Test
     void evaluate_shouldCancel_whenPaidPeriodAlreadyEndedBeforeCancellation() {
         // when
-        StatusDecision decision = decide(activePaidThrough(LocalDate.of(2026, 11, 5)), StatusEvidence.cancellation(LATER, null)).orElseThrow();
+        StatusDecision decision = decide(activeDueOn(LocalDate.of(2026, 11, 5)), StatusEvidence.cancellation(LATER, null)).orElseThrow();
 
         // then
         assertThat(decision.status()).isEqualTo(CANCELLED);
@@ -55,7 +55,7 @@ class SubscriptionStatusPolicyTest {
     @Test
     void evaluate_shouldPreferStatedAccessEnd_overPaidPeriod() {
         // when
-        StatusDecision decision = decide(activePaidThrough(LocalDate.of(2026, 11, 30)),
+        StatusDecision decision = decide(activeDueOn(LocalDate.of(2026, 11, 30)),
                 StatusEvidence.cancellation(LATER, LocalDate.of(2026, 11, 20))).orElseThrow();
 
         // then
@@ -243,7 +243,7 @@ class SubscriptionStatusPolicyTest {
         return new StatusSnapshot(status, evidenceAt, endsOn, null);
     }
 
-    private static StatusSnapshot activePaidThrough(LocalDate paidThrough) {
-        return new StatusSnapshot(ACTIVE, EARLIER, null, paidThrough);
+    private static StatusSnapshot activeDueOn(LocalDate nextPaymentDate) {
+        return new StatusSnapshot(ACTIVE, EARLIER, null, nextPaymentDate);
     }
 }

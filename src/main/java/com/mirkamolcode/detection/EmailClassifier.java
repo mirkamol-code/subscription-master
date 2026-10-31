@@ -48,7 +48,7 @@ public class EmailClassifier {
         boolean confirmsPayment = paymentConfirmation.matcher(subject + " " + body).find();
         if (paymentFailed.matcher(subject).find() || (!confirmsPayment && paymentFailed.matcher(body).find()))
             return EmailKind.PAYMENT_FAILED;
-        if (cancellation.matcher(subject).find() || cancellation.matcher(body).find())
+        if (matchesSubjectOrBody(cancellation, message))
             return EmailKind.CANCELLATION;
         if (paymentDue.matcher(subject).find() && !confirmsPayment)
             return EmailKind.IRRELEVANT;
@@ -61,11 +61,11 @@ public class EmailClassifier {
     }
 
     public boolean mentionsFreePlan(GmailMessage message) {
-        return freePlan.matcher(message.subject()).find() || freePlan.matcher(message.bodyText()).find();
+        return matchesSubjectOrBody(freePlan, message);
     }
 
     public boolean mentionsRecurringBilling(GmailMessage message) {
-        return recurring.matcher(message.subject()).find() || recurring.matcher(message.bodyText()).find();
+        return matchesSubjectOrBody(recurring, message);
     }
 
     private boolean isMarketing(GmailMessage message, boolean isTransaction) {
@@ -93,6 +93,10 @@ public class EmailClassifier {
                 && !paymentDue.matcher(subject).find()
                 && (receiptSubject.matcher(subject).find() || subscriptionSubject.matcher(subject).find()
                 || cancellation.matcher(subject).find() || paymentFailed.matcher(subject).find());
+    }
+
+    private static boolean matchesSubjectOrBody(Pattern pattern, GmailMessage message) {
+        return pattern.matcher(message.subject()).find() || pattern.matcher(message.bodyText()).find();
     }
 
     private static Pattern anyPhrase(List<String> phrases) {

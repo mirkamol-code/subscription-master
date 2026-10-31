@@ -101,7 +101,7 @@ app:
         - { key: netflix, display-name: Netflix, senders: [netflix.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: spotify, display-name: Spotify, senders: [spotify.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: youtube-premium, display-name: YouTube Premium, aliases: [YouTube, YouTube Music], senders: [youtube.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
-        - { key: google-one, display-name: Google One, aliases: [Google One AI Premium, Google AI Pro, Google AI Premium, Google AI Ultra, Gemini Advanced, Gemini Pro, Gemini], senders: [], logo-domain: one.google.com, category: OTHER, default-cycle: MONTHLY }
+        - { key: google-one, display-name: Google One, aliases: [Google One AI Premium, Google AI Pro, Google AI Premium, Google AI Ultra, Gemini Advanced, Gemini Pro], senders: [], logo-domain: one.google.com, category: OTHER, default-cycle: MONTHLY }
         - { key: apple, display-name: Apple (App Store / iCloud), aliases: [Apple, iCloud, iCloud+, App Store, Apple Music, Apple TV+], senders: [apple.com], category: OTHER }
         - { key: amazon-prime, display-name: Amazon Prime, aliases: [Prime Video, Amazon Prime Video], senders: [prime@amazon.com, primevideo.com], category: ENTERTAINMENT }
         - { key: microsoft, display-name: Microsoft, aliases: [Microsoft 365, Office 365, Xbox Game Pass], senders: [microsoft.com, microsoftstore.com], category: PRODUCTIVITY }
