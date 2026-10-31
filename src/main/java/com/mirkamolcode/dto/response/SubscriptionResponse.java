@@ -20,6 +20,7 @@ public record SubscriptionResponse(
         LocalDate nextPaymentDate,
         String merchantKey,
         boolean needsReview,
+        String reviewNote,
         boolean hidden,
         LocalDate lastPaymentDate,
         String logoDomain,

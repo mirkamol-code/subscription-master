@@ -23,8 +23,6 @@ import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
 import com.mirkamolcode.repository.UserRepository;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -106,9 +104,7 @@ public class BillingEmailRecorder {
         billingEmails.save(email);
         if (analysis.isPayment())
             recordPayment(subscription, email, billing);
-        else if (analysis.kind() == EmailKind.RECEIPT)
-            subscription.recordUnpricedPayment(billing.paymentDate());
-        statusService.apply(subscription, toStatusEvidence(email), email);
+        applyEvidence(subscription, email);
         if (tracked.get().newlyLinked())
             replayUnattachedStatusEmails(userId, subscription, tombstone);
     }
@@ -120,10 +116,16 @@ public class BillingEmailRecorder {
                 .filter(email -> tombstone.map(deleted -> !deleted.covers(email.getReceivedAt())).orElse(true))
                 .forEach(email -> {
                     email.attachTo(subscription);
-                    if (email.getKind() == EmailKind.RECEIPT)
-                        subscription.recordUnpricedPayment(LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC));
-                    statusService.apply(subscription, toStatusEvidence(email), email);
+                    applyEvidence(subscription, email);
                 });
+    }
+
+    private void applyEvidence(Subscription subscription, BillingEmail email) {
+        boolean isReceiptWithoutPayment = email.getKind() == EmailKind.RECEIPT && !payments.existsByBillingEmailId(email.getId());
+        if (isReceiptWithoutPayment)
+            statusService.reviewReceiptWithoutAmount(subscription, email.getReceivedAt());
+        else
+            statusService.apply(subscription, toStatusEvidence(email), email);
     }
 
     private static StatusEvidence toStatusEvidence(BillingEmail email) {

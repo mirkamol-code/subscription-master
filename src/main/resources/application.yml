@@ -64,6 +64,7 @@ app:
     vapid-subject: ${VAPID_SUBJECT:mailto:admin@subscriptionmaster.app}
   status:
     overdue-grace-days: ${OVERDUE_GRACE_DAYS:5}
+    renewal-window-days-before: ${RENEWAL_WINDOW_DAYS_BEFORE:3}
     daily-rules-cron: ${STATUS_RULES_CRON:0 15 * * * *}
   security:
     token-encryption-key: ${TOKEN_ENCRYPTION_KEY}

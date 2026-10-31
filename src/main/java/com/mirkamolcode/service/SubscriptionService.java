@@ -1,5 +1,7 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.detection.EmailKind;
+import com.mirkamolcode.dto.request.ReceiptAmountRequest;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
@@ -31,6 +33,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -188,6 +191,22 @@ public class SubscriptionService {
     public SubscriptionResponse unhide(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         subscription.unhide();
+        return mapper.toResponse(subscription);
+    }
+
+    @Transactional
+    public SubscriptionResponse confirmReceiptAmount(Long id, Long emailId, ReceiptAmountRequest request) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        BillingEmail receipt = billingEmailRepository.findByIdAndSubscriptionId(emailId, subscription.getId())
+                .orElseThrow(() -> new NotFoundException("Email not found: " + emailId));
+        if (receipt.getKind() != EmailKind.RECEIPT || paymentHistoryRepository.existsByBillingEmailId(receipt.getId()))
+            throw new ConflictException("Only a receipt without a recorded payment can be confirmed");
+        LocalDate paidOn = LocalDate.ofInstant(receipt.getReceivedAt(), ZoneOffset.UTC);
+        subscription.confirmPayment(paidOn, request.amount(), request.currency());
+        paymentHistoryRepository.save(new PaymentHistory(subscription, receipt, paidOn, request.amount(), request.currency(),
+                exchangeRateService.rateToUzs(request.currency())));
+        statusService.apply(subscription, StatusEvidence.receipt(receipt.getReceivedAt()), receipt);
+        repository.flush();
         return mapper.toResponse(subscription);
     }
 

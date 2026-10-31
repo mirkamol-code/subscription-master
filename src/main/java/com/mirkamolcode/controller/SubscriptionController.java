@@ -1,6 +1,7 @@
 package com.mirkamolcode.controller;
 
 import com.mirkamolcode.dto.request.StatusChangeRequest;
+import com.mirkamolcode.dto.request.ReceiptAmountRequest;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.StatusChangeResponse;
 import com.mirkamolcode.dto.response.BillingEmailResponse;
@@ -124,6 +125,13 @@ public class SubscriptionController {
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
     public SubscriptionResponse unhide(@PathVariable Long id) {
         return service.unhide(id);
+    }
+
+    @PostMapping("/{id}/emails/{emailId}/payment")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
+    public SubscriptionResponse confirmReceiptAmount(@PathVariable Long id, @PathVariable Long emailId,
+                                                     @Valid @RequestBody ReceiptAmountRequest request) {
+        return service.confirmReceiptAmount(id, emailId, request);
     }
 
     @GetMapping("/{id}/emails")

@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, Long> {
+    boolean existsByBillingEmailId(Long billingEmailId);
+
     List<PaymentHistory> findBySubscriptionUserIdAndPaymentDateBetween(Long userId, LocalDate from, LocalDate to);
 
     List<PaymentHistory> findBySubscriptionIdOrderByPaymentDateDesc(Long subscriptionId);

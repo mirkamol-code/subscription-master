@@ -63,7 +63,7 @@ The Google refresh token never leaves the server. Access tokens are refreshed au
 | Status | When |
 |---|---|
 | `ACTIVE` | A receipt arrived, or a newer receipt follows a failure or cancellation. A cancellation with a future access end keeps it active until that day. |
-| `BILLING_REQUIRED` | A payment-failure email, or no receipt 5 days (`OVERDUE_GRACE_DAYS`) after the expected payment date. |
+| `BILLING_REQUIRED` | A payment-failure email, or no receipt 5 days (`OVERDUE_GRACE_DAYS`) after the expected payment date. A receipt whose amount can't be read never counts as a payment: if it arrives from 3 days before (`RENEWAL_WINDOW_DAYS_BEFORE`) to 5 days after the due date, the subscription is marked **Needs review** ("Receipt found, amount unreadable.") instead of Billing required, until the user confirms the amount. |
 | `CANCELLED` | A cancellation email, the access end date arriving, or the user marking it cancelled. |
 
 The newest evidence always wins, and every change is kept in the status history with its reason and source email, for example "Cancelled on 2 Nov 2026 (from Spotify)". Daily rules run in each user's own time zone.
@@ -82,7 +82,7 @@ The newest evidence always wins, and every change is kept in the status history 
 | Gmail | `GET /me/gmail`, `POST /gmail/sync`, `GET /gmail/sync-status`, `DELETE /me/gmail` (disconnect and delete data) |
 | Account | `DELETE /me` (delete the account and everything in it) |
 | Subscriptions | `GET /subscriptions` (filters, `?hidden=true`), `GET /subscriptions/all`, `GET /subscriptions/upcoming`, `GET /subscriptions/calendar`, `GET/PUT/DELETE /subscriptions/{id}` |
-| Subscription details | `GET /{id}/history` (payments), `GET /{id}/emails`, `GET /{id}/status-history`, `PUT /{id}/status`, `POST /{id}/hide`, `POST /{id}/unhide` |
+| Subscription details | `GET /{id}/history` (payments), `GET /{id}/emails`, `POST /{id}/emails/{emailId}/payment` (confirm an unreadable receipt's amount), `GET /{id}/status-history`, `PUT /{id}/status`, `POST /{id}/hide`, `POST /{id}/unhide` |
 | Emails | `GET /emails/{id}/attachments/{attachmentId}[?download=true]` (invoice PDF), `GET /emails/{id}/content[?images=true]` (sanitized HTML) |
 | Notifications | `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/{id}/read`, `POST /notifications/read-all` |
 | Settings | `GET/PUT /settings/notifications` (email, in-app, push, daysBefore 1–30, timeZone) |
@@ -121,6 +121,7 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 | `GMAIL_SYNC_CRON` | no | Incremental sync schedule, default every 6 hours |
 | `REMINDER_CRON` / `REMINDER_HOUR` | no | Reminder job schedule (hourly) and local hour reminders start (9) |
 | `STATUS_RULES_CRON` / `OVERDUE_GRACE_DAYS` | no | Status rules schedule (hourly) and overdue grace (5 days) |
+| `RENEWAL_WINDOW_DAYS_BEFORE` | no | Days before the due date an unreadable receipt counts as a renewal (3) |
 | `GMAIL_ATTACHMENT_MAX_BYTES` | no | Largest invoice PDF served, default 25 MB |
 | `APP_SEED_ENABLED` | no | Demo data for `demo@subscribemaster.local`, local only |
 | `SERVER_PORT` | no | HTTP port, default `8080` |

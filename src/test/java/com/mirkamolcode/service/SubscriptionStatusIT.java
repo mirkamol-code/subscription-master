@@ -5,6 +5,7 @@ import com.mirkamolcode.MutableClock;
 import com.mirkamolcode.detection.EmailFixtures;
 import com.mirkamolcode.dto.AuthDtos.TokenResponse;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
+import com.mirkamolcode.entity.BillingEmail;
 import com.mirkamolcode.entity.ExchangeRate;
 import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.entity.Subscription;
@@ -15,6 +16,7 @@ import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.google.GoogleOAuthClient;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.StatusChangeRepository;
@@ -257,7 +259,7 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldReplayUnattachedReceipt_soNewestEmailWinsWhenSubscriptionAppearsLater() {
+    void sync_shouldNotReactivateCancelledPlan_fromReplayedReceiptWithoutAmount_butFlagItForReview() {
         // given
         GmailMessage receiptWithoutAmount = message("openai-no-amount", "2026-11-10T03:00:00Z", "OpenAI <noreply@tm.openai.com>",
                 "Your ChatGPT Plus receipt", "Thanks for your payment. See your account page for details.");
@@ -272,7 +274,10 @@ class SubscriptionStatusIT extends AbstractTestConfig {
         syncService.sync(userId);
 
         // then
-        assertThat(subscription("openai").getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        Subscription openai = subscription("openai");
+        assertThat(openai.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+        assertThat(openai.isNeedsReview()).isTrue();
+        assertThat(openai.getReviewReason()).isEqualTo(ReviewReason.AMOUNT_UNREADABLE);
     }
 
     @Test
@@ -332,12 +337,11 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     }
 
     @Test
-    void applyDailyRules_shouldNotMarkOverdue_whenReceiptWithoutAmountArrivedAfterDueDate() {
+    void applyDailyRules_shouldFlagReviewInsteadOfBillingRequired_whenRenewalReceiptHasNoAmount() {
         // given
         GMAIL.mailbox(OPENAI_RECEIPT_OCT);
         syncService.sync(userId);
-        deliverLater(message("openai-nov-no-amount", "2026-11-06T03:00:00Z", "OpenAI <noreply@tm.openai.com>",
-                "Your ChatGPT Plus receipt", "Thanks for your payment. See your account page for details."));
+        deliverLater(receiptWithoutAmount("openai-nov-no-amount", "2026-11-06T03:00:00Z"));
         syncService.sync(userId);
         CLOCK.setInstant(Instant.parse("2026-11-20T09:00:00Z"));
 
@@ -347,8 +351,119 @@ class SubscriptionStatusIT extends AbstractTestConfig {
         // then
         Subscription openai = subscription("openai");
         assertThat(openai.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(openai.getNextPaymentDate()).isEqualTo(LocalDate.of(2026, 12, 6));
-        assertThat(openai.isNeedsReview()).isTrue();
+        assertThat(openai.getNextPaymentDate()).isEqualTo(LocalDate.of(2026, 11, 5));
+        assertThat(openai.getLastPaymentDate()).isEqualTo(LocalDate.of(2026, 10, 5));
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(openai.getId())).hasSize(1);
+        webTestClient.get().uri(API + "/subscriptions/" + openai.getId()).header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.needsReview").isEqualTo(true)
+                .jsonPath("$.reviewNote").isEqualTo("Receipt found, amount unreadable.");
+    }
+
+    @Test
+    void sync_shouldOnlyKeepReceiptWithoutAmountAsSource_whenOutsideRenewalWindow() {
+        // given
+        GMAIL.mailbox(OPENAI_RECEIPT_OCT);
+        syncService.sync(userId);
+        boolean reviewBefore = subscription("openai").isNeedsReview();
+        deliverLater(receiptWithoutAmount("openai-mid-cycle", "2026-10-20T03:00:00Z"));
+
+        // when
+        syncService.sync(userId);
+
+        // then
+        Subscription openai = subscription("openai");
+        assertThat(openai.isNeedsReview()).isEqualTo(reviewBefore);
+        assertThat(openai.getReviewReason()).isNull();
+        assertThat(openai.getNextPaymentDate()).isEqualTo(LocalDate.of(2026, 11, 5));
+        assertThat(billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(openai.getId()))
+                .extracting(BillingEmail::getGmailMessageId)
+                .contains("openai-mid-cycle");
+    }
+
+    @Test
+    void confirmReceiptAmount_shouldRecordNormalPayment_andClearReview() {
+        // given
+        Subscription openai = flagUnreadableNovemberReceipt();
+        Long emailId = billingEmailId(openai, "openai-nov-no-amount");
+
+        // when
+        webTestClient.post().uri(API + "/subscriptions/" + openai.getId() + "/emails/" + emailId + "/payment")
+                .header("Authorization", bearer(tokens))
+                .bodyValue(Map.of("amount", "20.00", "currency", "USD")).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.needsReview").isEqualTo(false)
+                .jsonPath("$.reviewNote").doesNotExist();
+
+        // then
+        Subscription confirmed = subscription("openai");
+        assertThat(confirmed.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(confirmed.getLastPaymentDate()).isEqualTo(LocalDate.of(2026, 11, 6));
+        assertThat(confirmed.getNextPaymentDate()).isEqualTo(LocalDate.of(2026, 12, 6));
+        assertThat(confirmed.getReviewReason()).isNull();
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(confirmed.getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("20", "20");
+    }
+
+    @Test
+    void confirmReceiptAmount_shouldRejectSecondConfirmation() {
+        // given
+        Subscription openai = flagUnreadableNovemberReceipt();
+        Long emailId = billingEmailId(openai, "openai-nov-no-amount");
+        String uri = API + "/subscriptions/" + openai.getId() + "/emails/" + emailId + "/payment";
+        webTestClient.post().uri(uri).header("Authorization", bearer(tokens))
+                .bodyValue(Map.of("amount", "20.00", "currency", "USD")).exchange()
+                .expectStatus().isOk();
+
+        // when / then
+        webTestClient.post().uri(uri).header("Authorization", bearer(tokens))
+                .bodyValue(Map.of("amount", "25.00", "currency", "USD")).exchange()
+                .expectStatus().isEqualTo(409);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(openai.getId())).hasSize(2);
+    }
+
+    @Test
+    void confirmReceiptAmount_shouldRejectInvalidAmount() {
+        // given
+        Subscription openai = flagUnreadableNovemberReceipt();
+        Long emailId = billingEmailId(openai, "openai-nov-no-amount");
+
+        // when / then
+        webTestClient.post().uri(API + "/subscriptions/" + openai.getId() + "/emails/" + emailId + "/payment")
+                .header("Authorization", bearer(tokens))
+                .bodyValue(Map.of("amount", "0", "currency", "USD")).exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void confirmReceiptAmount_shouldNotExposeAnotherUsersSubscription() {
+        // given
+        Subscription openai = flagUnreadableNovemberReceipt();
+        Long emailId = billingEmailId(openai, "openai-nov-no-amount");
+        String intruder = bearer(signIn("intruder@example.com"));
+
+        // when / then
+        webTestClient.post().uri(API + "/subscriptions/" + openai.getId() + "/emails/" + emailId + "/payment")
+                .header("Authorization", intruder)
+                .bodyValue(Map.of("amount", "20.00", "currency", "USD")).exchange()
+                .expectStatus().isNotFound();
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(openai.getId())).hasSize(1);
+    }
+
+    @Test
+    void confirmReceiptAmount_shouldRejectEmailThatIsNotAnUnpricedReceipt() {
+        // given
+        Subscription openai = flagUnreadableNovemberReceipt();
+        Long pricedEmailId = billingEmailId(openai, OPENAI_RECEIPT_OCT.id());
+
+        // when / then
+        webTestClient.post().uri(API + "/subscriptions/" + openai.getId() + "/emails/" + pricedEmailId + "/payment")
+                .header("Authorization", bearer(tokens))
+                .bodyValue(Map.of("amount", "20.00", "currency", "USD")).exchange()
+                .expectStatus().isEqualTo(409);
     }
 
     @Test
@@ -536,6 +651,27 @@ class SubscriptionStatusIT extends AbstractTestConfig {
 
     private Subscription subscription(String merchantKey) {
         return subscriptionRepository.findByUserIdAndMerchantKeyAndIsDeletedFalse(userId, merchantKey).orElseThrow();
+    }
+
+    private Subscription flagUnreadableNovemberReceipt() {
+        GMAIL.mailbox(OPENAI_RECEIPT_OCT);
+        syncService.sync(userId);
+        deliverLater(receiptWithoutAmount("openai-nov-no-amount", "2026-11-06T03:00:00Z"));
+        syncService.sync(userId);
+        return subscription("openai");
+    }
+
+    private Long billingEmailId(Subscription subscription, String gmailMessageId) {
+        return billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(subscription.getId()).stream()
+                .filter(email -> email.getGmailMessageId().equals(gmailMessageId))
+                .findFirst()
+                .orElseThrow()
+                .getId();
+    }
+
+    private static GmailMessage receiptWithoutAmount(String id, String receivedAt) {
+        return message(id, receivedAt, "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
+                "Thanks for your payment. See your account page for details.");
     }
 
     private static GmailMessage openAiReceipt(String id, String receivedAt) {

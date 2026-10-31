@@ -51,7 +51,7 @@ A Subscription the User set aside as a false positive or not worth tracking; it 
 _Avoid_: Ignored, archived, deleted
 
 **Needs review**:
-A Subscription whose amount, currency or Billing cycle was guessed rather than read, waiting for the User to confirm or correct it.
+A Subscription whose amount, currency or Billing cycle was guessed rather than read, or whose renewal receipt arrived with an unreadable amount, waiting for the User to confirm or correct it. A receipt without an amount is never a Payment until the User confirms the amount.
 _Avoid_: Unverified, unconfirmed
 
 ## Status
