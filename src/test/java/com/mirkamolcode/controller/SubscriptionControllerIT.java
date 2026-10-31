@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 class SubscriptionControllerIT extends AbstractTestConfig {
 
     @Test
@@ -60,12 +62,27 @@ class SubscriptionControllerIT extends AbstractTestConfig {
     }
 
     @Test
-    void create_shouldReturnBadRequest_whenPayloadViolatesValidation() {
+    void create_shouldNotBeOffered_becauseSubscriptionsComeOnlyFromEmails() {
         String authorization = bearer(signIn("owner@example.com"));
-        SubscriptionRequest invalid = new SubscriptionRequest("", BigDecimal.ZERO, null, null, null, null, null);
 
         webTestClient.post()
                 .uri(API + "/subscriptions")
+                .header("Authorization", authorization)
+                .bodyValue(request("YouTube Premium", "13.99", CurrencyCode.USD))
+                .exchange()
+                .expectStatus().isEqualTo(405);
+
+        assertThat(subscriptionRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void update_shouldReturnBadRequest_whenPayloadViolatesValidation() {
+        String authorization = bearer(signIn("owner@example.com"));
+        SubscriptionResponse owned = createSubscription(authorization, request("Netflix", "12.99", CurrencyCode.USD));
+        SubscriptionRequest invalid = new SubscriptionRequest("", BigDecimal.ZERO, null, null, null, null, null);
+
+        webTestClient.put()
+                .uri(API + "/subscriptions/{id}", owned.id())
                 .header("Authorization", authorization)
                 .bodyValue(invalid)
                 .exchange()

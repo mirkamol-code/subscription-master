@@ -64,21 +64,6 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void create_shouldSaveSubscriptionForCurrentUser_andReturnMappedResponse() {
-        when(currentUserService.requiredUser()).thenReturn(owner);
-        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(subscriptionMapper.toResponse(any(Subscription.class))).thenAnswer(invocation -> response(invocation.getArgument(0)));
-
-        SubscriptionResponse result = underTest.create(request);
-
-        ArgumentCaptor<Subscription> captor = ArgumentCaptor.forClass(Subscription.class);
-        verify(subscriptionRepository).save(captor.capture());
-        assertThat(captor.getValue().getUser()).isSameAs(owner);
-        assertThat(captor.getValue().getNextPaymentDate()).isEqualTo(request.startDate().plusMonths(1));
-        assertThat(result.name()).isEqualTo("Netflix");
-    }
-
-    @Test
     void constructor_shouldCalculateNextPaymentDateForEveryFrequency() {
         LocalDate startDate = LocalDate.of(2026, 8, 22);
 
@@ -336,7 +321,7 @@ class SubscriptionServiceTest {
         return new SubscriptionResponse(subscription.getId(), subscription.getName(), subscription.getPrice(),
                 subscription.getCurrency(), subscription.getFrequency(), subscription.getStatus(),
                 subscription.getCategory(), subscription.getStartDate(), subscription.getNextPaymentDate(),
-                subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.isHidden(),
+                subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.getReviewReason(), subscription.getReviewNote(), subscription.isHidden(),
                 subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getVersion());
     }
 }

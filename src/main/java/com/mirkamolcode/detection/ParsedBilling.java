@@ -14,4 +14,15 @@ public record ParsedBilling(
         LocalDate nextBillingDate,
         Confidence confidence
 ) {
+    public boolean hasAmount() {
+        return amount != null;
+    }
+
+    public boolean hasCycle() {
+        return cycle != null;
+    }
+
+    public ParsedBilling withoutAmount() {
+        return new ParsedBilling(null, null, cycle, paymentDate, nextBillingDate, confidence);
+    }
 }

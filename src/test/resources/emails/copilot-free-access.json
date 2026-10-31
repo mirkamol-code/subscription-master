@@ -1,0 +1,54 @@
+{
+  "id": "19a0copilot0free1",
+  "threadId": "19a0copilot0free1",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Hi @alex-doe,\n\nWelcome to GitHub Copilot Free! Your subscription is now active.\nPlan: Copilot Free\nA",
+  "historyId": "190001",
+  "internalDate": "1792843200000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "GitHub <noreply@github.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@github.com header.s=pf2023 header.b=abc; spf=pass (google.com: domain of noreply@github.com designates 192.30.252.200 as permitted sender) smtp.mailfrom=noreply@github.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=github.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your free Copilot access is ready"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 196,
+          "data": "SGkgQGFsZXgtZG9lLAoKV2VsY29tZSB0byBHaXRIdWIgQ29waWxvdCBGcmVlISBZb3VyIHN1YnNjcmlwdGlvbiBpcyBub3cgYWN0aXZlLgpQbGFuOiBDb3BpbG90IEZyZWUKQW1vdW50IGNoYXJnZWQ6ICQwLjAwIHBlciBtb250aAoKU3RhcnQgY29kaW5nIHdpdGggQ29waWxvdCBpbiB5b3VyIGVkaXRvciB0b2RheS4KClRoZSBHaXRIdWIgVGVhbQ"
+        }
+      }
+    ]
+  }
+}

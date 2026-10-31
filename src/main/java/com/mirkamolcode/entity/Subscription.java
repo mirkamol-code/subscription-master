@@ -3,6 +3,7 @@ package com.mirkamolcode.entity;
 import com.mirkamolcode.detection.Confidence;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
 import jakarta.persistence.*;
@@ -60,6 +61,10 @@ public class Subscription extends AuditableEntity {
     @Column(nullable = false)
     private boolean needsReview = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private ReviewReason reviewReason;
+
     @Column(nullable = false)
     private boolean isHidden = false;
 
@@ -100,7 +105,7 @@ public class Subscription extends AuditableEntity {
         this.frequency = frequency;
         this.category = category;
         this.startDate = startDate;
-        this.needsReview = false;
+        clearReview();
     }
 
     public void markDeleted() {
@@ -133,12 +138,27 @@ public class Subscription extends AuditableEntity {
         this.statusEvidenceAt = evidenceAt;
     }
 
-    public void recordUnpricedPayment(LocalDate paidOn) {
-        if (lastPaymentDate != null && !paidOn.isAfter(lastPaymentDate))
-            return;
-        this.lastPaymentDate = paidOn;
-        this.nextPaymentDate = frequency.addTo(paidOn);
-        this.needsReview = true;
+    public void confirmPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency) {
+        recordPayment(paidOn, amount, currency, frequency, null, Confidence.HIGH);
+        clearReview();
+    }
+
+    public void flagUnreadableAmount() {
+        needsReview = true;
+        reviewReason = ReviewReason.AMOUNT_UNREADABLE;
+    }
+
+    public boolean isAwaitingAmountReview() {
+        return reviewReason == ReviewReason.AMOUNT_UNREADABLE;
+    }
+
+    public boolean isInRenewalWindow(LocalDate day, int daysBefore, int daysAfter) {
+        return !day.isBefore(nextPaymentDate.minusDays(daysBefore)) && !day.isAfter(nextPaymentDate.plusDays(daysAfter));
+    }
+
+    private void clearReview() {
+        needsReview = false;
+        reviewReason = null;
     }
 
     public void flagForReview() {
@@ -207,6 +227,14 @@ public class Subscription extends AuditableEntity {
 
     public boolean isNeedsReview() {
         return needsReview;
+    }
+
+    public ReviewReason getReviewReason() {
+        return reviewReason;
+    }
+
+    public String getReviewNote() {
+        return reviewReason == null ? null : reviewReason.note();
     }
 
     public boolean isHidden() {

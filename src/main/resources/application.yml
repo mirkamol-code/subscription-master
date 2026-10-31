@@ -64,6 +64,7 @@ app:
     vapid-subject: ${VAPID_SUBJECT:mailto:admin@subscriptionmaster.app}
   status:
     overdue-grace-days: ${OVERDUE_GRACE_DAYS:5}
+    renewal-window-days-before: ${RENEWAL_WINDOW_DAYS_BEFORE:3}
     daily-rules-cron: ${STATUS_RULES_CRON:0 15 * * * *}
   security:
     token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
@@ -81,25 +82,33 @@ app:
       async-enabled: true
       max-concurrent: 4
     detection:
-      query: 'subject:(receipt OR invoice OR subscription OR renewal OR renewed OR "payment received" OR "your plan" OR billing OR "payment failed" OR declined OR canceled OR cancelled)'
-      lookback: 1y
+      query: 'subject:(receipt OR invoice OR "payment received" OR "your subscription" OR renewal OR renewed OR "payment failed" OR declined OR canceled OR cancelled OR "won''t renew" OR "plan ended")'
+      lookback: 13m
       keywords:
-        receipt-subject: [receipt, invoice, "payment received", "payment confirmation", "your plan", renewal, renewed, billing, subscription, "order confirmation", "thanks for your payment"]
+        receipt-subject: [receipt, invoice, "payment received", "payment confirmation", "order confirmation", "thanks for your payment", "your receipt"]
+        subscription-subject: ["your subscription", renewal, renewed]
+        payment-due: ["payment due", "payment is due", "due soon", "upcoming payment", "upcoming renewal", "renews soon", "will be charged", "we will charge"]
+        free-plan: [free, "at no cost", "no charge"]
+        recurring: [subscription, membership, plan, renews, renewal, auto-renewing, "per month", "per year", monthly, annually, yearly]
         payment-confirmation: ["thanks for your payment", "thank you for your payment", "payment received", "amount charged", "you paid", "we charged", "your card was charged", "payment confirmation"]
-        cancellation: ["has been canceled", "has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
+        cancellation: ["has been canceled", "has been cancelled", "subscription was canceled", "subscription was cancelled", "subscription canceled", "subscription cancelled", "won't renew", "will not renew", "plan ended", "plan has ended", "plan has been canceled", "plan has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
         promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, "free trial", webinar, newsletter]
         access-ends: [until, "ends on", "end on", "will end", "expires on", "expire on", "access until", "active until"]
+        access-ends-now: ["effective immediately", "ends immediately", "ended immediately", "with immediate effect"]
+      processors: [stripe.com, paddle.com, paddle.net, payments-noreply@google.com, googleplay-noreply@google.com, apple.com]
+      personal-mailbox-domains: [gmail.com, googlemail.com, outlook.com, hotmail.com, live.com, msn.com, yahoo.com, ymail.com, icloud.com, me.com, mac.com, aol.com, proton.me, protonmail.com, gmx.com, gmx.net, mail.com, zoho.com, yandex.ru, yandex.com, ya.ru, mail.ru, inbox.ru, list.ru, bk.ru, rambler.ru]
       merchants:
         - { key: netflix, display-name: Netflix, senders: [netflix.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: spotify, display-name: Spotify, senders: [spotify.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: youtube-premium, display-name: YouTube Premium, aliases: [YouTube, YouTube Music], senders: [youtube.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
-        - { key: google-play, display-name: Google Play, senders: [googleplay-noreply@google.com], category: OTHER }
+        - { key: google-one, display-name: Google One, aliases: [Google One AI Premium, Google AI Pro, Google AI Premium, Google AI Ultra, Gemini Advanced, Gemini Pro], senders: [], logo-domain: one.google.com, category: OTHER, default-cycle: MONTHLY }
         - { key: apple, display-name: Apple (App Store / iCloud), aliases: [Apple, iCloud, iCloud+, App Store, Apple Music, Apple TV+], senders: [apple.com], category: OTHER }
         - { key: amazon-prime, display-name: Amazon Prime, aliases: [Prime Video, Amazon Prime Video], senders: [prime@amazon.com, primevideo.com], category: ENTERTAINMENT }
         - { key: microsoft, display-name: Microsoft, aliases: [Microsoft 365, Office 365, Xbox Game Pass], senders: [microsoft.com, microsoftstore.com], category: PRODUCTIVITY }
         - { key: adobe, display-name: Adobe, aliases: [Adobe Creative Cloud, Creative Cloud], senders: [adobe.com], category: PRODUCTIVITY }
         - { key: openai, display-name: ChatGPT, aliases: [OpenAI, ChatGPT Plus], senders: [openai.com], category: AI_TOOLS, default-cycle: MONTHLY }
+        - { key: anthropic, display-name: Claude, aliases: [Claude Pro, Claude Max, Anthropic], senders: [anthropic.com], category: AI_TOOLS, default-cycle: MONTHLY }
         - { key: notion, display-name: Notion, senders: [notion.so, makenotion.com], category: PRODUCTIVITY }
         - { key: github, display-name: GitHub, senders: [github.com], category: PRODUCTIVITY }
         - { key: canva, display-name: Canva, senders: [canva.com], category: PRODUCTIVITY }

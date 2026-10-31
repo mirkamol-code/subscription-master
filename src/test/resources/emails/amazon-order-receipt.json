@@ -23,6 +23,10 @@
         "value": "Amazon.com <auto-confirm@amazon.com>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@amazon.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@amazon.com designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@amazon.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=amazon.com"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },

@@ -1,5 +1,7 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.detection.EmailKind;
+import com.mirkamolcode.dto.request.ReceiptAmountRequest;
 import com.mirkamolcode.dto.request.SubscriptionRequest;
 import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
@@ -19,7 +21,6 @@ import com.mirkamolcode.mapper.SubscriptionMapper;
 import com.mirkamolcode.exception.ConflictException;
 import com.mirkamolcode.exception.NotFoundException;
 import com.mirkamolcode.entity.Subscription;
-import com.mirkamolcode.entity.User;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.PaymentHistoryRepository;
@@ -32,6 +33,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -84,21 +86,6 @@ public class SubscriptionService {
         this.statusChangeRepository = statusChangeRepository;
         this.statusService = statusService;
         this.clock = clock;
-    }
-
-    @Transactional
-    public SubscriptionResponse create(SubscriptionRequest request) {
-        User user = currentUser.requiredUser();
-        return mapper.toResponse(repository.save(new Subscription(
-                user,
-                request.name(),
-                request.price(),
-                request.currency(),
-                request.frequency(),
-                request.status(),
-                request.category(),
-                request.startDate()
-        )));
     }
 
     public Page<SubscriptionResponse> list(SubscriptionStatus status,
@@ -207,11 +194,28 @@ public class SubscriptionService {
         return mapper.toResponse(subscription);
     }
 
+    @Transactional
+    public SubscriptionResponse confirmReceiptAmount(Long id, Long emailId, ReceiptAmountRequest request) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        BillingEmail receipt = billingEmailRepository.findByIdAndSubscriptionId(emailId, subscription.getId())
+                .orElseThrow(() -> new NotFoundException("Email not found: " + emailId));
+        if (receipt.getKind() != EmailKind.RECEIPT || paymentHistoryRepository.existsByBillingEmailId(receipt.getId()))
+            throw new ConflictException("Only a receipt without a recorded payment can be confirmed");
+        LocalDate paidOn = LocalDate.ofInstant(receipt.getReceivedAt(), ZoneOffset.UTC);
+        subscription.confirmPayment(paidOn, request.amount(), request.currency());
+        paymentHistoryRepository.save(new PaymentHistory(subscription, receipt, paidOn, request.amount(), request.currency(),
+                exchangeRateService.rateToUzs(request.currency())));
+        statusService.apply(subscription, StatusEvidence.receipt(receipt.getReceivedAt()), receipt);
+        repository.flush();
+        return mapper.toResponse(subscription);
+    }
+
     public List<BillingEmailResponse> findEmails(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_READ_ALL);
+        Set<Long> pricedEmailIds = paymentHistoryRepository.findBillingEmailIdsBySubscriptionId(subscription.getId());
         return billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(subscription.getId())
                 .stream()
-                .map(SubscriptionService::mapToBillingEmailResponse)
+                .map(email -> mapToBillingEmailResponse(email, pricedEmailIds))
                 .toList();
     }
 
@@ -325,17 +329,19 @@ public class SubscriptionService {
         BillingEmail email = change.getBillingEmail();
         return new StatusChangeResponse(change.getId(), change.getFromStatus(), change.getToStatus(), change.getReason(),
                 change.getReason().source(), change.getEffectiveAt(), change.getEndsOn(),
-                email == null ? null : email.getId(), email == null ? null : email.getSender(),
+                email == null ? null : email.getId(), email == null ? null : email.getGmailMessageId(),
+                email == null ? null : email.getSender(), email == null ? null : email.getSubject(),
                 email == null ? null : email.getReceivedAt());
     }
 
-    private static BillingEmailResponse mapToBillingEmailResponse(BillingEmail email) {
+    private static BillingEmailResponse mapToBillingEmailResponse(BillingEmail email, Set<Long> pricedEmailIds) {
         List<BillingEmailResponse.Attachment> attachments = email.getAttachments().stream()
                 .map(attachment -> new BillingEmailResponse.Attachment(
                         attachment.getId(), attachment.getFilename(), attachment.getMimeType(), attachment.getSizeBytes()))
                 .toList();
         return new BillingEmailResponse(email.getId(), email.getGmailMessageId(), email.getKind(), email.getSender(),
-                email.getSubject(), email.getReceivedAt(), email.getConfidence(), attachments);
+                email.getSubject(), email.getReceivedAt(), email.getConfidence(),
+                email.getKind() == EmailKind.RECEIPT && !pricedEmailIds.contains(email.getId()), attachments);
     }
 
     private Subscription requiredAccessible(Long id, Permission allPermission) {

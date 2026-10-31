@@ -1,0 +1,54 @@
+{
+  "id": "19a0stripe0claude",
+  "threadId": "19a0stripe0claude",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Receipt from Anthropic, PBC\nReceipt #2871-4410\n\nAmount paid $20.00\nDate paid November 2, 2026\nPaymen",
+  "historyId": "190001",
+  "internalDate": "1793102400000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Anthropic, PBC <invoice+statements+acct_1MabcXYZ@stripe.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@stripe.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@stripe.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@stripe.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=stripe.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your receipt from Anthropic, PBC #2871-4410"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 261,
+          "data": "UmVjZWlwdCBmcm9tIEFudGhyb3BpYywgUEJDClJlY2VpcHQgIzI4NzEtNDQxMAoKQW1vdW50IHBhaWQgJDIwLjAwCkRhdGUgcGFpZCBOb3ZlbWJlciAyLCAyMDI2ClBheW1lbnQgbWV0aG9kIFZpc2EgLSA0MjQyCgpTdW1tYXJ5CkNsYXVkZSBQcm8gIE5vdiAyIC0gRGVjIDIsIDIwMjYgICQyMC4wMApUb3RhbCAkMjAuMDAKClF1ZXN0aW9ucz8gQ29udGFjdCBBbnRocm9waWMsIFBCQyBhdCBzdXBwb3J0QGFudGhyb3BpYy5jb20uClBvd2VyZWQgYnkgU3RyaXBl"
+        }
+      }
+    ]
+  }
+}

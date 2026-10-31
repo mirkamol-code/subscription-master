@@ -118,11 +118,11 @@ class RestGmailClientTest {
     }
 
     @Test
-    void getMessageHeaders_shouldFetchOnlyFromAndSubject_withoutBody() {
+    void getMessageHeaders_shouldFetchSenderAndListHeaders_withoutBody() {
         // given
         gmail.stubFor(get(urlPathEqualTo(MESSAGES + "/18c2a1f0netflix01"))
                 .withQueryParam("format", equalTo("metadata"))
-                .withQueryParam("metadataHeaders", havingExactly("From", "Subject"))
+                .withQueryParam("metadataHeaders", havingExactly("From", "Subject", "List-Id", "List-Unsubscribe", "Authentication-Results"))
                 .willReturn(okJson(recorded("google/gmail-message-metadata.json"))));
 
         // when
@@ -132,6 +132,8 @@ class RestGmailClientTest {
         assertThat(headers.from()).isEqualTo("Netflix <info@account.netflix.com>");
         assertThat(headers.subject()).isEqualTo("Your Netflix membership receipt");
         assertThat(headers.receivedAt()).isEqualTo(Instant.parse("2026-10-30T09:00:00Z"));
+        assertThat(headers.headers().authenticationResults()).startsWith("mx.google.com; dkim=pass header.i=@account.netflix.com");
+        assertThat(headers.headers().listId()).isNull();
         assertThat(headers.bodyText()).isEmpty();
     }
 

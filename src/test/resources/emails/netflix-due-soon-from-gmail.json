@@ -1,0 +1,54 @@
+{
+  "id": "19a0netflix0due01",
+  "threadId": "19a0netflix0due01",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Hi,\n\nYour Netflix subscription payment of $15.49 per month is due on November 5, 2026.\nTotal: $15.49",
+  "historyId": "190001",
+  "internalDate": "1793016000000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Netflix Billing <netflix.billing.team@gmail.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Subscription payment due soon: Netflix"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@gmail.com header.s=20230601 header.b=xyz; spf=pass (google.com: domain of netflix.billing.team@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=netflix.billing.team@gmail.com; dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 164,
+          "data": "SGksCgpZb3VyIE5ldGZsaXggc3Vic2NyaXB0aW9uIHBheW1lbnQgb2YgJDE1LjQ5IHBlciBtb250aCBpcyBkdWUgb24gTm92ZW1iZXIgNSwgMjAyNi4KVG90YWw6ICQxNS40OQpQbGVhc2UgbWFrZSBzdXJlIHlvdXIgY2FyZCBpcyB1cCB0byBkYXRlLgoKTmV0ZmxpeCBCaWxsaW5nIFRlYW0"
+        }
+      }
+    ]
+  }
+}

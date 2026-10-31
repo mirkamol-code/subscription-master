@@ -1,0 +1,54 @@
+{
+  "id": "19a0stripe0cursor",
+  "threadId": "19a0stripe0cursor",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Receipt from Cursor\nAmount paid $20.00\nDate paid November 2, 2026\n\nCursor Pro subscription  Nov 2 - ",
+  "historyId": "190001",
+  "internalDate": "1793102400000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Anysphere <invoice+statements+acct_1Zz9@stripe.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@stripe.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@stripe.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@stripe.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=stripe.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your receipt from Cursor #1932-5521"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 151,
+          "data": "UmVjZWlwdCBmcm9tIEN1cnNvcgpBbW91bnQgcGFpZCAkMjAuMDAKRGF0ZSBwYWlkIE5vdmVtYmVyIDIsIDIwMjYKCkN1cnNvciBQcm8gc3Vic2NyaXB0aW9uICBOb3YgMiAtIERlYyAyLCAyMDI2ICAkMjAuMDAKVG90YWwgJDIwLjAwCgpQb3dlcmVkIGJ5IFN0cmlwZQ"
+        }
+      }
+    ]
+  }
+}

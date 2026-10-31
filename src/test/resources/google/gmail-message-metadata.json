@@ -10,7 +10,8 @@
     "mimeType": "multipart/alternative",
     "headers": [
       { "name": "From", "value": "Netflix <info@account.netflix.com>" },
-      { "name": "Subject", "value": "Your Netflix membership receipt" }
+      { "name": "Subject", "value": "Your Netflix membership receipt" },
+      { "name": "Authentication-Results", "value": "mx.google.com; dkim=pass header.i=@account.netflix.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@account.netflix.com designates 69.53.224.1 as permitted sender) smtp.mailfrom=bounces@account.netflix.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=account.netflix.com" }
     ]
   }
 }

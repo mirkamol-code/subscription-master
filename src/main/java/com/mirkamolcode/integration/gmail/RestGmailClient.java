@@ -101,7 +101,7 @@ public class RestGmailClient implements GmailClient {
     public GmailMessage getMessageHeaders(String accessToken, String messageId) {
         return GmailMessageMapper.toMessage(fetch(accessToken, uri -> uri.path("/messages/{id}")
                 .queryParam("format", "metadata")
-                .queryParam("metadataHeaders", "From", "Subject")
+                .queryParam("metadataHeaders", "From", "Subject", "List-Id", "List-Unsubscribe", "Authentication-Results")
                 .build(messageId)));
     }
 

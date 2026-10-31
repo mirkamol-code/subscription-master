@@ -32,6 +32,61 @@ class SubscriptionStatusPolicyTest {
     }
 
     @Test
+    void evaluate_shouldStayActiveUntilPaidPeriodEnds_whenCancellationEmailHasNoAccessEndDate() {
+        // when
+        StatusDecision decision = decide(activeDueOn(LocalDate.of(2026, 11, 30)), StatusEvidence.cancellation(LATER, null)).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(ACTIVE);
+        assertThat(decision.endsOn()).isEqualTo(LocalDate.of(2026, 11, 30));
+        assertThat(decision.reason()).isEqualTo(StatusChangeReason.CANCELLATION_SCHEDULED);
+    }
+
+    @Test
+    void evaluate_shouldCancel_whenPaidPeriodAlreadyEndedBeforeCancellation() {
+        // when
+        StatusDecision decision = decide(activeDueOn(LocalDate.of(2026, 11, 5)), StatusEvidence.cancellation(LATER, null)).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(CANCELLED);
+        assertThat(decision.endsOn()).isNull();
+    }
+
+    @Test
+    void evaluate_shouldPreferStatedAccessEnd_overPaidPeriod() {
+        // when
+        StatusDecision decision = decide(activeDueOn(LocalDate.of(2026, 11, 30)),
+                StatusEvidence.cancellation(LATER, LocalDate.of(2026, 11, 20))).orElseThrow();
+
+        // then
+        assertThat(decision.endsOn()).isEqualTo(LocalDate.of(2026, 11, 20));
+    }
+
+    @Test
+    void evaluate_shouldCancelAtScheduledEnd_afterPaidPeriodRunsOut() {
+        // given
+        StatusSnapshot scheduled = new StatusSnapshot(ACTIVE, LATER, LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 10));
+
+        // when
+        StatusDecision decision = decide(scheduled, StatusEvidence.scheduledEnd(Instant.parse("2026-11-10T00:00:00Z"))).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(CANCELLED);
+    }
+
+    @Test
+    void evaluate_shouldRequireBilling_whenDueDatePassesWithoutCancellation() {
+        // given
+        StatusSnapshot overdue = new StatusSnapshot(ACTIVE, EARLIER, null, LocalDate.of(2026, 11, 1));
+
+        // when
+        StatusDecision decision = decide(overdue, StatusEvidence.overdue(Instant.parse("2026-11-10T00:00:00Z"))).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(BILLING_REQUIRED);
+    }
+
+    @Test
     void evaluate_shouldStayActiveUntilAccessEnds_whenCancellationEmailHasFutureEndDate() {
         // when
         StatusDecision decision = decide(active(), StatusEvidence.cancellation(LATER, LocalDate.of(2026, 11, 20))).orElseThrow();
@@ -185,6 +240,10 @@ class SubscriptionStatusPolicyTest {
     }
 
     private static StatusSnapshot snapshot(SubscriptionStatus status, Instant evidenceAt, LocalDate endsOn) {
-        return new StatusSnapshot(status, evidenceAt, endsOn);
+        return new StatusSnapshot(status, evidenceAt, endsOn, null);
+    }
+
+    private static StatusSnapshot activeDueOn(LocalDate nextPaymentDate) {
+        return new StatusSnapshot(ACTIVE, EARLIER, null, nextPaymentDate);
     }
 }

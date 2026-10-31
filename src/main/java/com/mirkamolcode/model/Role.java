@@ -5,7 +5,6 @@ import java.util.Set;
 
 public enum Role {
     USER(EnumSet.of(
-            Permission.SUBSCRIPTION_CREATE,
             Permission.SUBSCRIPTION_READ_OWN,
             Permission.SUBSCRIPTION_UPDATE_OWN,
             Permission.SUBSCRIPTION_DELETE_OWN,

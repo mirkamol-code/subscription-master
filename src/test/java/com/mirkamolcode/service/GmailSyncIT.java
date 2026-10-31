@@ -2,7 +2,9 @@ package com.mirkamolcode.service;
 
 import com.mirkamolcode.AbstractTestConfig;
 import com.mirkamolcode.detection.EmailFixtures;
+import com.mirkamolcode.detection.EmailKind;
 import com.mirkamolcode.dto.AuthDtos.TokenResponse;
+import com.mirkamolcode.entity.BillingEmail;
 import com.mirkamolcode.entity.ExchangeRate;
 import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.entity.Subscription;
@@ -140,22 +142,33 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldAdoptMatchingManualSubscription_insteadOfCreatingDuplicate() {
+    void sync_shouldNotCreateSubscriptions_fromPullRequestNotificationsOrLookalikeSenders() {
         // given
-        User user = userRepository.findById(userId).orElseThrow();
-        Subscription manual = subscriptionRepository.save(new Subscription(user, "netflix", new BigDecimal("15.00"), CurrencyCode.USD,
-                com.mirkamolcode.model.BillingFrequency.MONTHLY, com.mirkamolcode.model.SubscriptionStatus.ACTIVE,
-                com.mirkamolcode.model.SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 1, 30)));
-        GMAIL.mailbox(NETFLIX_OCT);
+        GMAIL.mailbox(EmailFixtures.load("github-pr-notification.json"), EmailFixtures.load("netflix-due-soon-from-gmail.json"));
 
         // when
         underTest.sync(userId);
 
         // then
-        assertThat(subscriptionsOfUser()).hasSize(1);
-        Subscription adopted = subscription("netflix");
-        assertThat(adopted.getId()).isEqualTo(manual.getId());
-        assertThat(adopted.getPrice()).isEqualByComparingTo("22.99");
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
+    void sync_shouldLinkEverySubscriptionToTheGmailReceiptsItCameFrom() {
+        // given
+        GMAIL.mailbox(NETFLIX_OCT, ADOBE, NETFLIX_SEP);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isNotEmpty().allSatisfy(subscription ->
+                assertThat(billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(subscription.getId()))
+                        .filteredOn(email -> email.getKind() == EmailKind.RECEIPT)
+                        .isNotEmpty());
+        assertThat(billingEmailRepository.findBySubscriptionIdOrderByReceivedAtDesc(subscription("netflix").getId()))
+                .extracting(BillingEmail::getGmailMessageId)
+                .containsExactly(NETFLIX_OCT.id(), "netflix-sep");
     }
 
     @Test
@@ -547,22 +560,17 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldAdoptManualSubscription_namedAfterMerchantAlias() {
+    void sync_shouldNotCreateSubscription_fromReceiptWithoutAmount() {
         // given
-        User user = userRepository.findById(userId).orElseThrow();
-        Subscription manual = subscriptionRepository.save(new Subscription(user, "OpenAI", new BigDecimal("20.00"), CurrencyCode.USD,
-                com.mirkamolcode.model.BillingFrequency.MONTHLY, com.mirkamolcode.model.SubscriptionStatus.ACTIVE,
-                com.mirkamolcode.model.SubscriptionCategory.AI_TOOLS, LocalDate.of(2026, 1, 5)));
         GMAIL.mailbox(new GmailMessage("openai-receipt", "openai-receipt", Instant.parse("2026-10-05T03:00:00Z"),
                 "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt", null,
-                "Thanks for your payment. Amount paid: $20.00 per month for ChatGPT Plus."));
+                "Thanks for your payment. See your account page for details."));
 
         // when
         underTest.sync(userId);
 
         // then
-        assertThat(subscriptionsOfUser()).hasSize(1);
-        assertThat(subscription("openai").getId()).isEqualTo(manual.getId());
+        assertThat(subscriptionsOfUser()).isEmpty();
     }
 
     @Test

@@ -63,6 +63,8 @@ class SubscriptionControllerTest {
                 LocalDate.of(2026, 10, 15),
                 null,
                 false,
+                null,
+                null,
                 false,
                 null,
                 null,

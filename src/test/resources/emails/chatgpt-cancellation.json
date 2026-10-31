@@ -1,0 +1,54 @@
+{
+  "id": "19a0openai0cancel",
+  "threadId": "19a0openai0cancel",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Hi Alex,\n\nWe've canceled your ChatGPT Plus subscription. You will keep access until August 21, 2026,",
+  "historyId": "190001",
+  "internalDate": "1786435200000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "OpenAI <noreply@tm.openai.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@tm.openai.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@tm.openai.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@tm.openai.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=tm.openai.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your ChatGPT Plus subscription has been canceled"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 149,
+          "data": "SGkgQWxleCwKCldlJ3ZlIGNhbmNlbGVkIHlvdXIgQ2hhdEdQVCBQbHVzIHN1YnNjcmlwdGlvbi4gWW91IHdpbGwga2VlcCBhY2Nlc3MgdW50aWwgQXVndXN0IDIxLCAyMDI2LCBhbmQgeW91IHdvbid0IGJlIGNoYXJnZWQgYWdhaW4uCgpUaGUgT3BlbkFJIHRlYW0"
+        }
+      }
+    ]
+  }
+}

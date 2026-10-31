@@ -1,0 +1,62 @@
+{
+  "id": "19a0github0pr025",
+  "threadId": "19a0github0pr025",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "@mirkamol-code pushed 1 commit.\n\nPayment received handling now covers renewals and billing subscript",
+  "historyId": "190001",
+  "internalDate": "1792929600000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "mirkamol-code <notifications@github.com>"
+      },
+      {
+        "name": "To",
+        "value": "owner/repo <repo@noreply.github.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Re: [owner/repo] fix(gmail): encode braced search query (PR #25)"
+      },
+      {
+        "name": "List-Id",
+        "value": "owner/repo <repo.owner.github.com>"
+      },
+      {
+        "name": "List-Unsubscribe",
+        "value": "<mailto:unsub+abc@reply.github.com>, <https://github.com/notifications/unsubscribe/abc>"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@github.com header.s=pf2023 header.b=abc; spf=pass (google.com: domain of notifications@github.com designates 192.30.252.201 as permitted sender) smtp.mailfrom=notifications@github.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=github.com"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 336,
+          "data": "QG1pcmthbW9sLWNvZGUgcHVzaGVkIDEgY29tbWl0LgoKUGF5bWVudCByZWNlaXZlZCBoYW5kbGluZyBub3cgY292ZXJzIHJlbmV3YWxzIGFuZCBiaWxsaW5nIHN1YnNjcmlwdGlvbnMuCgorSU5TRVJUIElOVE8gZXhjaGFuZ2VfcmF0ZXMgKGN1cnJlbmN5LCByYXRlX3RvX3V6cykgVkFMVUVTICgnRVVSJywgMTM5NjcuNTAwMDAwKTsKKy0tIFRvdGFsOiBFVVIgMTM5NjcuNTAgcGVyIG1vbnRoCgpWaWV3IGl0IG9uIEdpdEh1YjogaHR0cHM6Ly9naXRodWIuY29tL293bmVyL3JlcG8vcHVsbC8yNQpZb3UgYXJlIHJlY2VpdmluZyB0aGlzIGJlY2F1c2UgeW91IGF1dGhvcmVkIHRoZSB0aHJlYWQu"
+        }
+      }
+    ]
+  }
+}

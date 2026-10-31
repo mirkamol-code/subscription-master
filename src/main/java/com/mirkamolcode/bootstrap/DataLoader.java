@@ -1,5 +1,8 @@
 package com.mirkamolcode.bootstrap;
 
+import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.EmailKind;
+import com.mirkamolcode.entity.BillingEmail;
 import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
@@ -8,11 +11,13 @@ import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.Role;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
+import com.mirkamolcode.repository.BillingEmailRepository;
 import com.mirkamolcode.repository.PaymentHistoryRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
 import com.mirkamolcode.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -29,10 +34,13 @@ import org.springframework.transaction.annotation.Transactional;
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true")
 public class DataLoader implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DataLoader.class);
+    private static final String ADMIN_EMAIL = "admin@subscribemaster.local";
+    private static final String DEMO_EMAIL = "demo@subscribemaster.local";
 
     private final UserRepository users;
     private final PaymentHistoryRepository historyRepository;
     private final SubscriptionRepository subscriptions;
+    private final BillingEmailRepository billingEmails;
 
     private record SubscriptionSeed(
             String name,
@@ -250,33 +258,28 @@ public class DataLoader implements ApplicationRunner {
 
     public DataLoader(UserRepository users,
                       PaymentHistoryRepository historyRepository,
-                      SubscriptionRepository subscriptions) {
+                      SubscriptionRepository subscriptions,
+                      BillingEmailRepository billingEmails) {
         this.users = users;
         this.historyRepository = historyRepository;
         this.subscriptions = subscriptions;
+        this.billingEmails = billingEmails;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        User admin = users.findByEmailIgnoreCase("admin@subscribemaster.local")
-                .orElseGet(() -> users.save(new User(
-                        "admin@subscribemaster.local",
-                        Set.of(Role.ADMIN, Role.USER)
-                )));
+        users.findByEmailIgnoreCase(ADMIN_EMAIL)
+                .orElseGet(() -> users.save(new User(ADMIN_EMAIL, Set.of(Role.ADMIN, Role.USER))));
+        User demo = users.findByEmailIgnoreCase(DEMO_EMAIL)
+                .orElseGet(() -> users.save(new User(DEMO_EMAIL, Set.of(Role.USER))));
 
-        User mirkamol = users.findByEmailIgnoreCase("hteg9188@gmail.com")
-                .orElseGet(() -> users.save(new User(
-                        "hteg9188@gmail.com",
-                        Set.of(Role.USER)
-                )));
-
-        if (subscriptions.count() >= 200) {
-            log.info("Database already contains {} subscriptions. Skipping data seeding.", subscriptions.count());
+        if (subscriptions.existsByUserId(demo.getId())) {
+            log.info("Demo user already has subscriptions. Skipping data seeding.");
             return;
         }
 
-        log.info("Seeding 200 subscriptions for user {}...", mirkamol.getEmail());
+        log.info("Seeding {} demo subscriptions for {}...", SEED_SUBSCRIPTIONS.size(), DEMO_EMAIL);
         LocalDate today = LocalDate.now();
 
         int count = 0;
@@ -285,7 +288,7 @@ public class DataLoader implements ApplicationRunner {
             LocalDate nextPaymentDate = today.plusDays(seed.nextDaysOffset());
 
             Subscription sub = subscriptions.save(new Subscription(
-                    mirkamol,
+                    demo,
                     seed.name(),
                     new BigDecimal(seed.price()),
                     seed.currency(),
@@ -295,6 +298,7 @@ public class DataLoader implements ApplicationRunner {
                     startDate,
                     nextPaymentDate
             ));
+            attachDemoReceipt(demo, sub, count);
 
             if (count < 30) {
                 seedPaymentHistoryFor(sub, today);
@@ -303,6 +307,14 @@ public class DataLoader implements ApplicationRunner {
         }
 
         log.info("Successfully seeded {} subscriptions and historical payments.", count);
+    }
+
+    private void attachDemoReceipt(User demo, Subscription subscription, int index) {
+        BillingEmail receipt = BillingEmail.relevant(demo, "demo-" + index, null, EmailKind.RECEIPT,
+                subscription.getName() + " <billing@demo.subscribemaster.local>", "Your " + subscription.getName() + " receipt",
+                subscription.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant(), Confidence.HIGH, null, null);
+        receipt.attachTo(subscription);
+        billingEmails.save(receipt);
     }
 
     private void seedPaymentHistoryFor(Subscription sub, LocalDate today) {

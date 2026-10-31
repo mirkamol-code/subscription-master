@@ -16,11 +16,13 @@ import org.springframework.stereotype.Service;
 public class BillingEmailAnalyzer {
     private final EmailClassifier classifier;
     private final MerchantResolver merchants;
+    private final SenderVerifier senders;
     private final List<EmailParser> parsers;
 
-    public BillingEmailAnalyzer(EmailClassifier classifier, MerchantResolver merchants, List<EmailParser> parsers) {
+    public BillingEmailAnalyzer(EmailClassifier classifier, MerchantResolver merchants, SenderVerifier senders, List<EmailParser> parsers) {
         this.classifier = classifier;
         this.merchants = merchants;
+        this.senders = senders;
         List<EmailParser> ordered = new ArrayList<>(parsers);
         AnnotationAwareOrderComparator.sort(ordered);
         this.parsers = List.copyOf(ordered);
@@ -28,26 +30,42 @@ public class BillingEmailAnalyzer {
 
     public BillingEmailAnalysis analyze(GmailMessage message) {
         EmailKind kind = classifier.classify(message);
-        if (kind == EmailKind.IRRELEVANT)
+        if (kind == EmailKind.IRRELEVANT || !senders.isTrusted(message))
             return BillingEmailAnalysis.irrelevant();
-        Merchant merchant = merchants.resolve(message);
+        Optional<Merchant> resolved = merchants.resolve(message);
+        if (resolved.isEmpty())
+            return BillingEmailAnalysis.irrelevant();
+        Merchant merchant = resolved.get();
         if (kind == EmailKind.CANCELLATION)
             return new BillingEmailAnalysis(kind, merchant, null, classifier.findAccessEndDate(message));
         if (kind != EmailKind.RECEIPT)
             return new BillingEmailAnalysis(kind, merchant, null, null);
 
-        Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message);
-        if (!merchant.known() && !hasRecurringBilling(parsed))
+        Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message).map(BillingEmailAnalyzer::dropNonPositiveAmount);
+        if (classifier.mentionsFreePlan(message) && !hasAmount(parsed))
+            return BillingEmailAnalysis.irrelevant();
+        if (!merchant.known() && !hasRecurringBilling(parsed, message))
             return BillingEmailAnalysis.irrelevant();
         return new BillingEmailAnalysis(kind, merchant, complete(parsed, merchant, message), null);
     }
 
     public boolean isCandidate(GmailMessage headers) {
+        if (classifier.isConversation(headers) || !senders.isTrusted(headers))
+            return false;
         return merchants.isKnownSender(headers) || classifier.hasBillingSubject(headers);
     }
 
-    private static boolean hasRecurringBilling(Optional<ParsedBilling> parsed) {
-        return parsed.map(billing -> billing.amount() != null && billing.cycle() != null).orElse(false);
+    private static ParsedBilling dropNonPositiveAmount(ParsedBilling billing) {
+        return billing.hasAmount() && billing.amount().signum() <= 0 ? billing.withoutAmount() : billing;
+    }
+
+    private static boolean hasAmount(Optional<ParsedBilling> parsed) {
+        return parsed.map(ParsedBilling::hasAmount).orElse(false);
+    }
+
+    private boolean hasRecurringBilling(Optional<ParsedBilling> parsed, GmailMessage message) {
+        boolean hasCycle = parsed.map(ParsedBilling::hasCycle).orElse(false);
+        return hasAmount(parsed) && (hasCycle || classifier.mentionsRecurringBilling(message));
     }
 
     private Optional<ParsedBilling> parseWithFirstMatchingParser(GmailMessage message) {

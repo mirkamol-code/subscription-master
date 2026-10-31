@@ -4,6 +4,7 @@ import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.SubscriptionCategory;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -12,15 +13,27 @@ public record DetectionProperties(
         String query,
         String lookback,
         Keywords keywords,
-        List<MerchantConfig> merchants
+        List<MerchantConfig> merchants,
+        List<String> processors,
+        List<String> personalMailboxDomains
 ) {
+    public DetectionProperties {
+        processors = processors == null ? List.of() : List.copyOf(processors);
+        personalMailboxDomains = personalMailboxDomains == null ? List.of() : List.copyOf(personalMailboxDomains);
+    }
+
     public record Keywords(
             List<String> receiptSubject,
+            List<String> subscriptionSubject,
+            List<String> paymentDue,
+            List<String> freePlan,
+            List<String> recurring,
             List<String> paymentConfirmation,
             List<String> cancellation,
             List<String> paymentFailed,
             List<String> promotion,
-            List<String> accessEnds
+            List<String> accessEnds,
+            List<String> accessEndsNow
     ) {
     }
 
@@ -29,15 +42,22 @@ public record DetectionProperties(
             String displayName,
             List<String> aliases,
             List<String> senders,
+            String logoDomain,
             SubscriptionCategory category,
             BillingFrequency defaultCycle
     ) {
         public MerchantConfig {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
+            senders = senders == null ? List.of() : List.copyOf(senders);
+            if (logoDomain == null && !senders.isEmpty())
+                logoDomain = toDomain(senders.getFirst());
         }
 
-        public String logoDomain() {
-            String sender = senders.getFirst();
+        public List<String> namesForMatching() {
+            return Stream.concat(Stream.of(displayName), aliases.stream()).toList();
+        }
+
+        private static String toDomain(String sender) {
             return sender.contains("@") ? sender.substring(sender.indexOf('@') + 1) : sender;
         }
     }

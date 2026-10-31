@@ -9,8 +9,10 @@ import com.mirkamolcode.repository.StatusChangeRepository;
 import com.mirkamolcode.repository.SubscriptionRepository;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -27,29 +29,39 @@ public class SubscriptionStatusService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
     private final int overdueGraceDays;
+    private final int renewalWindowDaysBefore;
 
     public SubscriptionStatusService(SubscriptionStatusPolicy policy,
                                      SubscriptionRepository subscriptions,
                                      StatusChangeRepository statusChanges,
                                      ApplicationEventPublisher events,
                                      Clock clock,
-                                     @Value("${app.status.overdue-grace-days}") int overdueGraceDays) {
+                                     @Value("${app.status.overdue-grace-days}") int overdueGraceDays,
+                                     @Value("${app.status.renewal-window-days-before}") int renewalWindowDaysBefore) {
         this.policy = policy;
         this.subscriptions = subscriptions;
         this.statusChanges = statusChanges;
         this.events = events;
         this.clock = clock;
         this.overdueGraceDays = overdueGraceDays;
+        this.renewalWindowDaysBefore = renewalWindowDaysBefore;
     }
 
     public void apply(Subscription subscription, StatusEvidence evidence, BillingEmail source) {
-        StatusSnapshot current = new StatusSnapshot(subscription.getStatus(), subscription.getStatusEvidenceAt(), subscription.getEndsOn());
+        StatusSnapshot current = new StatusSnapshot(subscription.getStatus(), subscription.getStatusEvidenceAt(), subscription.getEndsOn(),
+                subscription.getNextPaymentDate());
         policy.evaluate(current, evidence, calculateUsersToday(subscription)).ifPresent(decision -> {
             SubscriptionStatus from = subscription.getStatus();
             subscription.applyStatus(decision.status(), decision.endsOn(), decision.evidenceAt());
             if (decision.isStatusChange())
                 recordChange(subscription, from, decision, source);
         });
+    }
+
+    public void reviewReceiptWithoutAmount(Subscription subscription, Instant receivedAt) {
+        LocalDate receivedOn = LocalDate.ofInstant(receivedAt, ZoneOffset.UTC);
+        if (subscription.isInRenewalWindow(receivedOn, renewalWindowDaysBefore, overdueGraceDays))
+            subscription.flagUnreadableAmount();
     }
 
     public void markByUser(Subscription subscription, SubscriptionStatus status) {
@@ -62,7 +74,8 @@ public class SubscriptionStatusService {
         ZoneId zone = subscription.getUser().getTimeZone();
         if (subscription.getEndsOn() != null)
             apply(subscription, StatusEvidence.scheduledEnd(subscription.getEndsOn().atStartOfDay(zone).toInstant()), null);
-        else if (calculateUsersToday(subscription).isAfter(subscription.getNextPaymentDate().plusDays(overdueGraceDays)))
+        else if (!subscription.isAwaitingAmountReview()
+                && calculateUsersToday(subscription).isAfter(subscription.getNextPaymentDate().plusDays(overdueGraceDays)))
             apply(subscription, StatusEvidence.overdue(subscription.getNextPaymentDate().atStartOfDay(zone).toInstant()), null);
     }
 

@@ -1,0 +1,54 @@
+{
+  "id": "19a0stripe0oneoff",
+  "threadId": "19a0stripe0oneoff",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Receipt from City Museum\nAmount paid $18.00\nDate paid November 2, 2026\n\nAdult ticket x2  $18.00\nTota",
+  "historyId": "190001",
+  "internalDate": "1793102400000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "City Museum <receipts+acct_1Mu5@stripe.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@stripe.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@stripe.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@stripe.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=stripe.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your receipt from City Museum #5512-0091"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 127,
+          "data": "UmVjZWlwdCBmcm9tIENpdHkgTXVzZXVtCkFtb3VudCBwYWlkICQxOC4wMApEYXRlIHBhaWQgTm92ZW1iZXIgMiwgMjAyNgoKQWR1bHQgdGlja2V0IHgyICAkMTguMDAKVG90YWwgJDE4LjAwCgpQb3dlcmVkIGJ5IFN0cmlwZQ"
+        }
+      }
+    ]
+  }
+}

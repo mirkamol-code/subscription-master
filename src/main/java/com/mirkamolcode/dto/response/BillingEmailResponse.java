@@ -14,6 +14,7 @@ public record BillingEmailResponse(
         String subject,
         Instant receivedAt,
         Confidence confidence,
+        boolean amountUnreadable,
         List<Attachment> attachments
 ) {
     public record Attachment(Long id, String filename, String mimeType, long sizeBytes) {

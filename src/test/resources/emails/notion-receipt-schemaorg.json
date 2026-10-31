@@ -23,6 +23,10 @@
         "value": "Notion <billing@mail.notion.so>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@mail.notion.so header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@mail.notion.so designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@mail.notion.so; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=mail.notion.so"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },

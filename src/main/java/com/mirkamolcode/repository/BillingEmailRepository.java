@@ -14,6 +14,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface BillingEmailRepository extends JpaRepository<BillingEmail, Long> {
+    Optional<BillingEmail> findByIdAndSubscriptionId(Long id, Long subscriptionId);
+
     @EntityGraph(attributePaths = "attachments")
     Optional<BillingEmail> findByIdAndUserId(Long id, Long userId);
 

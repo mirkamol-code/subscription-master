@@ -23,6 +23,10 @@
         "value": "Uber Receipts <noreply@uber.example>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@uber.example header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@uber.example designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@uber.example; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=uber.example"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },

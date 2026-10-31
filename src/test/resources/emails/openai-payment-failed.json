@@ -23,6 +23,10 @@
         "value": "OpenAI <noreply@tm.openai.com>"
       },
       {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@tm.openai.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@tm.openai.com designates 198.51.100.7 as permitted sender) smtp.mailfrom=bounces@tm.openai.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=tm.openai.com"
+      },
+      {
         "name": "To",
         "value": "alex.doe@gmail.com"
       },
