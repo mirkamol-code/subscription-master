@@ -83,8 +83,8 @@ public class RestGmailClient implements GmailClient {
     @Override
     public GmailMessagePage listMessageIds(String accessToken, String query, String pageToken) {
         JsonNode body = fetch(accessToken, uri -> withPageToken(uri.path("/messages")
-                .queryParam("q", query)
-                .queryParam("maxResults", PAGE_SIZE), pageToken).build());
+                .queryParam("q", "{query}")
+                .queryParam("maxResults", PAGE_SIZE), pageToken).build(query));
         List<String> ids = new ArrayList<>();
         body.path("messages").forEach(message -> ids.add(message.path("id").asText()));
         return new GmailMessagePage(ids, readTextOrNull(body, "nextPageToken"));
