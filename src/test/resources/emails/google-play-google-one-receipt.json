@@ -1,0 +1,54 @@
+{
+  "id": "19a0gplay0gone001",
+  "threadId": "19a0gplay0gone001",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Thank you.\nYou've made a purchase from Google Play.\n\nOrder number: GPA.3381-2145-0098-11223\nOrder da",
+  "historyId": "190001",
+  "internalDate": "1792483200000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Google Play <googleplay-noreply@google.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@google.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@google.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@google.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=google.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your Google Play Order Receipt from Oct 18, 2026"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 293,
+          "data": "VGhhbmsgeW91LgpZb3UndmUgbWFkZSBhIHB1cmNoYXNlIGZyb20gR29vZ2xlIFBsYXkuCgpPcmRlciBudW1iZXI6IEdQQS4zMzgxLTIxNDUtMDA5OC0xMTIyMwpPcmRlciBkYXRlOiBPY3QgMTgsIDIwMjYgOToxMjowMSBBTSBHTVQrNQoKSXRlbTogR29vZ2xlIE9uZSBBSSBQcmVtaXVtIChHb29nbGUgT25lKQpBdXRvLXJlbmV3aW5nIHN1YnNjcmlwdGlvbgpQcmljZTogJDE5Ljk5L21vbnRoClRvdGFsOiAkMTkuOTkvbW9udGgKCllvdSBjYW4gbWFuYWdlIHlvdXIgc3Vic2NyaXB0aW9ucyBpbiBHb29nbGUgUGxheS4"
+        }
+      }
+    ]
+  }
+}

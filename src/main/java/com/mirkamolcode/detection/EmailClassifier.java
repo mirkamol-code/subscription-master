@@ -17,6 +17,7 @@ public class EmailClassifier {
     private final Pattern subscriptionSubject;
     private final Pattern paymentDue;
     private final Pattern freePlan;
+    private final Pattern recurring;
     private final Pattern paymentConfirmation;
     private final Pattern cancellation;
     private final Pattern paymentFailed;
@@ -29,6 +30,7 @@ public class EmailClassifier {
         this.subscriptionSubject = anyPhrase(keywords.subscriptionSubject());
         this.paymentDue = anyPhrase(keywords.paymentDue());
         this.freePlan = anyPhrase(keywords.freePlan());
+        this.recurring = anyPhrase(keywords.recurring());
         this.paymentConfirmation = anyPhrase(keywords.paymentConfirmation());
         this.cancellation = anyPhrase(keywords.cancellation());
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
@@ -58,6 +60,10 @@ public class EmailClassifier {
 
     public boolean mentionsFreePlan(GmailMessage message) {
         return freePlan.matcher(message.subject()).find() || freePlan.matcher(message.bodyText()).find();
+    }
+
+    public boolean mentionsRecurringBilling(GmailMessage message) {
+        return recurring.matcher(message.subject()).find() || recurring.matcher(message.bodyText()).find();
     }
 
     private boolean isMarketing(GmailMessage message, boolean isTransaction) {

@@ -402,4 +402,129 @@ class BillingEmailAnalyzerTest {
         // then
         assertThat(analysis.isPayment()).isFalse();
     }
+
+    @Test
+    void analyze_shouldResolveMerchantFromStripeReceiptBody() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("stripe-claude-receipt.json"));
+
+        // then
+        assertThat(analysis.isPayment()).isTrue();
+        assertThat(analysis.merchant().key()).isEqualTo("anthropic");
+        assertThat(analysis.merchant().displayName()).isEqualTo("Claude");
+        assertThat(analysis.merchant().category()).isEqualTo(SubscriptionCategory.AI_TOOLS);
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("20.00");
+        assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.USD);
+    }
+
+    @Test
+    void analyze_shouldResolveGoogleOnePlan_fromGooglePlayReceipt() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("google-play-google-one-receipt.json"));
+
+        // then
+        assertThat(analysis.isPayment()).isTrue();
+        assertThat(analysis.merchant().key()).isEqualTo("google-one");
+        assertThat(analysis.merchant().logoDomain()).isEqualTo("one.google.com");
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("19.99");
+        assertThat(analysis.billing().cycle()).isEqualTo(BillingFrequency.MONTHLY);
+    }
+
+    @Test
+    void analyze_shouldResolveAppStoreSubscription_toTheAppsMerchant() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("apple-claude-receipt.json"));
+
+        // then
+        assertThat(analysis.isPayment()).isTrue();
+        assertThat(analysis.merchant().key()).isEqualTo("anthropic");
+    }
+
+    @Test
+    void analyze_shouldResolveAppleItself_whenAppleReceiptNamesNoOtherMerchant() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Apple <no_reply@email.apple.com>", "Your receipt from Apple.", null,
+                "iCloud+ with 200 GB (Monthly)\nRenews 2 Dec 2026\n$2.99\nTotal $2.99"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.merchant().key()).isEqualTo("apple");
+    }
+
+    @Test
+    void analyze_shouldNameUnknownMerchantFromProcessorReceipt() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("stripe-unknown-product-receipt.json"));
+
+        // then
+        assertThat(analysis.isPayment()).isTrue();
+        assertThat(analysis.merchant().key()).isEqualTo("cursor");
+        assertThat(analysis.merchant().displayName()).isEqualTo("Cursor");
+        assertThat(analysis.merchant().known()).isFalse();
+    }
+
+    @Test
+    void analyze_shouldIgnoreOneOffProcessorReceipt_withoutRecurringSignal() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("stripe-one-off-receipt.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void analyze_shouldIgnoreKnownMerchantName_inSubjectFromUnrelatedDomain() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Billing Desk <billing@streaming-payments.example>", "Your Netflix receipt", null,
+                "Thanks for your payment. Amount charged: $15.49 per month."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
+    void analyze_shouldDetectChatGptCancellation_withAccessEnd() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("chatgpt-cancellation.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.CANCELLATION);
+        assertThat(analysis.merchant().key()).isEqualTo("openai");
+        assertThat(analysis.accessEndsOn()).isEqualTo(LocalDate.of(2026, 8, 21));
+    }
+
+    @Test
+    void analyze_shouldAcceptUnknownMerchantReceipt_withSubscriptionWordingButNoCycle() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Linear <billing@linear.app>", "Your receipt from Linear", null,
+                "Thanks for your payment. Linear Standard subscription. Total: $8.00"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.isPayment()).isTrue();
+        assertThat(analysis.billing().confidence()).isEqualTo(Confidence.LOW);
+    }
+
+    @Test
+    void isCandidate_shouldAcceptProcessorSender_withPlainSubject() {
+        // given
+        GmailMessage headers = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
+                "Google Payments <payments-noreply@google.com>", "Google One: payment details", null, null));
+
+        // when
+        boolean candidate = underTest.isCandidate(headers);
+
+        // then
+        assertThat(candidate).isTrue();
+    }
 }

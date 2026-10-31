@@ -1,0 +1,54 @@
+{
+  "id": "19a0apple0claude1",
+  "threadId": "19a0apple0claude1",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Receipt\nApple Account: alex.doe@gmail.com\nDate: 2 Nov 2026\nOrder ID: MT8K2L9P1Q\n\nClaude by Anthropic",
+  "historyId": "190001",
+  "internalDate": "1793102400000",
+  "sizeEstimate": 4096,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Apple <no_reply@email.apple.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@gmail.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@email.apple.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@email.apple.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@email.apple.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=email.apple.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your receipt from Apple."
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 160,
+          "data": "UmVjZWlwdApBcHBsZSBBY2NvdW50OiBhbGV4LmRvZUBnbWFpbC5jb20KRGF0ZTogMiBOb3YgMjAyNgpPcmRlciBJRDogTVQ4SzJMOVAxUQoKQ2xhdWRlIGJ5IEFudGhyb3BpYwpDbGF1ZGUgUHJvIChNb250aGx5KQpSZW5ld3MgMiBEZWMgMjAyNgokMjAuMDAKClRvdGFsICQyMC4wMA"
+        }
+      }
+    ]
+  }
+}
