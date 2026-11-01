@@ -48,6 +48,6 @@ class CbuRateClientTest {
 
         // when / then
         assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
-                assertThatThrownBy(underTest::fetchRates).isInstanceOf(RuntimeException.class));
+                assertThatThrownBy(underTest::fetchAll).isInstanceOf(RuntimeException.class));
     }
 }

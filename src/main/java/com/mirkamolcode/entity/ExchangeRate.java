@@ -38,6 +38,10 @@ public class ExchangeRate extends AuditableEntity {
         this.rateDate = rateDate;
     }
 
+    public void replaceRate(BigDecimal officialRateToUzs) {
+        this.rateToUzs = officialRateToUzs;
+    }
+
     public CurrencyCode getCurrency() {
         return currency;
     }

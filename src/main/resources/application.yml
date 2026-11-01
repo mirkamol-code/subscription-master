@@ -119,8 +119,12 @@ app:
     read-timeout: 5s
 
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
-  cbu.connect-timeout: 2s
-  cbu.read-timeout: 3s
+  cbu.connect-timeout: ${CBU_CONNECT_TIMEOUT:5s}
+  cbu.read-timeout: ${CBU_READ_TIMEOUT:10s}
+  open-er-api.base-url: ${OPEN_ER_API_URL:https://open.er-api.com/v6/latest/USD}
+  open-er-api.connect-timeout: ${OPEN_ER_API_CONNECT_TIMEOUT:5s}
+  open-er-api.read-timeout: ${OPEN_ER_API_READ_TIMEOUT:10s}
+  exchange-rates.refresh-on-startup: ${EXCHANGE_RATES_REFRESH_ON_STARTUP:true}
 springdoc:
   swagger-ui.path: /swagger-ui.html
 management:
@@ -144,5 +148,7 @@ resilience4j:
         sliding-window-size: 10
         minimum-number-of-calls: 5
         permitted-number-of-calls-in-half-open-state: 1
-        ignore-exceptions:
-          - java.lang.IllegalArgumentException
+      openErApiRates:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 1
