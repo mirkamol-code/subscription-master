@@ -67,8 +67,6 @@ public class GoogleUserProvisioner {
         user.grantRole(Role.USER);
         if (adminEmails.contains(user.getEmail()))
             user.grantRole(Role.ADMIN);
-        else
-            user.revokeRole(Role.ADMIN);
     }
 
     private static boolean isLinkedToAnotherGoogleAccount(User user, GoogleProfile profile) {

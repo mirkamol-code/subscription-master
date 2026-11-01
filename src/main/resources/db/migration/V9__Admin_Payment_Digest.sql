@@ -1,0 +1,5 @@
+ALTER TABLE notifications DROP CONSTRAINT notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN (
+    'PAYMENT_DUE', 'BILLING_REQUIRED', 'CANCELLED', 'CANCELLATION_SCHEDULED', 'REACTIVATED', 'RETRACKED',
+    'ADMIN_PAYMENT_DIGEST'
+));

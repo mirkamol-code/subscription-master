@@ -60,6 +60,7 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             JwtAuthenticationFilter jwt,
+                                            AdminAuthorizationManager adminAccess,
                                             ObjectMapper objectMapper,
                                             ClientRegistrationRepository clientRegistrations,
                                             HttpCookieOAuth2AuthorizationRequestRepository authorizationRequests,
@@ -92,7 +93,7 @@ public class SecurityConfig {
                                 "/actuator/health"
                         ).permitAll()
                         .requestMatchers("/auth/me").authenticated()
-                        .requestMatchers("/admin/**").hasAuthority("STATISTICS_READ_ALL")
+                        .requestMatchers("/admin/**").access(adminAccess)
                         .anyRequest().authenticated())
                 .oauth2Login(o -> o
                         .loginPage("/oauth2/authorization/google")

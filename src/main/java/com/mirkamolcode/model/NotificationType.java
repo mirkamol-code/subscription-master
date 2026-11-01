@@ -6,5 +6,6 @@ public enum NotificationType {
     CANCELLED,
     CANCELLATION_SCHEDULED,
     REACTIVATED,
-    RETRACKED
+    RETRACKED,
+    ADMIN_PAYMENT_DIGEST
 }

@@ -1,13 +1,18 @@
 package com.mirkamolcode.service;
 
 import com.mirkamolcode.entity.GmailConnection;
+import com.mirkamolcode.entity.LoginEvent;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.event.GmailConnectedEvent;
 import com.mirkamolcode.repository.GmailConnectionRepository;
+import com.mirkamolcode.repository.LoginEventRepository;
 import com.mirkamolcode.security.TokenCipher;
 import com.mirkamolcode.security.oauth.GoogleProfile;
 import com.mirkamolcode.security.oauth.GoogleScopes;
+import com.mirkamolcode.security.oauth.LoginContext;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -23,24 +28,37 @@ public class GoogleLoginService {
     private final TokenCipher cipher;
     private final LoginCodeService loginCodes;
     private final ApplicationEventPublisher events;
+    private final LoginEventRepository loginEvents;
+    private final Clock clock;
 
     public GoogleLoginService(GoogleUserProvisioner provisioner,
                               GmailConnectionRepository connections,
                               TokenCipher cipher,
                               LoginCodeService loginCodes,
-                              ApplicationEventPublisher events) {
+                              ApplicationEventPublisher events,
+                              LoginEventRepository loginEvents,
+                              Clock clock) {
         this.provisioner = provisioner;
         this.connections = connections;
         this.cipher = cipher;
         this.loginCodes = loginCodes;
         this.events = events;
+        this.loginEvents = loginEvents;
+        this.clock = clock;
     }
 
-    public String completeLogin(GoogleProfile profile, String refreshToken, Set<String> grantedScopes) {
+    public String completeLogin(GoogleProfile profile, String refreshToken, Set<String> grantedScopes, LoginContext context) {
         User user = provisioner.provision(profile);
         if (refreshToken != null && grantedScopes.containsAll(GoogleScopes.GMAIL))
             connectGmail(user, refreshToken, grantedScopes);
+        recordLogin(user, context);
         return loginCodes.issue(user);
+    }
+
+    private void recordLogin(User user, LoginContext context) {
+        Instant now = clock.instant();
+        user.recordLogin(now);
+        loginEvents.save(new LoginEvent(user, now, context.ip(), context.userAgent()));
     }
 
     private void connectGmail(User user, String refreshToken, Set<String> grantedScopes) {
