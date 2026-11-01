@@ -90,7 +90,7 @@ The newest evidence always wins, and every change is kept in the status history 
 | Settings | `GET/PUT /settings/notifications` (email, in-app, push, daysBefore 1–30, timeZone) |
 | Web Push | `GET /push/vapid-public-key`, `POST /push/subscriptions`, `DELETE /push/subscriptions` |
 | Statistics and reports | `GET /statistics/summary`, `GET /statistics/monthly-dynamics`, `GET /reports/annual.csv`, `GET /reports/annual.xlsx`, `GET /currencies/rates`, `GET /admin/statistics/service-usage` |
-| Admin (role `ADMIN`) | `GET /admin/overview`, `GET /admin/users`, `GET /admin/users/{id}`, `GET /admin/users/{id}/logins`, `GET /admin/users/{id}/subscriptions`, `GET /admin/users/{id}/payments`, `PUT /admin/users/{id}/role`, `GET /admin/merchants` |
+| Admin (role `ADMIN`) | `GET /admin/overview`, `GET /admin/users`, `GET /admin/users/{id}`, `GET /admin/users/{id}/logins`, `GET /admin/users/{id}/subscriptions`, `GET /admin/users/{id}/payments`, `PUT /admin/users/{id}/role`, `GET /admin/merchants`, `GET /admin/analytics/merchants?range=LAST_7_DAYS|LAST_30_DAYS|LAST_90_DAYS|ALL_TIME&category=`, `GET /admin/analytics/categories?range=` |
 
 Full request and response schemas are in Swagger UI.
 
