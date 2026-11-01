@@ -31,10 +31,20 @@ public class FailedGmailMessageTracker {
     }
 
     public void recordFailure(Long userId, String gmailMessageId, String error) {
-        FailedGmailMessage failure = failures.findByUserIdAndGmailMessageId(userId, gmailMessageId)
-                .orElseGet(() -> new FailedGmailMessage(users.getReferenceById(userId), gmailMessageId));
+        FailedGmailMessage failure = findOrCreate(userId, gmailMessageId);
         failure.recordAttempt(error);
         failures.save(failure);
+    }
+
+    public void recordTransientFailure(Long userId, String gmailMessageId, String error) {
+        FailedGmailMessage failure = findOrCreate(userId, gmailMessageId);
+        failure.recordWaitingAttempt(error);
+        failures.save(failure);
+    }
+
+    private FailedGmailMessage findOrCreate(Long userId, String gmailMessageId) {
+        return failures.findByUserIdAndGmailMessageId(userId, gmailMessageId)
+                .orElseGet(() -> new FailedGmailMessage(users.getReferenceById(userId), gmailMessageId));
     }
 
     public void clearFailure(Long userId, String gmailMessageId) {

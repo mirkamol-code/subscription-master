@@ -36,6 +36,10 @@ app:
     refresh-token-days: 1
   cbu:
     base-url: http://localhost:9999
+  open-er-api:
+    base-url: http://localhost:9999
+  exchange-rates:
+    refresh-on-startup: false
 resilience4j:
   retry:
     instances:

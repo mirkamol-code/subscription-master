@@ -3,8 +3,13 @@ package com.mirkamolcode.integration;
 import com.mirkamolcode.AbstractTestConfig;
 import com.mirkamolcode.model.CurrencyCode;
 import com.sun.net.httpserver.HttpServer;
+import com.mirkamolcode.dto.SourceRate;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -61,36 +66,33 @@ class CbuRateClientIT extends AbstractTestConfig {
     }
 
     @Test
-    void find_shouldStopCallingCbu_afterRepeatedFailures() {
+    void fetchAll_shouldStopCallingCbu_afterRepeatedFailures() {
         // given CBU has failed five times in a row
-        for (int i = 0; i < 5; i++) {
-            assertThatThrownBy(() -> underTest.find(CurrencyCode.USD))
-                    .isInstanceOf(CbuRateClient.ExchangeRateUnavailableException.class);
-        }
+        for (int i = 0; i < 5; i++)
+            assertThatThrownBy(underTest::fetchAll).isInstanceOf(RuntimeException.class);
         assertThat(cbuRequests.get()).isEqualTo(5);
 
         // when
-        for (int i = 0; i < 5; i++) {
-            assertThatThrownBy(() -> underTest.find(CurrencyCode.USD))
-                    .isInstanceOf(CbuRateClient.ExchangeRateUnavailableException.class);
-        }
+        for (int i = 0; i < 5; i++)
+            assertThatThrownBy(underTest::fetchAll).isInstanceOf(CallNotPermittedException.class);
 
         // then
         assertThat(cbuRequests.get()).isEqualTo(5);
     }
 
     @Test
-    void find_shouldKeepCallingCbu_whenCbuIsUpButLacksTheCurrency() {
-        // given CBU answers, but without a USD rate
-        cbuBody = "[]";
+    void fetchAll_shouldReturnSupportedCurrenciesOnly_withCbuEffectiveDate() {
+        // given
+        cbuBody = """
+                [{"Ccy":"USD","Rate":"12023.46","Date":"31.10.2026"},
+                 {"Ccy":"AED","Rate":"3273.87","Date":"31.10.2026"}]
+                """;
 
         // when
-        for (int i = 0; i < 6; i++) {
-            assertThatThrownBy(() -> underTest.find(CurrencyCode.USD))
-                    .isInstanceOf(CbuRateClient.ExchangeRateUnavailableException.class);
-        }
+        List<SourceRate> rates = underTest.fetchAll();
 
         // then
-        assertThat(cbuRequests.get()).isEqualTo(6);
+        assertThat(rates).containsExactly(
+                new SourceRate(CurrencyCode.USD, new BigDecimal("12023.46"), LocalDate.of(2026, 10, 31)));
     }
 }

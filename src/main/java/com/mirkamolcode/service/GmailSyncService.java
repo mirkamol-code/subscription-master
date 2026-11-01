@@ -5,6 +5,7 @@ import com.mirkamolcode.detection.GmailQuery;
 import com.mirkamolcode.dto.response.GmailSyncStatusResponse;
 import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.event.GmailSyncRequestedEvent;
+import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
 import com.mirkamolcode.exception.GmailDisconnectedException;
 import com.mirkamolcode.exception.SyncAlreadyRunningException;
 import com.mirkamolcode.exception.SyncClaimLostException;
@@ -200,6 +201,10 @@ public class GmailSyncService {
             log.debug("Gmail message {} disappeared before sync", id);
             failedMessages.clearFailure(userId, id);
             return true;
+        } catch (ExchangeRatesUnavailableException e) {
+            log.warn("Gmail message {} for user {} waits for an exchange rate: {}", id, userId, e.getMessage());
+            failedMessages.recordTransientFailure(userId, id, e.getMessage());
+            return false;
         } catch (RuntimeException e) {
             log.warn("Could not record Gmail message {} for user {}: {}", id, userId, e.getMessage());
             failedMessages.recordFailure(userId, id, e.getMessage());

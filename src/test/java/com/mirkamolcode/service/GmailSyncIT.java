@@ -41,6 +41,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -73,6 +74,8 @@ class GmailSyncIT extends AbstractTestConfig {
     private JdbcTemplate jdbc;
     @Autowired
     private ApplicationEvents events;
+    @Autowired
+    private CacheManager cacheManager;
 
     private TokenResponse tokens;
     private Long userId;
@@ -485,6 +488,38 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldKeepReceiptRetryable_whileNoExchangeRateIsAvailable() {
+        // given
+        withoutAnyExchangeRate();
+        GMAIL.mailbox(NETFLIX_OCT);
+
+        // when
+        for (int i = 0; i < 4; i++)
+            underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+        assertThat(jdbc.queryForObject("select attempts from failed_gmail_messages where gmail_message_id = ?",
+                Integer.class, NETFLIX_OCT.id())).isEqualTo(1);
+    }
+
+    @Test
+    void sync_shouldRecordWaitingReceipt_onceAnExchangeRateIsAvailable() {
+        // given
+        withoutAnyExchangeRate();
+        GMAIL.mailbox(NETFLIX_OCT);
+        underTest.sync(userId);
+        exchangeRateRepository.save(new ExchangeRate(CurrencyCode.USD, new BigDecimal("12850.00"), LocalDate.now()));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("netflix");
+        assertThat(jdbc.queryForObject("select count(*) from failed_gmail_messages", Integer.class)).isZero();
+    }
+
+    @Test
     void sync_shouldTreatHeaderFetchFailureAsOneBadEmail_inIncrementalMode() {
         // given
         GMAIL.mailbox(NETFLIX_OCT);
@@ -633,6 +668,11 @@ class GmailSyncIT extends AbstractTestConfig {
                 .expectBody()
                 .jsonPath("$.merchantKey").isEqualTo("netflix")
                 .jsonPath("$.logoDomain").isEqualTo("netflix.com");
+    }
+
+    private void withoutAnyExchangeRate() {
+        exchangeRateRepository.deleteAll();
+        cacheManager.getCache("exchange-rates").clear();
     }
 
     private void deleteSubscription(Long id) {

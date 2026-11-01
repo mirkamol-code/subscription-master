@@ -34,6 +34,13 @@ services:
       OVERDUE_GRACE_DAYS: ${OVERDUE_GRACE_DAYS:-5}
       REMINDER_HOUR: ${REMINDER_HOUR:-9}
       GMAIL_ATTACHMENT_MAX_BYTES: ${GMAIL_ATTACHMENT_MAX_BYTES:-26214400}
+      # ── Exchange rates: cbu.uz first, open.er-api.com as fallback ──
+      CBU_CONNECT_TIMEOUT: ${CBU_CONNECT_TIMEOUT:-5s}
+      CBU_READ_TIMEOUT: ${CBU_READ_TIMEOUT:-10s}
+      OPEN_ER_API_URL: ${OPEN_ER_API_URL:-https://open.er-api.com/v6/latest/USD}
+      OPEN_ER_API_CONNECT_TIMEOUT: ${OPEN_ER_API_CONNECT_TIMEOUT:-5s}
+      OPEN_ER_API_READ_TIMEOUT: ${OPEN_ER_API_READ_TIMEOUT:-10s}
+      EXCHANGE_RATES_REFRESH_ON_STARTUP: ${EXCHANGE_RATES_REFRESH_ON_STARTUP:-true}
       # ── SQL logging — keep off in production ──
       HIBERNATE_SHOW_SQL: "false"
       HIBERNATE_FORMAT_SQL: "false"

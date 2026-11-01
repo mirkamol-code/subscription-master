@@ -42,6 +42,18 @@ _Avoid_: Transaction, charge record
 An email from a Merchant or its Payment processor about a Subscription: a receipt, a cancellation, or a payment failure. It counts only when Gmail confirms the sender's domain and it is not a reply, forward, mailing-list thread, payment-due reminder, free-plan notice or newsletter.
 _Avoid_: Receipt (when meaning any billing email), message
 
+**Exchange rate**:
+UZS per one unit of a currency, used to convert receipt prices.
+_Avoid_: Conversion rate, FX rate
+
+**Rate source**:
+Where rates come from: CBU first, open.er-api.com as fallback.
+_Avoid_: Rate provider, rate API
+
+**Saved rate**:
+The last rate stored in the database, used when every source fails.
+_Avoid_: Cached rate
+
 **Sync**:
 One pass over a User's mailbox that turns new Billing emails into Subscriptions and Payments.
 _Avoid_: Import, scan, crawl
