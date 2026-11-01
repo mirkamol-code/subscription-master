@@ -28,6 +28,9 @@ app:
       async-enabled: false
   notifications:
     async-enabled: false
+  push:
+    vapid-public-key: ""
+    vapid-private-key: ""
   seed:
     enabled: false
   jwt:
