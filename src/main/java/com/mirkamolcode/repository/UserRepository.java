@@ -22,6 +22,9 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Query("select count(u) > 0 from User u join u.roles r where lower(u.email) = lower(:email) and r = :role")
     boolean hasRole(@Param("email") String email, @Param("role") Role role);
 
+    @Query("select u from User u join u.roles r where r = com.mirkamolcode.model.Role.ADMIN")
+    List<User> findAdmins();
+
     @Query(value = "select ur.user_id from user_roles ur where ur.role = 'ADMIN' order by ur.user_id for update", nativeQuery = true)
     List<Long> lockAdminIds();
 }

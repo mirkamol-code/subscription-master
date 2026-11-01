@@ -46,6 +46,8 @@ SPA → POST /api/auth/exchange {code} → JWT access + refresh token
 
 The Google refresh token never leaves the server. Access tokens are refreshed automatically; when Google says the grant was revoked, the Gmail connection becomes `DISCONNECTED` and the API answers `409 GMAIL_RECONNECT_REQUIRED` until the user signs in again. A verified Google email listed in `APP_ADMIN_EMAILS` is granted the `ADMIN` role when it signs in. The list only grants: removing an email does not revoke the role. Admins promote and demote other Users from the admin panel (`PUT /admin/users/{id}/role`), and the last remaining admin cannot be demoted (`409 LAST_ADMIN`). Every `/admin/**` request checks the role stored in the database, so a promotion or demotion takes effect on the next request, even while the old access token is still valid.
 
+Admins also get a daily digest (in the app, and by email or push when those channels are on) of payments due in the next 3 days and payments overdue. It goes out once a day from `REMINDER_HOUR` in each admin's time zone and is skipped when nothing is due.
+
 Every successful sign-in sets the User's `last_login_at` and records a login event (time, IP address, User-Agent) for the admin's login history.
 
 ### Gmail sync
@@ -90,7 +92,7 @@ The newest evidence always wins, and every change is kept in the status history 
 | Settings | `GET/PUT /settings/notifications` (email, in-app, push, daysBefore 1–30, timeZone) |
 | Web Push | `GET /push/vapid-public-key`, `POST /push/subscriptions`, `DELETE /push/subscriptions` |
 | Statistics and reports | `GET /statistics/summary`, `GET /statistics/monthly-dynamics`, `GET /reports/annual.csv`, `GET /reports/annual.xlsx`, `GET /currencies/rates`, `GET /admin/statistics/service-usage` |
-| Admin (role `ADMIN`) | `GET /admin/overview`, `GET /admin/users`, `GET /admin/users/{id}`, `GET /admin/users/{id}/logins`, `GET /admin/users/{id}/subscriptions`, `GET /admin/users/{id}/payments`, `PUT /admin/users/{id}/role`, `GET /admin/merchants`, `GET /admin/analytics/merchants?range=LAST_7_DAYS|LAST_30_DAYS|LAST_90_DAYS|ALL_TIME&category=`, `GET /admin/analytics/categories?range=` |
+| Admin (role `ADMIN`) | `GET /admin/overview`, `GET /admin/users`, `GET /admin/users/{id}`, `GET /admin/users/{id}/logins`, `GET /admin/users/{id}/subscriptions`, `GET /admin/users/{id}/payments`, `PUT /admin/users/{id}/role`, `GET /admin/merchants`, `GET /admin/analytics/merchants?range=LAST_7_DAYS|LAST_30_DAYS|LAST_90_DAYS|ALL_TIME&category=`, `GET /admin/analytics/categories?range=`, `GET /admin/payments/due?from=&to=&merchant=&status=`, `GET /admin/payments/upcoming` |
 
 Full request and response schemas are in Swagger UI.
 

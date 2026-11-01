@@ -101,4 +101,24 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
              order by s.merchant_slug
             """, nativeQuery = true)
     List<MerchantOption> findMerchantOptions();
+
+    @Query("""
+            select s from Subscription s join fetch s.user
+             where s.isDeleted = false and s.isHidden = false
+               and s.status <> com.mirkamolcode.model.SubscriptionStatus.CANCELLED
+               and (s.nextPaymentDate between :from and :to or s.endsOn between :from and :to)
+               and (:merchantSlug is null or s.merchantSlug = :merchantSlug)
+               and (:status is null or s.status = :status)
+            """)
+    List<Subscription> findDueBetween(@Param("from") LocalDate from,
+                                      @Param("to") LocalDate to,
+                                      @Param("merchantSlug") String merchantSlug,
+                                      @Param("status") SubscriptionStatus status);
+
+    @Query("""
+            select s from Subscription s join fetch s.user
+             where s.isDeleted = false and s.isHidden = false
+               and s.status = com.mirkamolcode.model.SubscriptionStatus.BILLING_REQUIRED
+            """)
+    List<Subscription> findBillingRequired();
 }

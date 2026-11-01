@@ -2,11 +2,13 @@ package com.mirkamolcode.notification;
 
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.event.SubscriptionStatusChangedEvent;
+import com.mirkamolcode.model.DueBucket;
 import com.mirkamolcode.model.NotificationSeverity;
 import com.mirkamolcode.model.NotificationType;
 import com.mirkamolcode.model.StatusChangeReason;
 import com.mirkamolcode.model.SubscriptionStatus;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class NotificationMessageFactory {
+    private static final String ADMIN_PAYMENTS_PATH = "/admin/payments";
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM uuuu", Locale.ENGLISH);
 
     private final String frontendBaseUrl;
@@ -57,6 +60,25 @@ public class NotificationMessageFactory {
         return message(NotificationType.REACTIVATED, NotificationSeverity.INFO, event.subscriptionId(),
                 name + " is active again",
                 "A new payment for " + name + " arrived on " + on + ", so it's active again.");
+    }
+
+    public NotificationMessage adminPaymentDigest(long dueCount, BigDecimal dueTotalUzs, long overdueCount, BigDecimal overdueTotalUzs) {
+        String window = "the next " + DueBucket.SOON_DAYS + " days";
+        String title = dueCount > 0
+                ? countPayments(dueCount) + " due in " + window
+                : countPayments(overdueCount) + " overdue";
+        String overdue = overdueCount == 0 ? "0 overdue" : overdueCount + " overdue (" + formatUzs(overdueTotalUzs) + ")";
+        NotificationSeverity severity = overdueCount > 0 ? NotificationSeverity.URGENT : NotificationSeverity.INFO;
+        return new NotificationMessage(NotificationType.ADMIN_PAYMENT_DIGEST, severity, null, title,
+                formatUzs(dueTotalUzs) + " expected in " + window + " · " + overdue, ADMIN_PAYMENTS_PATH);
+    }
+
+    private static String countPayments(long count) {
+        return count + (count == 1 ? " payment" : " payments");
+    }
+
+    private static String formatUzs(BigDecimal amount) {
+        return String.format(Locale.US, "%,.0f UZS", amount);
     }
 
     public NotificationMessage retracked(Long subscriptionId, String merchantName, LocalDate chargedOn) {
