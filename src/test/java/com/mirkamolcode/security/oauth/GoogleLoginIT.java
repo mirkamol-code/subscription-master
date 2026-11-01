@@ -102,18 +102,55 @@ class GoogleLoginIT extends AbstractTestConfig {
     }
 
     @Test
-    void login_shouldRevokeAdminRole_whenEmailIsNoLongerConfiguredAsAdmin() throws Exception {
+    void login_shouldKeepAdminRole_whenEmailIsNotConfiguredAsAdmin() throws Exception {
         // given
-        userRepository.save(new User("former-admin@example.com", Set.of(Role.ADMIN)));
+        userRepository.save(new User("promoted-admin@example.com", Set.of(Role.USER, Role.ADMIN)));
 
         // when
-        String redirect = completeGoogleLogin("google-sub-former", "former-admin@example.com", "1//refresh-f", ALL_SCOPES);
+        String redirect = completeGoogleLogin("google-sub-promoted", "promoted-admin@example.com", "1//refresh-f", ALL_SCOPES);
+
+        // then
+        webTestClient.get().uri(API + "/auth/me").header("Authorization", bearerFrom(redirect)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.roles").isEqualTo(List.of("ROLE_ADMIN", "ROLE_USER"));
+    }
+
+    @Test
+    void login_shouldGrantOnlyUserRole_whenEmailIsNotConfiguredAsAdmin() throws Exception {
+        // when
+        String redirect = completeGoogleLogin("google-sub-plain", "plain@example.com", "1//refresh-p", ALL_SCOPES);
 
         // then
         webTestClient.get().uri(API + "/auth/me").header("Authorization", bearerFrom(redirect)).exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.roles").isEqualTo(List.of("ROLE_USER"));
+    }
+
+    @Test
+    void login_shouldRecordLastLoginAndLoginEvent() throws Exception {
+        // given
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("203.0.113.7");
+        request.addHeader("User-Agent", "Mozilla/5.0 Test");
+
+        // when
+        completeGoogleLogin("google-sub-tracked", "tracked@example.com", true, "1//refresh-t", ALL_SCOPES, request);
+
+        // then
+        Long userId = userRepository.findByGoogleSubject("google-sub-tracked").orElseThrow().getId();
+        String admin = bearerFrom(completeGoogleLogin("google-sub-admin2", "admin@example.com", "1//refresh-a2", ALL_SCOPES));
+        webTestClient.get().uri(API + "/admin/users/" + userId).header("Authorization", admin).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.lastLoginAt").isNotEmpty();
+        webTestClient.get().uri(API + "/admin/users/" + userId + "/logins").header("Authorization", admin).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.content.length()").isEqualTo(1)
+                .jsonPath("$.content[0].ip").isEqualTo("203.0.113.7")
+                .jsonPath("$.content[0].userAgent").isEqualTo("Mozilla/5.0 Test");
     }
 
     @Test
@@ -252,6 +289,11 @@ class GoogleLoginIT extends AbstractTestConfig {
     }
 
     private String completeGoogleLogin(String subject, String email, boolean emailVerified, String refreshToken, Set<String> grantedScopes) throws Exception {
+        return completeGoogleLogin(subject, email, emailVerified, refreshToken, grantedScopes, new MockHttpServletRequest());
+    }
+
+    private String completeGoogleLogin(String subject, String email, boolean emailVerified, String refreshToken,
+                                       Set<String> grantedScopes, MockHttpServletRequest request) throws Exception {
         Instant now = Instant.now();
         OidcIdToken idToken = new OidcIdToken("id-token", now, now.plusSeconds(3600), Map.of(
                 "sub", subject,
@@ -268,7 +310,7 @@ class GoogleLoginIT extends AbstractTestConfig {
                 new OAuth2RefreshToken(refreshToken, now)), authentication);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
-        googleLoginSuccessHandler.onAuthenticationSuccess(new MockHttpServletRequest(), response, authentication);
+        googleLoginSuccessHandler.onAuthenticationSuccess(request, response, authentication);
         return response.getRedirectedUrl();
     }
 

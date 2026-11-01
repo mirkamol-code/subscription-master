@@ -6,6 +6,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +23,9 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
 
     @Query("select p.billingEmail.id from PaymentHistory p where p.subscription.id = :subscriptionId and p.billingEmail is not null")
     Set<Long> findBillingEmailIdsBySubscriptionId(@Param("subscriptionId") Long subscriptionId);
+
+    @EntityGraph(attributePaths = "subscription")
+    Page<PaymentHistory> findBySubscriptionUserIdOrderByPaymentDateDescIdDesc(Long userId, Pageable pageable);
 
     @Modifying
     @Query("delete from PaymentHistory e where e.subscription.id in (select s.id from Subscription s where s.user.id = :userId)")

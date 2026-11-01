@@ -85,6 +85,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), "FORBIDDEN", "Forbidden", e.getMessage()));
     }
 
+    @ExceptionHandler(LastAdminException.class)
+    public ResponseEntity<ErrorResponse> lastAdmin(LastAdminException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), "LAST_ADMIN", "Conflict", e.getMessage()));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> conflict(ConflictException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

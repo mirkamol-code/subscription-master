@@ -2,7 +2,9 @@ package com.mirkamolcode.entity;
 
 import com.mirkamolcode.model.Role;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
@@ -28,6 +30,7 @@ public class User extends AuditableEntity {
     private String avatarUrl;
 
     @ElementCollection(fetch = FetchType.LAZY)
+    @BatchSize(size = 100)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 16)
@@ -35,6 +38,8 @@ public class User extends AuditableEntity {
 
     @Column(nullable = false, length = 64)
     private String timeZone = DEFAULT_TIME_ZONE;
+
+    private Instant lastLoginAt;
 
     @Version
     private long version;
@@ -56,6 +61,14 @@ public class User extends AuditableEntity {
 
     public void changeTimeZone(ZoneId zone) {
         this.timeZone = zone.getId();
+    }
+
+    public void recordLogin(Instant at) {
+        this.lastLoginAt = at;
+    }
+
+    public boolean isAdmin() {
+        return roles.contains(Role.ADMIN);
     }
 
     public void grantRole(Role role) {
@@ -88,6 +101,10 @@ public class User extends AuditableEntity {
 
     public ZoneId getTimeZone() {
         return ZoneId.of(timeZone);
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
     }
 
     public Set<Role> getRoles() {

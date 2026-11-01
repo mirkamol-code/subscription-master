@@ -12,6 +12,18 @@ _Avoid_: Account, customer, member
 A User's standing permission for the app to read their billing emails and send reminders from their own mailbox. It is either connected or disconnected; a disconnected one needs the User to reconnect.
 _Avoid_: Integration, link, mailbox access
 
+**Admin**:
+A User who can see every User, Subscription and Payment across the app and promote or demote other Users. There is always at least one Admin.
+_Avoid_: Superuser, staff, moderator
+
+**Login event**:
+One successful sign-in by a User, with its time, IP address and browser, kept as login history.
+_Avoid_: Session, visit, login log
+
+**Last login**:
+The time of a User's most recent Login event.
+_Avoid_: Last seen, last active
+
 **Login code**:
 A short-lived, single-use proof that a User just signed in with Google, traded once for the app's own session.
 _Avoid_: Auth code, ticket

@@ -38,7 +38,8 @@ public class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
         OAuth2AuthorizedClient client = takeAuthorizedClient(token);
         try {
-            String code = loginService.completeLogin(mapToGoogleProfile((OidcUser) token.getPrincipal()), extractRefreshToken(client), extractScopes(client));
+            String code = loginService.completeLogin(mapToGoogleProfile((OidcUser) token.getPrincipal()), extractRefreshToken(client), extractScopes(client),
+                    new LoginContext(request.getRemoteAddr(), request.getHeader("User-Agent")));
             response.sendRedirect(frontendCallback.buildSuccessUrl(code));
         } catch (RuntimeException e) {
             log.warn("Google login could not be completed: {}", e.getMessage());

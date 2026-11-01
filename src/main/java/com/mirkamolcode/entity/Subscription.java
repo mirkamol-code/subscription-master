@@ -58,6 +58,9 @@ public class Subscription extends AuditableEntity {
     @Column(length = 120)
     private String merchantKey;
 
+    @Column(length = 120, insertable = false, updatable = false)
+    private String merchantSlug;
+
     @Column(nullable = false)
     private boolean needsReview = false;
 
@@ -223,6 +226,10 @@ public class Subscription extends AuditableEntity {
 
     public String getMerchantKey() {
         return merchantKey;
+    }
+
+    public String getMerchantSlug() {
+        return merchantSlug;
     }
 
     public boolean isNeedsReview() {
