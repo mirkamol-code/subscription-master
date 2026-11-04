@@ -1,0 +1,38 @@
+{
+  "id": "19c0apple0telegram",
+  "threadId": "19c0apple0telegram",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Invoice 6 December 2025 Order ID: MT0000TEST",
+  "historyId": "200101",
+  "internalDate": "1765113600000",
+  "sizeEstimate": 30000,
+  "payload": {
+    "partId": "",
+    "mimeType": "text/html",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Apple <no_reply@email.apple.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@example.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@email.apple.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@email.apple.com designates 198.51.100.20 as permitted sender) smtp.mailfrom=bounces@email.apple.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=email.apple.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Your invoice from Apple."
+      }
+    ],
+    "body": {
+      "size": 1161,
+      "data": "PGh0bWw-PGJvZHk-CjxkaXY-PGgxPkludm9pY2U8L2gxPjwvZGl2Pgo8ZGl2PjYgRGVjZW1iZXIgMjAyNTwvZGl2Pgo8ZGl2PjxiPk9yZGVyIElEOjwvYj4gTVQwMDAwVEVTVDwvZGl2Pgo8ZGl2PjxiPkRvY3VtZW50OjwvYj4gMTAwMDAwMDAwMDAxPC9kaXY-CjxkaXY-PGI-QXBwbGUgQWNjb3VudDo8L2I-IDxhIGhyZWY9Im1haWx0bzphbGV4LmRvZUBleGFtcGxlLmNvbSI-YWxleC5kb2VAZXhhbXBsZS5jb208L2E-PC9kaXY-Cjx0YWJsZT48dHI-PHRkPjxpbWcgc3JjPSJodHRwczovL2V4YW1wbGUuY29tL2ljb24ucG5nIiBhbHQ9IiI-PC90ZD48dGQ-PGRpdiBzdHlsZT0iZm9udC13ZWlnaHQ6NjAwIj48ZGl2PlRlbGVncmFtIE1lc3NlbmdlcjwvZGl2PjxkaXY-VGVsZWdyYW0gUHJlbWl1bSAoTW9udGhseSk8L2Rpdj48ZGl2PlJlbmV3cyA3IEphbnVhcnkgMjAyNjwvZGl2PjxkaXY-aVBob25lIDE0IFBybzwvZGl2PjwvZGl2PjwvdGQ-PHRkIGFsaWduPSJyaWdodCI-PGI-VVMkMyw5OTwvYj48L3RkPjwvdHI-PC90YWJsZT4KPGgyPkJpbGxpbmcgYW5kIFBheW1lbnQ8L2gyPgo8dGFibGU-PHRyPjx0ZD5BbGV4IERvZTxicj4xIEV4YW1wbGUgU3RyZWV0PGJyPlRhc2hrZW50PGJyPlV6YmVraXN0YW48L3RkPgo8dGQ-PHRhYmxlPjx0cj48dGQ-U3VidG90YWw8L3RkPjx0ZD5VUyQzLDU2PC90ZD48L3RyPjx0cj48dGQ-VkFUIGNoYXJnZWQgYXQgMTIlPC90ZD48dGQ-VVMkMCw0MzwvdGQ-PC90cj4KPHRyPjx0ZD48Yj5WaXNhICZidWxsOyZidWxsOyZidWxsOyZidWxsOyA0MjQyPC9iPjwvdGQ-PHRkPlVTJDMsOTk8L3RkPjwvdHI-PC90YWJsZT48L3RkPjwvdHI-PC90YWJsZT4KPHA-WW91IGNhbiB0dXJuIG9mZiByZW5ld2FsIHJlY2VpcHRzIHRvIHN0b3AgZ2V0dGluZyBlbWFpbHMgZWFjaCB0aW1lIHlvdXIgc3Vic2NyaXB0aW9ucyByZW5ldy4gWW91IGNhbiBhbHdheXMgdmlldyB5b3VyIHJlY2VpcHRzIGZyb20gQXBwIFN0b3JlIHNldHRpbmdzICZyc2FxdW87IFB1cmNoYXNlIEhpc3RvcnkuPC9wPgo8aDM-R2V0IEhlbHAgd2l0aCBTdWJzY3JpcHRpb25zIGFuZCBQdXJjaGFzZXM8L2gzPgo8YSBocmVmPSJodHRwczovL2V4YW1wbGUuY29tL21hbmFnZSI-TWFuYWdlIFN1YnNjcmlwdGlvbnMgJnJzYXF1bzs8L2E-CjwvYm9keT48L2h0bWw-"
+    }
+  }
+}

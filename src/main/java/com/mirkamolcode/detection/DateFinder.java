@@ -36,6 +36,10 @@ final class DateFinder {
         return null;
     }
 
+    static Optional<LocalDate> findFirstDate(String text) {
+        return findFirstDate(text, null);
+    }
+
     private static Optional<LocalDate> findFirstDate(String window, LocalDate referenceDate) {
         List<DateMatch> matches = new ArrayList<>();
         addNamedMonthDate(MONTH_DAY_YEAR, window, matches);
