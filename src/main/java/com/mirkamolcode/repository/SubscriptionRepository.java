@@ -28,6 +28,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findAllByUserIdAndMerchantKeyAndIsDeletedFalse(Long userId, String merchantKey);
 
+    List<Subscription> findAllByUserIdAndMerchantKey(Long userId, String merchantKey);
+
     boolean existsByUserIdAndMerchantKeyAndIsDeletedFalse(Long userId, String merchantKey);
 
     @Query("""

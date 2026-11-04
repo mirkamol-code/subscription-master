@@ -60,6 +60,9 @@ public class Subscription extends AuditableEntity {
 
     private LocalDate trialEndsOn;
 
+    @Column(name = "is_read_only", nullable = false)
+    private boolean readOnly;
+
     @Column(nullable = false)
     private boolean isDeleted = false;
 
@@ -161,6 +164,29 @@ public class Subscription extends AuditableEntity {
         this.price = priceAfterTrial == null ? null : priceAfterTrial.amount();
         this.currency = priceAfterTrial == null ? null : priceAfterTrial.currency();
         this.frequency = cycle;
+    }
+
+    public static Subscription earlierApplePurchases(Subscription legacy, String merchantKey) {
+        Subscription history = new Subscription(legacy.user, "Apple (earlier purchases)", legacy.price, legacy.currency, legacy.frequency,
+                SubscriptionStatus.CANCELLED, legacy.category, legacy.startDate, legacy.nextPaymentDate);
+        history.linkMerchant(merchantKey, legacy.logoDomain);
+        history.lastPaymentDate = legacy.lastPaymentDate;
+        history.readOnly = true;
+        return history;
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public void carryUserChoicesFrom(Subscription legacy, boolean carryHidden, boolean carryCategory) {
+        if (carryHidden && legacy.isHidden)
+            isHidden = true;
+        if (carryCategory && legacy.category != SubscriptionCategory.OTHER) {
+            category = legacy.category;
+            categorySource = CategorySource.USER;
+            categoryConfidence = null;
+        }
     }
 
     public boolean isTrial() {

@@ -1,0 +1,23 @@
+spring:
+  main:
+    web-application-type: none
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+  datasource:
+    hikari:
+      maximum-pool-size: 2
+
+app:
+  scheduling:
+    enabled: false
+  seed:
+    enabled: false
+  exchange-rates:
+    refresh-on-startup: false
+  redetection:
+    apple:
+      dry-run-on-startup: false
+      apply-on-startup: true

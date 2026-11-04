@@ -59,6 +59,11 @@ public class AppleRedetectionDryRun {
                 .toList());
     }
 
+    @Transactional(readOnly = true)
+    public UserPlan planUser(Long userId) {
+        return planUser(userId, legacyRows.findSubscriptions().stream().filter(row -> row.userId() == userId).toList());
+    }
+
     private UserPlan planUser(Long userId, List<LegacySubscription> legacy) {
         List<String> messageIds = legacyRows.findEmailMessageIds(userId);
         List<LegacyPayment> payments = legacyRows.findPayments(legacy.stream().map(LegacySubscription::id).toList());
