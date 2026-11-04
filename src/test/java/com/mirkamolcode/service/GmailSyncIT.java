@@ -709,6 +709,25 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void get_shouldExposePlanBillingPlatformAndCard_forAppleBilledSubscription() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"));
+        underTest.sync(userId);
+
+        // when / then
+        webTestClient.get().uri(API + "/subscriptions/" + subscription("telegram-messenger").getId())
+                .header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.name").isEqualTo("Telegram Messenger")
+                .jsonPath("$.planName").isEqualTo("Telegram Premium")
+                .jsonPath("$.billingPlatform").isEqualTo("APPLE")
+                .jsonPath("$.paymentMethod.type").isEqualTo("CARD")
+                .jsonPath("$.paymentMethod.cardBrand").isEqualTo("Visa")
+                .jsonPath("$.paymentMethod.cardLast4").isEqualTo("4242");
+    }
+
+    @Test
     void get_shouldExposeMerchantLogoDomain_forDetectedSubscription() {
         // given
         GMAIL.mailbox(NETFLIX_OCT);
