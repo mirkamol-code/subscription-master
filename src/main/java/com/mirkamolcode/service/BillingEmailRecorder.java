@@ -82,7 +82,7 @@ public class BillingEmailRecorder {
             return;
         User user = users.getReferenceById(userId);
         BillingEmailAnalysis analysis = analyzer.analyze(message);
-        if (isBilledThroughApple(analysis) && subscriptions.existsByUserIdAndMerchantKeyAndIsDeletedFalse(userId, LegacyAppleRows.LEGACY_APPLE_KEY))
+        if (isFromApple(message, analysis) && subscriptions.existsByUserIdAndMerchantKeyAndIsDeletedFalse(userId, LegacyAppleRows.LEGACY_APPLE_KEY))
             throw new AppleCleanUpPendingException("Apple invoice waits until the user's legacy Apple subscription is cleaned up");
         if (analysis.kind() == EmailKind.IRRELEVANT) {
             billingEmails.save(BillingEmail.irrelevant(user, message.id(), message.receivedAt()));
@@ -102,6 +102,12 @@ public class BillingEmailRecorder {
         }
         billingEmails.save(email);
         analysis.charges().forEach(charge -> recordCharge(user, email, charge));
+    }
+
+    private static boolean isFromApple(GmailMessage message, BillingEmailAnalysis analysis) {
+        if (analysis.kind() == EmailKind.IRRELEVANT)
+            return false;
+        return message.isFromDomain(LegacyAppleRows.APPLE_SENDER_DOMAIN) || isBilledThroughApple(analysis);
     }
 
     private static boolean isBilledThroughApple(BillingEmailAnalysis analysis) {

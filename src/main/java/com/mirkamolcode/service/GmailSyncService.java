@@ -204,7 +204,7 @@ public class GmailSyncService {
             return true;
         } catch (AppleCleanUpPendingException e) {
             log.info("Gmail message {} for user {} waits for the Apple clean-up", id, userId);
-            failedMessages.recordTransientFailure(userId, id, e.getMessage());
+            failedMessages.recordHold(userId, id, e.getMessage());
             return true;
         } catch (ExchangeRatesUnavailableException e) {
             log.warn("Gmail message {} for user {} waits for an exchange rate: {}", id, userId, e.getMessage());

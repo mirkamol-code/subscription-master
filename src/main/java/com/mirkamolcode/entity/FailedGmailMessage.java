@@ -39,6 +39,11 @@ public class FailedGmailMessage extends AuditableEntity {
         recordError(error);
     }
 
+    public void recordHold(String reason) {
+        attempts = 1;
+        recordError(reason);
+    }
+
     private void recordError(String error) {
         lastError = error == null || error.length() <= 255 ? error : error.substring(0, 255);
     }
