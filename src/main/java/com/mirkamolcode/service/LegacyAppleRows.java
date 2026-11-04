@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class LegacyAppleRows {
     public static final String LEGACY_APPLE_KEY = "apple";
-    public static final String APPLE_SENDER_DOMAIN = "apple.com";
 
     private final NamedParameterJdbcTemplate jdbc;
 

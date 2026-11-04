@@ -755,7 +755,8 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"Apple <no_reply@apple-billing.com>", "Apple <no_reply@apple.com.example.net>", "Apple <no_reply@notapple.com>"})
+    @ValueSource(strings = {"Apple <no_reply@apple-billing.com>", "Apple <no_reply@apple.com.example.net>", "Apple <no_reply@notapple.com>",
+            "\"no_reply@apple.com\" <billing@lookalike.example>"})
     void sync_shouldNotHoldLookAlikeAppleSender_whileLegacyAppleRowExists(String from) {
         // given
         saveLegacyAppleRow();
@@ -766,7 +767,7 @@ class GmailSyncIT extends AbstractTestConfig {
 
         // then
         assertThat(countRows("failed_gmail_messages")).isZero();
-        assertThat(countRows("billing_emails")).isEqualTo(1);
+        assertThat(jdbc.queryForList("select kind from billing_emails", String.class)).containsExactly("RECEIPT");
     }
 
     @Test

@@ -363,6 +363,11 @@ class NotificationIT extends AbstractTestConfig {
 
         // then
         assertThat(subscriptionRepository.findById(legacyApple.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        webTestClient.get().uri(API + "/subscriptions/" + legacyApple.getId() + "/status-history").header("Authorization", bearer(tokens))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(0);
         assertThat(subscriptionRepository.findById(gym.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.BILLING_REQUIRED);
         notifications()
                 .jsonPath("$.totalElements").isEqualTo(1)

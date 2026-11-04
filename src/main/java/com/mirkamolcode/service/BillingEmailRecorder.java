@@ -1,5 +1,6 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.detection.AppleInvoiceParser;
 import com.mirkamolcode.detection.BillingEmailAnalysis;
 import com.mirkamolcode.detection.BillingEmailAnalyzer;
 import com.mirkamolcode.detection.Confidence;
@@ -107,7 +108,7 @@ public class BillingEmailRecorder {
     private static boolean isFromApple(GmailMessage message, BillingEmailAnalysis analysis) {
         if (analysis.kind() == EmailKind.IRRELEVANT)
             return false;
-        return message.isFromDomain(LegacyAppleRows.APPLE_SENDER_DOMAIN) || isBilledThroughApple(analysis);
+        return message.isFromDomain(AppleInvoiceParser.APPLE_DOMAIN) || isBilledThroughApple(analysis);
     }
 
     private static boolean isBilledThroughApple(BillingEmailAnalysis analysis) {
