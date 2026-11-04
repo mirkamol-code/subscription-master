@@ -311,6 +311,51 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     }
 
     @Test
+    void trial_shouldStayTrialUntilItsEnd_whenCancelled_andThenBecomeCancelled() {
+        // given
+        Subscription trial = netflixTrial(LocalDate.of(2026, 12, 4));
+        GMAIL.mailbox(message("netflix-trial-cancel", "2026-11-08T08:00:00Z", "Netflix <info@account.netflix.com>",
+                "Your free trial has been cancelled", "Your free trial has been cancelled."));
+        syncService.sync(userId);
+        assertThat(subscriptionRepository.findById(trial.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.TRIAL);
+        CLOCK.setInstant(Instant.parse("2026-12-05T09:00:00Z"));
+
+        // when
+        statusJob.applyDailyRules();
+
+        // then
+        assertThat(subscriptionRepository.findById(trial.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
+    void trial_shouldBeCancelledRightAway_whenCancelledWithUnknownEnd() {
+        // given
+        Subscription trial = netflixTrial(null);
+        GMAIL.mailbox(message("netflix-trial-cancel", "2026-11-08T08:00:00Z", "Netflix <info@account.netflix.com>",
+                "Your free trial has been cancelled", "Your free trial has been cancelled."));
+
+        // when
+        syncService.sync(userId);
+
+        // then
+        assertThat(subscriptionRepository.findById(trial.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
+    void trial_shouldRequireBilling_whenItsFirstPaymentFails() {
+        // given
+        Subscription trial = netflixTrial(LocalDate.of(2026, 11, 9));
+        GMAIL.mailbox(message("netflix-failed", "2026-11-09T08:00:00Z", "Netflix <info@account.netflix.com>",
+                "Your payment failed", "We couldn't process your payment. Update your payment method."));
+
+        // when
+        syncService.sync(userId);
+
+        // then
+        assertThat(subscriptionRepository.findById(trial.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.BILLING_REQUIRED);
+    }
+
+    @Test
     void sync_shouldNotCancel_whenOnlyPaymentFails() {
         // given
         GMAIL.mailbox(OPENAI_FAILED, OPENAI_RECEIPT_OCT);
@@ -752,6 +797,14 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     private static GmailMessage openAiReceipt(String id, String receivedAt) {
         return message(id, receivedAt, "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
                 "Thanks for your payment. Amount paid: $20.00 per month for ChatGPT Plus.");
+    }
+
+    private Subscription netflixTrial(LocalDate trialEndsOn) {
+        User user = userRepository.findById(userId).orElseThrow();
+        Subscription trial = Subscription.startTrial(user, "Netflix", SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 11, 1),
+                trialEndsOn, null, null);
+        trial.linkMerchant("netflix", "netflix.com");
+        return subscriptionRepository.save(trial);
     }
 
     private static GmailMessage openAiCancellation(String id, String receivedAt) {

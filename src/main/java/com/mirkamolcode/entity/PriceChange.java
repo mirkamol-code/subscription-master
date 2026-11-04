@@ -71,10 +71,10 @@ public class PriceChange extends AuditableEntity {
         this.observedAt = observedAt;
     }
 
-    public static PriceChange fromNotice(User user, String merchantKey, Subscription subscription, BillingEmail notice,
+    public static PriceChange fromNotice(User user, String merchantKey, Subscription subscription, BillingEmail email,
                                          PriceChangeNotice details) {
-        return new PriceChange(user, merchantKey, subscription, notice, PriceChangeSource.NOTICE, details.oldAmount(),
-                details.newAmount(), details.currency(), details.effectiveOn(), notice.getReceivedAt());
+        return new PriceChange(user, merchantKey, subscription, email, PriceChangeSource.NOTICE, details.oldAmount(),
+                details.newAmount(), details.currency(), details.effectiveOn(), email.getReceivedAt());
     }
 
     public void attachTo(Subscription subscription) {

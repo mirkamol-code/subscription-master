@@ -28,9 +28,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/**
- * APPLY mode of the Apple re-detection. Never runs on its own: only the apple-clean-up one-off profile starts it.
- */
 @Service
 public class AppleCleanUp {
     public static final String EARLIER_PURCHASES_KEY = MerchantResolver.APPLE_EARLIER_PURCHASES_KEY;
@@ -42,6 +39,8 @@ public class AppleCleanUp {
             "select 'subscriptions', s.id, to_jsonb(s) from subscriptions s where s.id in (:ids)",
             "select 'payment_history', p.id, to_jsonb(p) from payment_history p where p.subscription_id in (:ids)",
             "select 'billing_emails', e.id, to_jsonb(e) from billing_emails e"
+                    + " where e.user_id = :userId and (e.subscription_id in (:ids) or e.merchant_key = :legacyKey)",
+            "select 'email_attachments', a.id, to_jsonb(a) from email_attachments a join billing_emails e on e.id = a.billing_email_id"
                     + " where e.user_id = :userId and (e.subscription_id in (:ids) or e.merchant_key = :legacyKey)",
             "select 'status_changes', c.id, to_jsonb(c) from status_changes c where c.subscription_id in (:ids)",
             "select 'notifications', n.id, to_jsonb(n) from notifications n where n.subscription_id in (:ids)",
@@ -82,8 +81,17 @@ public class AppleCleanUp {
         legacyRows.findSubscriptions().stream()
                 .map(LegacySubscription::userId)
                 .distinct()
-                .forEach(userId -> outcomes.put(userId, applyUser(userId)));
+                .forEach(userId -> outcomes.put(userId, applyUserSafely(userId)));
         return outcomes;
+    }
+
+    private UserOutcome applyUserSafely(Long userId) {
+        try {
+            return applyUser(userId);
+        } catch (RuntimeException e) {
+            log.warn("Apple clean-up stopped for user {}; backups and queued replays are kept: {}", userId, e.getMessage());
+            return recordAttempt(userId, UserOutcome.FAILED, 0);
+        }
     }
 
     private UserOutcome applyUser(Long userId) {
@@ -210,6 +218,7 @@ public class AppleCleanUp {
     public enum UserOutcome {
         REBUILT,
         WAITING_FOR_GMAIL,
-        WAITING_FOR_MISSING_EMAILS
+        WAITING_FOR_MISSING_EMAILS,
+        FAILED
     }
 }

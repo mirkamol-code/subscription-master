@@ -40,7 +40,7 @@ public class ReportService {
         requireAnyColumn(columns);
         StringBuilder out = new StringBuilder(columns.stream().map(ReportColumn::header).collect(Collectors.joining(","))).append('\n');
         for (Subscription subscription : findReportedSubscriptions())
-            out.append(columns.stream().map(column -> toCsvValue(cellOf(column, subscription))).collect(Collectors.joining(","))).append('\n');
+            out.append(columns.stream().map(column -> toCsvValue(extractCell(column, subscription))).collect(Collectors.joining(","))).append('\n');
         return out.toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -56,7 +56,7 @@ public class ReportService {
             for (Subscription subscription : findReportedSubscriptions()) {
                 var row = sheet.createRow(rowIndex++);
                 for (int i = 0; i < columns.size(); i++) {
-                    Object value = cellOf(columns.get(i), subscription);
+                    Object value = extractCell(columns.get(i), subscription);
                     if (value instanceof BigDecimal number)
                         row.createCell(i).setCellValue(number.doubleValue());
                     else
@@ -82,7 +82,7 @@ public class ReportService {
                 .and(SubscriptionSpecifications.visible()));
     }
 
-    private Object cellOf(ReportColumn column, Subscription subscription) {
+    private Object extractCell(ReportColumn column, Subscription subscription) {
         return switch (column) {
             case SERVICE -> subscription.getName();
             case CATEGORY -> subscription.getCategory().label();

@@ -129,6 +129,30 @@ class AppleCleanUpIT extends AbstractTestConfig {
     }
 
     @Test
+    void apply_shouldKeepGoingForOtherUsers_whenOneUsersGmailFails() {
+        // given
+        GmailMessage telegram = EmailFixtures.load("apple-telegram-invoice.json");
+        GmailMessage multi = EmailFixtures.load("apple-multi-item-invoice.json");
+        GMAIL.mailbox(telegram, multi);
+        GMAIL.failingIds.add(multi.id());
+        User failing = connectedUser("failing@gmail.com");
+        Subscription failingLegacy = legacyAppleSubscription(failing, false);
+        legacyPayment(failingLegacy, legacyEmail(failing, multi, failingLegacy), "34.97");
+        User fine = connectedUser("fine@gmail.com");
+        Subscription fineLegacy = legacyAppleSubscription(fine, false);
+        legacyPayment(fineLegacy, legacyEmail(fine, telegram, fineLegacy), "0.43");
+
+        // when
+        var outcomes = underTest.apply();
+
+        // then
+        assertThat(outcomes.get(failing.getId())).isEqualTo(UserOutcome.FAILED);
+        assertThat(subscriptionRepository.findById(failingLegacy.getId()).orElseThrow().isDeleted()).isFalse();
+        assertThat(backedUpRows(failing, "subscriptions")).isZero();
+        assertThat(outcomes.get(fine.getId())).isEqualTo(UserOutcome.REBUILT);
+    }
+
+    @Test
     void apply_shouldChangeNothing_whileGmailIsDisconnected() {
         // given
         GmailMessage telegram = EmailFixtures.load("apple-telegram-invoice.json");
