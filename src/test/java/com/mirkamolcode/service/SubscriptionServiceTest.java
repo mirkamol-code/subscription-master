@@ -320,9 +320,9 @@ class SubscriptionServiceTest {
     private SubscriptionResponse response(Subscription subscription) {
         return new SubscriptionResponse(subscription.getId(), subscription.getName(), subscription.getPrice(),
                 subscription.getCurrency(), subscription.getFrequency(), subscription.getStatus(),
-                subscription.getCategory(), subscription.getStartDate(), subscription.getNextPaymentDate(),
+                subscription.getCategory(), subscription.getCategorySource(), subscription.getCategoryConfidence(), subscription.getStartDate(), subscription.getNextPaymentDate(),
                 subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.getReviewReason(), subscription.getReviewNote(), subscription.isHidden(),
-                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getVersion(),
-                null, null, null);
+                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getTrialEndsOn(), subscription.getVersion(),
+                null, null, null, null);
     }
 }

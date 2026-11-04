@@ -39,5 +39,13 @@ public class PaymentReminderJob {
                 log.warn("Payment reminder failed for subscription {}: {}", subscriptionId, e.getMessage());
             }
         }
+        for (Long subscriptionId : subscriptions.findTrialReminderCandidateIds(utcToday.minusDays(1),
+                utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK))) {
+            try {
+                reminders.remindTrialEndingIfDue(subscriptionId);
+            } catch (RuntimeException e) {
+                log.warn("Trial reminder failed for subscription {}: {}", subscriptionId, e.getMessage());
+            }
+        }
     }
 }

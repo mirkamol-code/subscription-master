@@ -24,6 +24,7 @@ public class MerchantResolver {
             "(?iu)(?<![\\p{L}\\p{N}])(?:receipt|invoice) from ([\\p{L}\\p{N}][\\p{L}\\p{N}&' -]{0,60}?)\\s*(?:[,#(\\n]|\\.(?:\\s|$)|\\s-\\s|$)");
 
     public static final String LEGACY_APPLE_KEY = "apple";
+    public static final String APPLE_EARLIER_PURCHASES_KEY = "apple-earlier-purchases";
     private static final String UNREAD_PLATFORM_KEY_SUFFIX = "-unparsed";
     private static final String LINE_ITEM_KEY_SUFFIX = "-item";
 
@@ -36,7 +37,7 @@ public class MerchantResolver {
         this.merchants = List.copyOf(properties.merchants());
         this.processors = List.copyOf(properties.processors());
         merchants.forEach(merchant -> merchantNames.put(merchant, anyName(merchant.namesForMatching())));
-        this.reservedKeys = Stream.concat(merchants.stream().map(DetectionProperties.MerchantConfig::key), Stream.of(LEGACY_APPLE_KEY))
+        this.reservedKeys = Stream.concat(merchants.stream().map(DetectionProperties.MerchantConfig::key), Stream.of(LEGACY_APPLE_KEY, APPLE_EARLIER_PURCHASES_KEY))
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -61,6 +62,10 @@ public class MerchantResolver {
         String key = platform.name().toLowerCase(Locale.ROOT).replace('_', '-') + UNREAD_PLATFORM_KEY_SUFFIX;
         return new Merchant(key, platform.displayName() + " purchase", List.of(), platform.logoDomain(), SubscriptionCategory.OTHER,
                 null, true);
+    }
+
+    public boolean isUsageBased(String merchantKey) {
+        return merchants.stream().anyMatch(merchant -> merchant.key().equals(merchantKey) && merchant.usageBased());
     }
 
     public boolean isKnownSender(GmailMessage message) {

@@ -86,6 +86,53 @@ class EmailClassifierTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            "If you cancel, your plan won't renew and you keep access until the end of the period.",
+            "You can cancel anytime. Once cancelled, your subscription will not renew.",
+            "Need help? Here's how to cancel: your plan won't renew after you turn off auto-renew.",
+            "Want to cancel? Your membership has ended only when you confirm in settings."
+    })
+    void classify_shouldNotTreatConditionalCancellationWordingAsCancellation(String body) {
+        // given
+        GmailMessage message = messageWith("Your Spotify Premium update", body);
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isNotEqualTo(EmailKind.CANCELLATION);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Your Premium subscription has been canceled. If you change your mind, you can cancel anytime before renewing again.",
+            "We've canceled your plan. To cancel other plans, visit settings."
+    })
+    void classify_shouldKeepClearCancellation_evenWhenEmailAlsoExplainsHowToCancel(String body) {
+        // given
+        GmailMessage message = messageWith("Your subscription has been cancelled", body);
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isEqualTo(EmailKind.CANCELLATION);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Your Netflix price is changing", "Important: price increase for your plan", "A price update for your membership"})
+    void classify_shouldDetectPriceChangeNotices(String subject) {
+        // given
+        GmailMessage message = messageWith(subject, "Your monthly price will change from $15.49 to $17.99.");
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isEqualTo(EmailKind.PRICE_CHANGE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
             "Your receipt from Anthropic",
             "Payment received for your Google One plan",
             "Your invoice for October",

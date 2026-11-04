@@ -136,7 +136,7 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse update(Long id, SubscriptionRequest request) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (request.version() != null && request.version() != subscription.getVersion())
             throw new ConflictException("Subscription was changed by someone else");
         subscription.update(request.name(), request.price(), request.currency(), request.frequency(), request.category(), request.startDate());
@@ -151,7 +151,7 @@ public class SubscriptionService {
 
     @Transactional
     public void delete(Long id) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_DELETE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_DELETE_ALL);
         subscription.markDeleted();
         if (subscription.getMerchantKey() != null)
             recordTombstone(subscription);
@@ -167,7 +167,7 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse changeStatus(Long id, StatusChangeRequest request) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         statusService.markByUser(subscription, request.status());
         return mapper.toResponse(subscription);
     }
@@ -182,14 +182,14 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse hide(Long id) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         subscription.hide();
         return mapper.toResponse(subscription);
     }
 
     @Transactional
     public SubscriptionResponse confirmRecurring(Long id) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         if (!subscription.isReviewingSimilarInvoices())
             throw new ConflictException("Only a subscription that needs review for similar invoices can be confirmed");
         subscription.confirmRecurring();
@@ -198,14 +198,14 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse unhide(Long id) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         subscription.unhide();
         return mapper.toResponse(subscription);
     }
 
     @Transactional
     public SubscriptionResponse confirmReceiptAmount(Long id, Long emailId, ReceiptAmountRequest request) {
-        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         BillingEmail receipt = billingEmailRepository.findByIdAndSubscriptionId(emailId, subscription.getId())
                 .orElseThrow(() -> new NotFoundException("Email not found: " + emailId));
         if (receipt.getKind() != EmailKind.RECEIPT || paymentHistoryRepository.existsByBillingEmailIdAndSubscriptionId(receipt.getId(), subscription.getId()))
@@ -245,6 +245,7 @@ public class SubscriptionService {
 
         Specification<Subscription> spec = SubscriptionSpecifications.visible()
                 .and(SubscriptionSpecifications.hasStatus(SubscriptionStatus.ACTIVE))
+                .and(SubscriptionSpecifications.renewsAtNextPayment())
                 .and(SubscriptionSpecifications.nextPaymentDateFrom(from))
                 .and(SubscriptionSpecifications.nextPaymentDateTo(to));
 
@@ -263,6 +264,7 @@ public class SubscriptionService {
 
         Specification<Subscription> spec = SubscriptionSpecifications.visible()
                 .and(SubscriptionSpecifications.hasStatus(SubscriptionStatus.ACTIVE))
+                .and(SubscriptionSpecifications.renewsAtNextPayment())
                 .and(SubscriptionSpecifications.nextPaymentDateFrom(from))
                 .and(SubscriptionSpecifications.nextPaymentDateTo(to));
 
@@ -351,6 +353,13 @@ public class SubscriptionService {
         return new BillingEmailResponse(email.getId(), email.getGmailMessageId(), email.getKind(), email.getSender(),
                 email.getSubject(), email.getReceivedAt(), email.getConfidence(),
                 email.getKind() == EmailKind.RECEIPT && !pricedEmailIds.contains(email.getId()), attachments);
+    }
+
+    private Subscription requiredEditable(Long id, Permission allPermission) {
+        Subscription subscription = requiredAccessible(id, allPermission);
+        if (subscription.isReadOnly())
+            throw new ConflictException("This is a closed record of earlier Apple purchases and can't be changed");
+        return subscription;
     }
 
     private Subscription requiredAccessible(Long id, Permission allPermission) {

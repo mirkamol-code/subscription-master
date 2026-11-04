@@ -21,6 +21,14 @@ public enum BillingFrequency {
 
     public abstract LocalDate addTo(LocalDate date);
 
+    public String label() {
+        return switch (this) {
+            case WEEKLY -> "Weekly";
+            case MONTHLY -> "Monthly";
+            case ANNUAL -> "Yearly";
+        };
+    }
+
     public int annualOccurrences() {
         return switch (this) {
             case WEEKLY -> 52;

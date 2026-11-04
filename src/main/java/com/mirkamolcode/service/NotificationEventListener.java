@@ -1,5 +1,6 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.event.SubscriptionRetrackedEvent;
 import com.mirkamolcode.event.SubscriptionStatusChangedEvent;
@@ -47,7 +48,7 @@ public class NotificationEventListener {
     @Async("notificationExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onStatusChanged(SubscriptionStatusChangedEvent event) {
-        if (event.reason() == StatusChangeReason.USER || isStale(event))
+        if (event.reason() == StatusChangeReason.USER || isStale(event) || isTrialConversion(event))
             return;
         ZoneId zone = users.findById(event.userId()).map(User::getTimeZone).orElse(ZoneId.of(User.DEFAULT_TIME_ZONE));
         String dedupeKey = "STATUS:" + event.subscriptionId() + ":" + event.toStatus() + ":" + event.reason()
@@ -68,5 +69,9 @@ public class NotificationEventListener {
     private boolean isStale(SubscriptionStatusChangedEvent event) {
         Duration maxAge = event.reason().source() == StatusChangeSource.EMAIL ? emailEvidenceMaxAge : systemEvidenceMaxAge;
         return event.effectiveAt().isBefore(clock.instant().minus(maxAge));
+    }
+
+    private static boolean isTrialConversion(SubscriptionStatusChangedEvent event) {
+        return event.fromStatus() == SubscriptionStatus.TRIAL && event.toStatus() == SubscriptionStatus.ACTIVE;
     }
 }

@@ -60,3 +60,29 @@ Outcomes: `READY`, `MISSING_EMAILS` (payments stay on "Apple (earlier purchases)
 
 Re-run `apple-redetection-counts.sql`; every count must match the run before. A Google token that was revoked
 is reported as `WAITING_FOR_GMAIL` and is **not** written back as disconnected.
+
+## APPLY (built, not run, needs the owner's approval)
+
+`SPRING_PROFILES_ACTIVE=prod,apple-clean-up` starts `AppleCleanUpRunner` once and exits. Nothing else can start it:
+it needs `app.redetection.apple.apply-on-startup=true`, which only `application-apple-clean-up.yml` sets. It uses a
+write connection, runs no web server or schedulers, and never runs migrations (Flyway is off; V21 must already be applied).
+
+Per user with a legacy `apple` row:
+
+| Plan outcome | What APPLY does |
+|---|---|
+| Gmail not usable | Nothing. Records `WAITING_FOR_GMAIL`; tries again on the next run, with no limit |
+| Emails missing, attempts 1–4 | Nothing. Counts the attempt in `apple_clean_up_attempts` |
+| Ready, or emails missing on the 5th attempt | Rebuilds (below) |
+
+Rebuild, in one transaction:
+1. Copies every affected row (subscription, payments, billing emails, status changes, notifications, price changes) to
+   `apple_clean_up_backups` as JSON, under one `run_id`.
+2. Moves payments whose email can't be read to a read-only, CANCELLED "Apple (earlier purchases)" row.
+   They still count in past spending, never in renewals. The API rejects edits to that row with 409.
+3. Deletes the payments and billing-email rows of readable emails, and soft-deletes the legacy row.
+4. Queues each readable Gmail message in `failed_gmail_messages` (1 attempt).
+
+Then it replays each queued message through the normal recorder. Anything that fails stays queued, and the next normal
+sync retries it. Hidden flags and category edits carry over only when the plan says CARRY; AMBIGUOUS flags the new rows
+for review. After the legacy row is gone, emails held by the hotfix guard are recorded by the next sync.

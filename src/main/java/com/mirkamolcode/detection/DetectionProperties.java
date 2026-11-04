@@ -4,6 +4,7 @@ import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.SubscriptionCategory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,9 +16,11 @@ public record DetectionProperties(
         Keywords keywords,
         List<MerchantConfig> merchants,
         List<String> processors,
-        List<String> personalMailboxDomains
+        List<String> personalMailboxDomains,
+        Map<SubscriptionCategory, List<String>> categorySignals
 ) {
     public DetectionProperties {
+        categorySignals = categorySignals == null ? Map.of() : Map.copyOf(categorySignals);
         processors = processors == null ? List.of() : List.copyOf(processors);
         personalMailboxDomains = personalMailboxDomains == null ? List.of() : List.copyOf(personalMailboxDomains);
     }
@@ -30,6 +33,11 @@ public record DetectionProperties(
             List<String> recurring,
             List<String> paymentConfirmation,
             List<String> cancellation,
+            List<String> cancellationConditional,
+            List<String> priceChange,
+            List<String> priceChangeEffective,
+            List<String> trialStarted,
+            List<String> trialEnds,
             List<String> paymentFailed,
             List<String> promotion,
             List<String> accessEnds,
@@ -46,7 +54,8 @@ public record DetectionProperties(
             List<String> senders,
             String logoDomain,
             SubscriptionCategory category,
-            BillingFrequency defaultCycle
+            BillingFrequency defaultCycle,
+            boolean usageBased
     ) {
         public MerchantConfig {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);

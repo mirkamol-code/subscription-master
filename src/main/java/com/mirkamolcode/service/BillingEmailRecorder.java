@@ -1,5 +1,13 @@
 package com.mirkamolcode.service;
 
+import java.time.ZoneOffset;
+import java.time.LocalDate;
+import com.mirkamolcode.detection.TrialDetails;
+import java.util.Arrays;
+import com.mirkamolcode.detection.CategoryClassifier;
+import com.mirkamolcode.detection.MerchantResolver;
+import com.mirkamolcode.repository.PriceChangeRepository;
+import com.mirkamolcode.entity.PriceChange;
 import com.mirkamolcode.detection.AppleInvoiceParser;
 import com.mirkamolcode.detection.BillingEmailAnalysis;
 import com.mirkamolcode.detection.BillingEmailAnalyzer;
@@ -53,6 +61,9 @@ public class BillingEmailRecorder {
     private final SubscriptionStatusService statusService;
     private final GmailConnectionRepository connections;
     private final RecurringInvoiceMatcher recurringInvoices;
+    private final PriceChangeRepository priceChanges;
+    private final MerchantResolver merchants;
+    private final CategoryClassifier categories;
 
     public BillingEmailRecorder(BillingEmailAnalyzer analyzer,
                                 UserRepository users,
@@ -64,7 +75,10 @@ public class BillingEmailRecorder {
                                 ApplicationEventPublisher events,
                                 SubscriptionStatusService statusService,
                                 GmailConnectionRepository connections,
-                                RecurringInvoiceMatcher recurringInvoices) {
+                                RecurringInvoiceMatcher recurringInvoices,
+                                PriceChangeRepository priceChanges,
+                                MerchantResolver merchants,
+                                CategoryClassifier categories) {
         this.analyzer = analyzer;
         this.users = users;
         this.billingEmails = billingEmails;
@@ -76,6 +90,9 @@ public class BillingEmailRecorder {
         this.statusService = statusService;
         this.connections = connections;
         this.recurringInvoices = recurringInvoices;
+        this.priceChanges = priceChanges;
+        this.merchants = merchants;
+        this.categories = categories;
     }
 
     public void record(Long userId, GmailMessage message) {
@@ -102,7 +119,62 @@ public class BillingEmailRecorder {
             return;
         }
         billingEmails.save(email);
+        if (analysis.kind() == EmailKind.PRICE_CHANGE) {
+            recordPriceChangeNotice(user, email, analysis);
+            return;
+        }
+        if (analysis.kind() == EmailKind.TRIAL_STARTED) {
+            recordTrial(user, email, analysis);
+            return;
+        }
         analysis.charges().forEach(charge -> recordCharge(user, email, charge));
+    }
+
+    private void recordPriceChangeNotice(User user, BillingEmail email, BillingEmailAnalysis analysis) {
+        String merchantKey = analysis.merchant().key();
+        AccountMatch account = matchAccount(user.getId(), merchantKey, null);
+        if (account.ambiguous())
+            return;
+        Subscription subscription = account.subscription().orElse(null);
+        if (subscription != null)
+            email.attachTo(subscription);
+        if (analysis.priceChange() == null)
+            return;
+        PriceChange change = priceChanges.save(PriceChange.fromNotice(user, merchantKey, subscription, email, analysis.priceChange()));
+        if (subscription != null)
+            subscription.noteLatestPriceChange(change);
+    }
+
+    private void recordTrial(User user, BillingEmail email, BillingEmailAnalysis analysis) {
+        Merchant merchant = analysis.merchant();
+        Optional<MerchantTombstone> tombstone = tombstones.findByUserIdAndMerchantKey(user.getId(), merchant.key());
+        if (tombstone.map(deleted -> deleted.covers(email.getReceivedAt())).orElse(false))
+            return;
+        AccountMatch account = matchAccount(user.getId(), merchant.key(), null);
+        if (account.ambiguous())
+            return;
+        TrialDetails trial = analysis.trial();
+        if (account.subscription().isPresent()) {
+            Subscription existing = account.subscription().get();
+            email.attachTo(existing);
+            if (existing.isTrial() && existing.getTrialEndsOn() == null)
+                existing.describeTrial(trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
+            return;
+        }
+        Subscription started = Subscription.startTrial(user, merchant.displayName(), merchant.category(),
+                LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC), trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
+        started.linkMerchant(merchant.key(), merchant.logoDomain());
+        started.applyDetectedCategory(categories.classify(merchant, Arrays.asList(email.getSubject(), email.getSenderDomain())));
+        Subscription saved = subscriptions.save(started);
+        email.attachTo(saved);
+        attachEarlierPriceNotices(user.getId(), saved);
+    }
+
+    private void attachEarlierPriceNotices(Long userId, Subscription subscription) {
+        priceChanges.findByUserIdAndMerchantKeyAndSubscriptionIsNull(userId, subscription.getMerchantKey()).forEach(change -> {
+            change.attachTo(subscription);
+            subscription.noteLatestPriceChange(change);
+        });
     }
 
     private static boolean isFromApple(GmailMessage message, BillingEmailAnalysis analysis) {
@@ -147,6 +219,7 @@ public class BillingEmailRecorder {
         subscription.assignCustomer(latest.getCustomerReference());
         subscription.describeBilling(null, null, latestCharge.paymentMethod());
         subscription.flagSimilarInvoicesForReview(series.invoices().size());
+        subscription.applyDetectedCategory(categories.classify(merchant, Arrays.asList(latest.getSubject(), latest.getSenderDomain())));
         subscriptions.save(subscription);
         returnGuessedInvoicesForReview(user.getId(), subscription);
         if (tombstone.isPresent())
@@ -218,7 +291,7 @@ public class BillingEmailRecorder {
             holdForAccount(email, charge);
             return;
         }
-        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, charge, account, tombstone.isPresent());
+        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, email, charge, account, tombstone.isPresent());
         if (tracked.isEmpty())
             return;
         Subscription subscription = tracked.get().subscription();
@@ -234,8 +307,10 @@ public class BillingEmailRecorder {
             statusService.apply(subscription, toStatusEvidence(email), email);
         else
             applyEvidence(subscription, email);
-        if (tracked.get().newlyLinked())
+        if (tracked.get().newlyLinked()) {
             replayUnattachedStatusEmails(user.getId(), subscription, tombstone);
+            attachEarlierPriceNotices(user.getId(), subscription);
+        }
     }
 
     private boolean isInvoiceAlreadyRecorded(Subscription subscription, DetectedCharge charge) {
@@ -271,16 +346,21 @@ public class BillingEmailRecorder {
             case CANCELLATION -> StatusEvidence.cancellation(email.getReceivedAt(), email.getAccessEndsOn());
             case PAYMENT_FAILED -> StatusEvidence.paymentFailed(email.getReceivedAt());
             case RECEIPT, IRRELEVANT -> StatusEvidence.receipt(email.getReceivedAt());
+            case PRICE_CHANGE, TRIAL_STARTED -> throw new IllegalStateException(email.getKind() + " email is not status evidence");
         };
     }
 
-    private Optional<TrackedSubscription> findOrCreateSubscription(User user, DetectedCharge charge, AccountMatch account, boolean wasDeleted) {
+    private Optional<TrackedSubscription> findOrCreateSubscription(User user, BillingEmail email, DetectedCharge charge, AccountMatch account,
+                                                                   boolean wasDeleted) {
         Merchant merchant = charge.merchant();
         if (account.subscription().isPresent())
             return Optional.of(new TrackedSubscription(account.subscription().get(), false));
         if (!charge.isPayment())
             return Optional.empty();
-        Subscription created = subscriptions.save(createSubscription(user, charge));
+        Subscription created = createSubscription(user, charge);
+        created.applyDetectedCategory(categories.classify(merchant, Arrays.asList(email.getSubject(), email.getSenderDomain(),
+                charge.planName())));
+        created = subscriptions.save(created);
         returnGuessedInvoicesForReview(user.getId(), created);
         if (wasDeleted)
             events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), created.getId(), merchant.displayName(),
@@ -340,6 +420,10 @@ public class BillingEmailRecorder {
 
     private void recordPayment(Subscription subscription, BillingEmail email, DetectedCharge charge) {
         ParsedBilling billing = charge.billing();
+        PriceChange.fromInvoice(subscription, email, billing.paymentDate(), billing.amount(), billing.currency(), billing.cycle(),
+                        billing.confidence(), merchants.isUsageBased(subscription.getMerchantKey()))
+                .map(priceChanges::save)
+                .ifPresent(subscription::noteLatestPriceChange);
         subscription.recordPayment(billing.paymentDate(), billing.amount(), billing.currency(), billing.cycle(),
                 billing.nextBillingDate(), billing.confidence());
         if (billing.paymentDate().equals(subscription.getLastPaymentDate()))

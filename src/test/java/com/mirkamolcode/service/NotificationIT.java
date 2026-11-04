@@ -393,6 +393,62 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDueReminders_shouldNotRemind_whenCancellationIsScheduledBeforeRenewal() {
+        // given
+        Subscription netflix = subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));
+        netflix.applyStatus(SubscriptionStatus.ACTIVE, LocalDate.of(2026, 11, 13), Instant.parse("2026-11-05T00:00:00Z"));
+        subscriptionRepository.save(netflix);
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
+    void sendDueReminders_shouldRemindBeforeFreeTrialEnds() {
+        // given
+        Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 12));
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications()
+                .jsonPath("$.totalElements").isEqualTo(1)
+                .jsonPath("$.content[0].type").isEqualTo("TRIAL_ENDING")
+                .jsonPath("$.content[0].title").isEqualTo("Your Streamio free trial ends on 12 Nov 2026")
+                .jsonPath("$.content[0].subscriptionId").isEqualTo(trial.getId().intValue());
+    }
+
+    @Test
+    void sendDueReminders_shouldNotRemind_whenTrialWasCancelled() {
+        // given
+        Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 12));
+        trial.applyStatus(SubscriptionStatus.TRIAL, LocalDate.of(2026, 11, 12), Instant.parse("2026-11-05T00:00:00Z"));
+        subscriptionRepository.save(trial);
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
+    void sendDueReminders_shouldNotRemind_whenTrialEndDateIsUnknown() {
+        // given
+        trialEndingOn(null);
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
     void sendDueReminders_shouldSkipLegacyAppleRow_butRemindOtherSubscriptions() {
         // given
         legacyAppleRowDueOn(LocalDate.of(2026, 11, 13));
@@ -614,6 +670,12 @@ class NotificationIT extends AbstractTestConfig {
         return subscriptionRepository.save(new Subscription(owner, name, new BigDecimal("22.99"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE, SubscriptionCategory.ENTERTAINMENT,
                 nextPaymentDate.minusMonths(1), nextPaymentDate));
+    }
+
+    private Subscription trialEndingOn(LocalDate trialEndsOn) {
+        User owner = userRepository.findById(userId).orElseThrow();
+        return subscriptionRepository.save(Subscription.startTrial(owner, "Streamio", SubscriptionCategory.ENTERTAINMENT,
+                LocalDate.of(2026, 11, 1), trialEndsOn, null, null));
     }
 
     private Subscription legacyAppleRowDueOn(LocalDate nextPaymentDate) {

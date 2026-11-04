@@ -1,6 +1,10 @@
 package com.mirkamolcode.entity;
 
+import com.mirkamolcode.detection.CategoryGuess;
 import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.Money;
+import com.mirkamolcode.model.CategoryConfidence;
+import com.mirkamolcode.model.CategorySource;
 import com.mirkamolcode.detection.PaymentMethod;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.BillingPlatform;
@@ -30,15 +34,15 @@ public class Subscription extends AuditableEntity {
     @Column(nullable = false, length = 120)
     private String name;
 
-    @Column(nullable = false, precision = 19, scale = 4)
+    @Column(precision = 19, scale = 4)
     private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 3)
+    @Column(length = 3)
     private CurrencyCode currency;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 16)
+    @Column(length = 16)
     private BillingFrequency frequency;
 
     @Enumerated(EnumType.STRING)
@@ -52,8 +56,12 @@ public class Subscription extends AuditableEntity {
     @Column(nullable = false)
     private LocalDate startDate;
 
-    @Column(nullable = false)
     private LocalDate nextPaymentDate;
+
+    private LocalDate trialEndsOn;
+
+    @Column(name = "is_read_only", nullable = false)
+    private boolean readOnly;
 
     @Column(nullable = false)
     private boolean isDeleted = false;
@@ -103,6 +111,18 @@ public class Subscription extends AuditableEntity {
     @Column(length = 64)
     private String customerReference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 8)
+    private CategorySource categorySource = CategorySource.UNKNOWN;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 6)
+    private CategoryConfidence categoryConfidence;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "latest_price_change_id")
+    private PriceChange latestPriceChange;
+
     @Version
     private long version;
 
@@ -126,12 +146,67 @@ public class Subscription extends AuditableEntity {
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : frequency.addTo(startDate);
     }
 
+    public static Subscription startTrial(User user, String name, SubscriptionCategory category, LocalDate startedOn,
+                                          LocalDate trialEndsOn, Money priceAfterTrial, BillingFrequency cycle) {
+        Subscription trial = new Subscription();
+        trial.user = user;
+        trial.name = name;
+        trial.status = SubscriptionStatus.TRIAL;
+        trial.category = category;
+        trial.startDate = startedOn;
+        trial.describeTrial(trialEndsOn, priceAfterTrial, cycle);
+        return trial;
+    }
+
+    public void describeTrial(LocalDate trialEndsOn, Money priceAfterTrial, BillingFrequency cycle) {
+        this.trialEndsOn = trialEndsOn;
+        this.nextPaymentDate = trialEndsOn;
+        this.price = priceAfterTrial == null ? null : priceAfterTrial.amount();
+        this.currency = priceAfterTrial == null ? null : priceAfterTrial.currency();
+        this.frequency = cycle;
+    }
+
+    public static Subscription earlierApplePurchases(Subscription legacy, String merchantKey) {
+        Subscription history = new Subscription(legacy.user, "Apple (earlier purchases)", legacy.price, legacy.currency, legacy.frequency,
+                SubscriptionStatus.CANCELLED, legacy.category, legacy.startDate, legacy.nextPaymentDate);
+        history.linkMerchant(merchantKey, legacy.logoDomain);
+        history.lastPaymentDate = legacy.lastPaymentDate;
+        history.readOnly = true;
+        return history;
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public void carryUserChoicesFrom(Subscription legacy, boolean carryHidden, boolean carryCategory) {
+        if (carryHidden && legacy.isHidden)
+            isHidden = true;
+        if (carryCategory && legacy.category != SubscriptionCategory.OTHER) {
+            category = legacy.category;
+            categorySource = CategorySource.USER;
+            categoryConfidence = null;
+        }
+    }
+
+    public boolean isTrial() {
+        return status == SubscriptionStatus.TRIAL;
+    }
+
+    public LocalDate getTrialEndsOn() {
+        return trialEndsOn;
+    }
+
     public void update(String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionCategory category, LocalDate startDate) {
         this.name = name;
         this.price = price;
         this.currency = currency;
         this.frequency = frequency;
-        this.category = category;
+        if (category != this.category) {
+            this.category = category;
+            this.categorySource = CategorySource.USER;
+            this.categoryConfidence = null;
+        }
         this.startDate = startDate;
         clearReview();
     }
@@ -183,7 +258,7 @@ public class Subscription extends AuditableEntity {
                               LocalDate nextPaymentDate, Confidence confidence) {
         if (lastPaymentDate != null && paidOn.isBefore(lastPaymentDate))
             return;
-        boolean changed = price.compareTo(amount) != 0 || this.currency != currency || frequency != cycle;
+        boolean changed = price == null || price.compareTo(amount) != 0 || this.currency != currency || frequency != cycle;
         if (confidence == Confidence.LOW && changed)
             needsReview = true;
         this.price = amount;
@@ -191,6 +266,7 @@ public class Subscription extends AuditableEntity {
         this.frequency = cycle;
         this.lastPaymentDate = paidOn;
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : cycle.addTo(paidOn);
+        this.trialEndsOn = null;
     }
 
     public void applyStatus(SubscriptionStatus status, LocalDate endsOn, Instant evidenceAt) {
@@ -366,5 +442,30 @@ public class Subscription extends AuditableEntity {
 
     public String getCustomerReference() {
         return customerReference;
+    }
+
+    public void applyDetectedCategory(CategoryGuess guess) {
+        if (categorySource == CategorySource.USER)
+            return;
+        this.category = guess.category();
+        this.categorySource = CategorySource.DETECTED;
+        this.categoryConfidence = guess.confidence();
+    }
+
+    public CategorySource getCategorySource() {
+        return categorySource;
+    }
+
+    public CategoryConfidence getCategoryConfidence() {
+        return categoryConfidence;
+    }
+
+    public void noteLatestPriceChange(PriceChange change) {
+        if (change.isNewerThan(latestPriceChange))
+            latestPriceChange = change;
+    }
+
+    public PriceChange getLatestPriceChange() {
+        return latestPriceChange;
     }
 }

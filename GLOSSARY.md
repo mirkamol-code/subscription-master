@@ -102,9 +102,36 @@ _Avoid_: Unconfirmed subscription, suspected subscription
 A Billing email that names no customer ID from a Merchant the User has several Merchant accounts with, waiting for the User to pick which Merchant account it belongs to.
 _Avoid_: Unassigned email, orphan receipt
 
+**Line item**:
+One charge on a Billing platform invoice. Each recurring Line item is its own Subscription; a one-time purchase is not.
+_Avoid_: Invoice row, product
+
+**Category**:
+The kind of service a Subscription is, such as Entertainment or Infrastructure. It is either chosen by the User, which always wins, or detected with a confidence of high, medium or low; Other means not sure.
+_Avoid_: Type, tag, group
+
+**Brand logo**:
+The reviewed image of a known Merchant shown next to its Subscriptions. A Merchant without one shows its Category icon instead.
+_Avoid_: Favicon, avatar, icon
+
+**Price change**:
+A change in what a Subscription charges per Billing cycle, in the same currency, announced by the Merchant or seen on a newer invoice, with the old price, the new price and the day it takes effect when known.
+_Avoid_: Price increase, repricing
+
+**Usage-based billing**:
+Billing whose amount follows what the User used that cycle, such as server hours, so a different amount is never a Price change.
+_Avoid_: Metered, variable price
+
 ## Status
 
-**Active**:
+**Free trial**:
+A Subscription the User has started without paying yet. It is never a Payment or current spending, and becomes Active on its first paid invoice.
+_Avoid_: Trial period, free plan, $0 subscription
+
+**Trial end**:
+The day a Free trial stops being free, as the Merchant's email states it. It is unknown when the email doesn't say.
+_Avoid_: Trial expiry, conversion date
+
 A Subscription whose latest receipt covers the current Billing cycle.
 
 **Cancelled**:
@@ -116,7 +143,7 @@ A Subscription whose last payment failed, or whose expected Payment is overdue w
 _Avoid_: Past due, failed, on hold
 
 **Access end**:
-The day a cancelled Subscription stops being usable: the date the cancellation email names, or else the end of the paid Billing cycle. Until then it is still Active and is never treated as overdue.
+The day a cancelled Subscription stops being usable: the date the cancellation email names, or else the end of the paid Billing cycle. Until then it is still Active (or still a Free trial) and is never treated as overdue or as an upcoming charge.
 _Avoid_: Expiry, period end, end date
 
 **Status change**:
@@ -129,6 +156,35 @@ _Avoid_: Status event, transition log
 A notice to a User that a Subscription will charge soon, sent once per Billing cycle.
 _Avoid_: Alert, due notice
 
+**Trial-ending reminder**:
+A notice to a User that a Free trial is about to reach its Trial end, sent only when the Trial end is known and the trial wasn't cancelled.
+_Avoid_: Trial alert
+
 **Notification**:
 A message to a User about one of their Subscriptions, either a Reminder or a recent Status change, delivered in the app, by email from their own Gmail, or as a browser push.
 _Avoid_: Alert, message, push (when meaning any channel)
+
+## Reports
+
+**Report column**:
+One of the fixed pieces of Subscription information a User can choose to include in a downloaded report.
+_Avoid_: Field, report option
+
+## Apple clean-up
+
+**Legacy Apple row**:
+A Subscription from before Billing platforms existed that lumps all of a User's Apple charges into one row.
+_Avoid_: Old Apple subscription, Apple bundle
+
+**Held Apple email**:
+A Billing email from Apple that waits, unrecorded, while the User still has a Legacy Apple row, so the same charges are never counted twice.
+_Avoid_: Queued email, blocked email (Awaiting account is a different wait)
+
+**Apple clean-up**:
+The one-off rebuild of a Legacy Apple row into one Subscription per Line item from the User's original Apple emails. Its dry run only reports what would change; its apply step makes the change after a backup.
+_Avoid_: Migration, re-sync, re-detection (when meaning the apply step)
+
+**Earlier Apple purchases**:
+A closed, read-only Subscription that keeps the Payments of a Legacy Apple row whose emails no longer exist. It counts in past spending, never in renewals.
+_Avoid_: Apple history, archived Apple row
+

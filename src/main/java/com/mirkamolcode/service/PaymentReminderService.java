@@ -39,15 +39,25 @@ public class PaymentReminderService {
 
     public void remindIfDue(Long subscriptionId) {
         Subscription subscription = subscriptions.findById(subscriptionId).orElseThrow();
-        Long userId = subscription.getUser().getId();
+        LocalDate due = subscription.getNextPaymentDate();
+        if (isWithinReminderWindow(subscription, due))
+            dispatcher.dispatch(subscription.getUser().getId(), messages.paymentDue(subscription), "PAYMENT_DUE:" + subscriptionId + ":" + due);
+    }
+
+    public void remindTrialEndingIfDue(Long subscriptionId) {
+        Subscription subscription = subscriptions.findById(subscriptionId).orElseThrow();
+        LocalDate endsOn = subscription.getTrialEndsOn();
+        if (subscription.isTrial() && subscription.getEndsOn() == null && endsOn != null && isWithinReminderWindow(subscription, endsOn))
+            dispatcher.dispatch(subscription.getUser().getId(), messages.trialEnding(subscription),
+                    "TRIAL_ENDING:" + subscriptionId + ":" + endsOn);
+    }
+
+    private boolean isWithinReminderWindow(Subscription subscription, LocalDate date) {
         ZonedDateTime usersNow = ZonedDateTime.ofInstant(clock.instant(), subscription.getUser().getTimeZone());
         if (usersNow.getHour() < reminderHour)
-            return;
+            return false;
         LocalDate today = usersNow.toLocalDate();
-        LocalDate due = subscription.getNextPaymentDate();
-        int daysBefore = settings.findOrDefault(userId).getDaysBefore();
-        if (due.isBefore(today) || due.isAfter(today.plusDays(daysBefore)))
-            return;
-        dispatcher.dispatch(userId, messages.paymentDue(subscription), "PAYMENT_DUE:" + subscriptionId + ":" + due);
+        int daysBefore = settings.findOrDefault(subscription.getUser().getId()).getDaysBefore();
+        return !date.isBefore(today) && !date.isAfter(today.plusDays(daysBefore));
     }
 }
