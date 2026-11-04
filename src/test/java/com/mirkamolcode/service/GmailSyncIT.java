@@ -698,6 +698,37 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldHoldNewAppleInvoices_whileLegacyAppleRowExists_andRecordThemOnceItIsGone() {
+        // given
+        User user = userRepository.findById(userId).orElseThrow();
+        Subscription legacy = new Subscription(user, "Apple (App Store / iCloud)", new BigDecimal("3.99"), CurrencyCode.USD,
+                BillingFrequency.MONTHLY, com.mirkamolcode.model.SubscriptionStatus.ACTIVE,
+                com.mirkamolcode.model.SubscriptionCategory.OTHER, LocalDate.of(2025, 11, 6));
+        legacy.linkMerchant("apple", "apple.com");
+        subscriptionRepository.save(legacy);
+        GmailMessage invoice = EmailFixtures.load("apple-telegram-invoice.json");
+        GMAIL.mailbox(invoice);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("apple");
+        assertThat(countRows("billing_emails")).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from failed_gmail_messages where gmail_message_id = ?", Integer.class,
+                invoice.id())).isEqualTo(1);
+
+        // when
+        legacy.markDeleted();
+        subscriptionRepository.save(legacy);
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscription("telegram-messenger").getPrice()).isEqualByComparingTo("3.99");
+        assertThat(countRows("failed_gmail_messages")).isZero();
+    }
+
+    @Test
     void sync_shouldNotTrackAppleInvoice_whenEveryLineItemIsOneTimePurchase() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-one-time-purchase.json"));

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LegacyAppleRows {
-    private static final String LEGACY_APPLE_KEY = "apple";
+    public static final String LEGACY_APPLE_KEY = "apple";
 
     private final NamedParameterJdbcTemplate jdbc;
 

@@ -16,7 +16,9 @@ import com.mirkamolcode.entity.User;
 import com.mirkamolcode.event.SubscriptionRetrackedEvent;
 import com.mirkamolcode.integration.gmail.GmailAttachment;
 import com.mirkamolcode.integration.gmail.GmailMessage;
+import com.mirkamolcode.exception.AppleCleanUpPendingException;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.BillingEmailRepository;
 import com.mirkamolcode.repository.GmailConnectionRepository;
@@ -80,6 +82,8 @@ public class BillingEmailRecorder {
             return;
         User user = users.getReferenceById(userId);
         BillingEmailAnalysis analysis = analyzer.analyze(message);
+        if (isBilledThroughApple(analysis) && subscriptions.existsByUserIdAndMerchantKeyAndIsDeletedFalse(userId, LegacyAppleRows.LEGACY_APPLE_KEY))
+            throw new AppleCleanUpPendingException("Apple invoice waits until the user's legacy Apple subscription is cleaned up");
         if (analysis.kind() == EmailKind.IRRELEVANT) {
             billingEmails.save(BillingEmail.irrelevant(user, message.id(), message.receivedAt()));
             return;
@@ -98,6 +102,10 @@ public class BillingEmailRecorder {
         }
         billingEmails.save(email);
         analysis.charges().forEach(charge -> recordCharge(user, email, charge));
+    }
+
+    private static boolean isBilledThroughApple(BillingEmailAnalysis analysis) {
+        return analysis.charges().stream().anyMatch(charge -> charge.platform() == BillingPlatform.APPLE);
     }
 
     private void recordRecurrenceCandidate(User user, BillingEmail email, GmailMessage message, DetectedCharge charge) {
