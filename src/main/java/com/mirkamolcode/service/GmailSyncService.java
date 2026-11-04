@@ -5,6 +5,7 @@ import com.mirkamolcode.detection.GmailQuery;
 import com.mirkamolcode.dto.response.GmailSyncStatusResponse;
 import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.event.GmailSyncRequestedEvent;
+import com.mirkamolcode.exception.AppleCleanUpPendingException;
 import com.mirkamolcode.exception.ExchangeRatesUnavailableException;
 import com.mirkamolcode.exception.GmailDisconnectedException;
 import com.mirkamolcode.exception.SyncAlreadyRunningException;
@@ -169,8 +170,8 @@ public class GmailSyncService {
             } catch (GmailNotFoundException e) {
                 log.debug("Gmail message {} disappeared before sync", id);
             } catch (RuntimeException e) {
-                log.warn("Could not read headers of Gmail message {} for user {}: {}", id, userId, e.getMessage());
-                failedMessages.recordFailure(userId, id, e.getMessage());
+                log.warn("Could not read headers of Gmail message {} for user {}: {}", id, userId, LoggableError.describe(e));
+                failedMessages.recordFailure(userId, id, LoggableError.describe(e));
                 failures++;
             }
         }
@@ -201,13 +202,17 @@ public class GmailSyncService {
             log.debug("Gmail message {} disappeared before sync", id);
             failedMessages.clearFailure(userId, id);
             return true;
+        } catch (AppleCleanUpPendingException e) {
+            log.info("Gmail message {} for user {} waits for the Apple clean-up", id, userId);
+            failedMessages.recordTransientFailure(userId, id, e.getMessage());
+            return true;
         } catch (ExchangeRatesUnavailableException e) {
             log.warn("Gmail message {} for user {} waits for an exchange rate: {}", id, userId, e.getMessage());
             failedMessages.recordTransientFailure(userId, id, e.getMessage());
             return false;
         } catch (RuntimeException e) {
-            log.warn("Could not record Gmail message {} for user {}: {}", id, userId, e.getMessage());
-            failedMessages.recordFailure(userId, id, e.getMessage());
+            log.warn("Could not record Gmail message {} for user {}: {}", id, userId, LoggableError.describe(e));
+            failedMessages.recordFailure(userId, id, LoggableError.describe(e));
             return false;
         }
     }

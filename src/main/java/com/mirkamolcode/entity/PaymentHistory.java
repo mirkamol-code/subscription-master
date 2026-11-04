@@ -36,9 +36,12 @@ public class PaymentHistory extends AuditableEntity {
     protected PaymentHistory() {
     }
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "billing_email_id", unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "billing_email_id")
     private BillingEmail billingEmail;
+
+    @Column(length = 64)
+    private String invoiceReference;
 
     public PaymentHistory(Subscription subscription, BillingEmail billingEmail, LocalDate paymentDate, BigDecimal originalAmount, CurrencyCode originalCurrency, BigDecimal exchangeRateToUzs) {
         this(subscription, paymentDate, originalAmount, originalCurrency, exchangeRateToUzs);
@@ -52,6 +55,14 @@ public class PaymentHistory extends AuditableEntity {
         this.originalCurrency = originalCurrency;
         this.exchangeRateToUzs = exchangeRateToUzs;
         this.amountUzs = originalAmount.multiply(exchangeRateToUzs);
+    }
+
+    public void referenceInvoice(String invoiceReference) {
+        this.invoiceReference = invoiceReference;
+    }
+
+    public String getInvoiceReference() {
+        return invoiceReference;
     }
 
     public Long getId() {

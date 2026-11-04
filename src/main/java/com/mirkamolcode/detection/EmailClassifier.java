@@ -24,6 +24,8 @@ public class EmailClassifier {
     private final Pattern promotion;
     private final Pattern accessEnds;
     private final Pattern accessEndsNow;
+    private final Pattern invoice;
+    private final Pattern nonBilling;
 
     public EmailClassifier(DetectionProperties properties) {
         DetectionProperties.Keywords keywords = properties.keywords();
@@ -38,6 +40,8 @@ public class EmailClassifier {
         this.promotion = anyPhrase(keywords.promotion());
         this.accessEnds = anyPhrase(keywords.accessEnds());
         this.accessEndsNow = anyPhrase(keywords.accessEndsNow());
+        this.invoice = anyPhrase(keywords.invoice());
+        this.nonBilling = anyPhrase(keywords.nonBilling());
     }
 
     public EmailKind classify(GmailMessage message) {
@@ -62,6 +66,10 @@ public class EmailClassifier {
 
     public boolean mentionsFreePlan(GmailMessage message) {
         return matchesSubjectOrBody(freePlan, message);
+    }
+
+    public boolean isRecurringInvoiceCandidate(GmailMessage message) {
+        return matchesSubjectOrBody(invoice, message) && !matchesSubjectOrBody(nonBilling, message);
     }
 
     public boolean mentionsRecurringBilling(GmailMessage message) {

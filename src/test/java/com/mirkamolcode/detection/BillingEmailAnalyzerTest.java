@@ -3,7 +3,9 @@ package com.mirkamolcode.detection;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.MessageHeaders;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.SubscriptionCategory;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,7 +20,88 @@ class BillingEmailAnalyzerTest {
             new EmailClassifier(properties),
             new MerchantResolver(properties),
             new SenderVerifier(properties),
-            List.of(new HeuristicParser(), new NetflixParser(), new SchemaOrgParser()));
+            List.of(new HeuristicParser(), new NetflixParser(), new SchemaOrgParser()),
+            List.of(new AppleInvoiceParser()));
+
+    @Test
+    void analyze_shouldDetectHetznerInvoice_whenEmailNeverSaysSubscription() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("hetzner-invoice.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.merchant().key()).isEqualTo("hetzner");
+        assertThat(analysis.merchant().displayName()).isEqualTo("Hetzner");
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("10.09");
+        assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.USD);
+        assertThat(analysis.billing().cycle()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(analysis.billing().paymentDate()).isEqualTo(LocalDate.of(2026, 10, 12));
+        assertThat(analysis.merchant().category()).isEqualTo(SubscriptionCategory.INFRASTRUCTURE);
+        assertThat(analysis.charges().getFirst().paymentMethod())
+                .isEqualTo(new PaymentMethod(PaymentMethodType.CARD, null, null));
+        assertThat(analysis.charges().getFirst().platform()).isNull();
+        assertThat(analysis.charges().getFirst().references())
+                .isEqualTo(new InvoiceReferences("000000000001", "K0000000001"));
+    }
+
+    @Test
+    void analyze_shouldOnlyHoldUnknownSenderInvoiceForRepeat_evenWhenItMentionsBillingPeriodAndAutomaticDebit() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-12T05:08:00Z"),
+                "Acme Hosting <billing@acmehost.example>", "Invoice 000000000002", null,
+                "The invoice amount of € 7.50 will be debited from your account. The billing period is the previous month."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.awaitingRepeat()).isTrue();
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("7.50");
+        assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.EUR);
+    }
+
+    @Test
+    void analyze_shouldKeepAppleInvoiceUnderPlatformKey_whenLayoutCannotBeParsed() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-12-07T13:20:00Z"),
+                "Apple <no_reply@email.apple.com>", "Your invoice from Apple.", null,
+                "Rechnung\nSome Game Plus\nAbo verlängert sich am 7. Januar 2027\nTotal US$3,99"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.merchant().key()).isEqualTo("apple-unparsed");
+        assertThat(analysis.merchant().key()).isNotEqualTo("apple");
+        assertThat(analysis.charges().getFirst().platform()).isEqualTo(BillingPlatform.APPLE);
+        assertThat(analysis.billing().confidence()).isEqualTo(Confidence.LOW);
+    }
+
+    @Test
+    void analyze_shouldHoldUnknownSenderInvoiceForRepeat_whenItHasNoRecurringWording() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-12T05:08:00Z"),
+                "Acme Hosting <billing@acmehost.example>", "Invoice 000000000003 (K0000000009)", null,
+                "Please find your invoice attached. Amount: € 7.50"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.awaitingRepeat()).isTrue();
+        assertThat(analysis.merchant().known()).isFalse();
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("7.50");
+        assertThat(analysis.charges().getFirst().references()).isEqualTo(new InvoiceReferences("000000000003", "K0000000009"));
+    }
+
+    @Test
+    void analyze_shouldNotHoldOneOffReceiptsForRepeat() {
+        // when / then
+        assertThat(underTest.analyze(EmailFixtures.load("uber-trip-receipt.json")).kind()).isEqualTo(EmailKind.IRRELEVANT);
+        assertThat(underTest.analyze(EmailFixtures.load("stripe-one-off-receipt.json")).kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
 
     @Test
     void analyze_shouldReadSenderSpecificReceipt_withHighConfidence() {
@@ -455,7 +538,7 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
-    void analyze_shouldResolveAppleItself_whenAppleReceiptNamesNoOtherMerchant() {
+    void analyze_shouldResolveAppleOwnedService_whenAppleReceiptNamesNoOtherMerchant() {
         // given
         GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
                 "Apple <no_reply@email.apple.com>", "Your receipt from Apple.", null,
@@ -465,7 +548,8 @@ class BillingEmailAnalyzerTest {
         BillingEmailAnalysis analysis = underTest.analyze(message);
 
         // then
-        assertThat(analysis.merchant().key()).isEqualTo("apple");
+        assertThat(analysis.merchant().key()).isEqualTo("icloud");
+        assertThat(analysis.merchant().displayName()).isEqualTo("iCloud+");
     }
 
     @Test

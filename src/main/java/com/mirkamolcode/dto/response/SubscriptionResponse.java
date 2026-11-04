@@ -1,7 +1,9 @@
 package com.mirkamolcode.dto.response;
 
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
@@ -27,6 +29,11 @@ public record SubscriptionResponse(
         LocalDate lastPaymentDate,
         String logoDomain,
         LocalDate endsOn,
-        long version
-){
+        long version,
+        String planName,
+        BillingPlatform billingPlatform,
+        PaymentMethod paymentMethod
+) {
+    public record PaymentMethod(PaymentMethodType type, String cardBrand, String cardLast4) {
+    }
 }

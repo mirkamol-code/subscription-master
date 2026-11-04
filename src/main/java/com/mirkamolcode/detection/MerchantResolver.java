@@ -1,6 +1,7 @@
 package com.mirkamolcode.detection;
 
 import com.mirkamolcode.integration.gmail.GmailMessage;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.SubscriptionCategory;
 
 import java.util.Comparator;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Component;
 public class MerchantResolver {
     private static final Pattern RECEIPT_FROM = Pattern.compile(
             "(?iu)(?<![\\p{L}\\p{N}])(?:receipt|invoice) from ([\\p{L}\\p{N}][\\p{L}\\p{N}&' -]{0,60}?)\\s*(?:[,#(\\n]|\\.(?:\\s|$)|\\s-\\s|$)");
+
+    private static final String UNREAD_PLATFORM_KEY_SUFFIX = "-unparsed";
 
     private final List<DetectionProperties.MerchantConfig> merchants;
     private final List<String> processors;
@@ -38,6 +41,18 @@ public class MerchantResolver {
         if (findNamedIn(message.subject(), merchants).isPresent())
             return Optional.empty();
         return Optional.of(unknownMerchant(senderLabel(message), message.senderDomain()));
+    }
+
+    public Merchant resolveService(String title) {
+        return findNamedIn(title, merchants)
+                .map(MerchantResolver::toMerchant)
+                .orElseGet(() -> unknownMerchant(title, null));
+    }
+
+    public Merchant unreadPlatformInvoice(BillingPlatform platform) {
+        String key = platform.name().toLowerCase(Locale.ROOT).replace('_', '-') + UNREAD_PLATFORM_KEY_SUFFIX;
+        return new Merchant(key, platform.displayName() + " purchase", List.of(), platform.logoDomain(), SubscriptionCategory.OTHER,
+                null, true);
     }
 
     public boolean isKnownSender(GmailMessage message) {

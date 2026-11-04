@@ -15,7 +15,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, Long> {
-    boolean existsByBillingEmailId(Long billingEmailId);
+    boolean existsByBillingEmailIdAndSubscriptionId(Long billingEmailId, Long subscriptionId);
+
+    List<PaymentHistory> findBySubscriptionIdAndInvoiceReference(Long subscriptionId, String invoiceReference);
+
+    void deleteByBillingEmailIdAndSubscriptionId(Long billingEmailId, Long subscriptionId);
 
     List<PaymentHistory> findBySubscriptionUserIdAndPaymentDateBetween(Long userId, LocalDate from, LocalDate to);
 

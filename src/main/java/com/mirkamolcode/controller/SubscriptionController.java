@@ -121,6 +121,12 @@ public class SubscriptionController {
         return service.hide(id);
     }
 
+    @PostMapping("/{id}/confirm")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
+    public SubscriptionResponse confirm(@PathVariable Long id) {
+        return service.confirmRecurring(id);
+    }
+
     @PostMapping("/{id}/unhide")
     @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
     public SubscriptionResponse unhide(@PathVariable Long id) {

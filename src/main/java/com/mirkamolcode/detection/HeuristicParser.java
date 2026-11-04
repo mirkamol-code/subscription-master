@@ -11,7 +11,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,16 +21,6 @@ import org.springframework.stereotype.Component;
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class HeuristicParser implements EmailParser {
-    private static final String NUMBER = "\\d{1,3}(?:[ ,.\\u00A0]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?";
-    private static final String SYMBOLS = "[$€£₽₸₺¥]";
-    private static final String CODES = "USD|EUR|GBP|RUB|KZT|TRY|JPY|CNY|UZS";
-    private static final String UZS_WORDS = "so['ʻ‘’`]?m|сум|сўм";
-    private static final List<AmountPattern> AMOUNT_PATTERNS = List.of(
-            new AmountPattern(Pattern.compile("(?<symbol>" + SYMBOLS + ")\\s?(?<number>" + NUMBER + ")"), HeuristicParser::currencyOfSymbol),
-            new AmountPattern(Pattern.compile("(?<number>" + NUMBER + ")\\s?(?<symbol>" + SYMBOLS + ")"), HeuristicParser::currencyOfSymbol),
-            new AmountPattern(Pattern.compile("\\b(?<code>" + CODES + ")\\s?(?<number>" + NUMBER + ")"), HeuristicParser::currencyOfCode),
-            new AmountPattern(Pattern.compile("(?<number>" + NUMBER + ")\\s?(?<code>" + CODES + ")\\b"), HeuristicParser::currencyOfCode),
-            new AmountPattern(Pattern.compile("(?iu)(?<number>" + NUMBER + ")\\s?(?:" + UZS_WORDS + ")(?![\\p{L}])"), matcher -> CurrencyCode.UZS));
     private static final Pattern TOTAL_KEYWORD = Pattern.compile(
             "(?i)(?<!sub)total|amount (?:paid|charged)|charged|you paid|grand total");
 
@@ -47,7 +36,7 @@ public class HeuristicParser implements EmailParser {
     private static final Pattern SENTENCE_BOUNDARY = Pattern.compile("[.!?](?:\\s|$)|\\n");
 
     private static final Pattern NEXT_BILLING_KEYWORD = Pattern.compile(
-            "(?i)renews? on|renewal date|next (?:billing|payment|charge)(?: date)?|will be (?:charged|billed)|next bill");
+            "(?i)\\brenews?(?: on)?\\b|renewal date|next (?:billing|payment|charge)(?: date)?|will be (?:charged|billed)|next bill");
 
     @Override
     public boolean supports(GmailMessage message) {
@@ -63,53 +52,27 @@ public class HeuristicParser implements EmailParser {
     }
 
     private static Optional<Amount> findAmount(String text) {
-        List<Amount> amounts = new ArrayList<>();
-        for (AmountPattern amountPattern : AMOUNT_PATTERNS) {
-            Matcher matcher = amountPattern.pattern().matcher(text);
-            while (matcher.find())
-                amounts.add(new Amount(toNumber(matcher.group("number")), amountPattern.currency().apply(matcher), matcher.start(), matcher.end()));
-        }
-        List<Amount> distinct = removeOverlaps(amounts);
-        return lastAfterTotalKeyword(text, distinct).or(() -> distinct.stream().max(Comparator.comparing(Amount::value)));
-    }
-
-    private static List<Amount> removeOverlaps(List<Amount> amounts) {
-        List<Amount> sorted = amounts.stream().sorted(Comparator.comparingInt(Amount::start)).toList();
-        List<Amount> distinct = new ArrayList<>();
-        for (Amount amount : sorted)
-            if (distinct.isEmpty() || amount.start() >= distinct.getLast().end())
-                distinct.add(amount);
-        return distinct;
+        List<Amount> amounts = MoneyParser.findAll(text).stream()
+                .map(match -> new Amount(match.money().amount(), match.money().currency(), match.start(), match.end()))
+                .toList();
+        return lastAfterTotalKeyword(text, amounts).or(() -> amounts.stream().max(Comparator.comparing(Amount::value)));
     }
 
     private static Optional<Amount> lastAfterTotalKeyword(String text, List<Amount> amounts) {
         Amount chosen = null;
         int previousEnd = 0;
         for (Amount amount : amounts) {
-            if (TOTAL_KEYWORD.matcher(text.substring(previousEnd, amount.start())).find())
+            String label = text.substring(previousEnd, amount.start());
+            if (TOTAL_KEYWORD.matcher(label).find() && !isAdjustment(label))
                 chosen = amount;
             previousEnd = amount.end();
         }
         return Optional.ofNullable(chosen);
     }
 
-    private static CurrencyCode currencyOfSymbol(Matcher matcher) {
-        return CurrencySymbols.toCurrency(matcher.group("symbol"));
-    }
-
-    private static CurrencyCode currencyOfCode(Matcher matcher) {
-        return CurrencyCode.valueOf(matcher.group("code"));
-    }
-
-    private static BigDecimal toNumber(String raw) {
-        String digits = raw.replace(" ", "").replace(" ", "");
-        int lastSeparator = Math.max(digits.lastIndexOf(','), digits.lastIndexOf('.'));
-        if (lastSeparator < 0)
-            return new BigDecimal(digits);
-        boolean hasDecimals = digits.length() - lastSeparator - 1 <= 2;
-        String whole = digits.substring(0, lastSeparator).replace(",", "").replace(".", "");
-        String rest = digits.substring(lastSeparator + 1);
-        return new BigDecimal(hasDecimals ? whole + "." + rest : whole + rest);
+    private static boolean isAdjustment(String label) {
+        String sameLine = label.substring(label.lastIndexOf('\n') + 1);
+        return MoneyParser.ADJUSTMENT_LABEL.matcher(sameLine).find();
     }
 
     private static BillingFrequency findCycle(String text, Amount amount) {
@@ -144,9 +107,6 @@ public class HeuristicParser implements EmailParser {
     private static int findSentenceEnd(String text, int from) {
         Matcher boundary = SENTENCE_BOUNDARY.matcher(text);
         return boundary.find(from) ? boundary.start() : text.length();
-    }
-
-    private record AmountPattern(Pattern pattern, Function<Matcher, CurrencyCode> currency) {
     }
 
     private record Amount(BigDecimal value, CurrencyCode currency, int start, int end) {

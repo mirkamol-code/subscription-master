@@ -122,6 +122,38 @@ class AccountDataIT extends AbstractTestConfig {
     }
 
     @Test
+    void disconnectGmail_shouldRemoveStoredReferencesAmountsAndCardDetails() {
+        // given
+        List<GmailMessage> detailed = List.of(EmailFixtures.load("apple-telegram-invoice.json"), EmailFixtures.load("hetzner-invoice.json"),
+                EmailFixtures.authenticated(new GmailMessage("acme-1", "acme-1", Instant.parse("2026-10-01T05:00:00Z"),
+                        "Acme Hosting <billing@acmehost.example>", "Invoice 000000000101 (K0000000009)", null,
+                        "Please find your invoice attached. Amount: $ 7.50")));
+        GMAIL.historyAdds(detailed.stream().map(GmailMessage::id).toArray(String[]::new));
+        detailed.forEach(GMAIL::deliver);
+        syncService.sync(aliceId);
+        assertThat(countAliceRowsWithExtractedDetails()).isPositive();
+
+        // when
+        webTestClient.delete().uri(API + "/me/gmail").header("Authorization", bearer(aliceTokens)).exchange()
+                .expectStatus().isOk();
+
+        // then
+        assertThat(countAliceRowsWithExtractedDetails()).isZero();
+    }
+
+    private int countAliceRowsWithExtractedDetails() {
+        return jdbc.queryForObject("""
+                select (select count(*) from billing_emails where user_id = :id and (recurrence_candidate or sender_domain is not null
+                            or customer_reference is not null or invoice_reference is not null or parsed_amount is not null
+                            or parsed_currency is not null or billed_on is not null))
+                     + (select count(*) from subscriptions where user_id = :id and (card_last4 is not null or card_brand is not null
+                            or payment_method_type is not null or plan_name is not null or billing_platform is not null))
+                     + (select count(*) from payment_history p join subscriptions s on s.id = p.subscription_id
+                            where s.user_id = :id and p.invoice_reference is not null)
+                """.replace(":id", String.valueOf(aliceId)), Integer.class);
+    }
+
+    @Test
     void disconnectGmail_shouldKeepTheAccountSignedIn() {
         // when
         webTestClient.delete().uri(API + "/me/gmail").header("Authorization", bearer(aliceTokens)).exchange()

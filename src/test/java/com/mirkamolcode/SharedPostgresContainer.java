@@ -27,6 +27,15 @@ public class SharedPostgresContainer extends PostgreSQLContainer {
                 .withPassword("password");
     }
 
+    public static SharedPostgresContainer running() {
+        SharedPostgresContainer container = getInstance();
+        synchronized (SharedPostgresContainer.class) {
+            if (!container.isRunning())
+                container.start();
+        }
+        return container;
+    }
+
     public static SharedPostgresContainer getInstance() {
         if(sharedPostgresContainer == null) {
             synchronized (SharedPostgresContainer.class) {

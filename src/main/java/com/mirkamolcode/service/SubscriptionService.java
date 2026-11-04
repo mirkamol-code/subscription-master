@@ -188,6 +188,15 @@ public class SubscriptionService {
     }
 
     @Transactional
+    public SubscriptionResponse confirmRecurring(Long id) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        if (!subscription.isReviewingSimilarInvoices())
+            throw new ConflictException("Only a subscription that needs review for similar invoices can be confirmed");
+        subscription.confirmRecurring();
+        return mapper.toResponse(subscription);
+    }
+
+    @Transactional
     public SubscriptionResponse unhide(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         subscription.unhide();
@@ -199,7 +208,7 @@ public class SubscriptionService {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         BillingEmail receipt = billingEmailRepository.findByIdAndSubscriptionId(emailId, subscription.getId())
                 .orElseThrow(() -> new NotFoundException("Email not found: " + emailId));
-        if (receipt.getKind() != EmailKind.RECEIPT || paymentHistoryRepository.existsByBillingEmailId(receipt.getId()))
+        if (receipt.getKind() != EmailKind.RECEIPT || paymentHistoryRepository.existsByBillingEmailIdAndSubscriptionId(receipt.getId(), subscription.getId()))
             throw new ConflictException("Only a receipt without a recorded payment can be confirmed");
         LocalDate paidOn = LocalDate.ofInstant(receipt.getReceivedAt(), ZoneOffset.UTC);
         subscription.confirmPayment(paidOn, request.amount(), request.currency());

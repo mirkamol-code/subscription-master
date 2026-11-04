@@ -69,7 +69,10 @@ class SubscriptionControllerTest {
                 null,
                 null,
                 null,
-                0L
+                0L,
+                null,
+                null,
+                null
         );
     }
 

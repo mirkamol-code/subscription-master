@@ -185,7 +185,10 @@ public final class FakeGmail implements GmailClient {
             throw new GmailTransientException("Gmail API failed with 503");
         fetches.incrementAndGet();
         fetchedIds.add(messageId);
-        return messages.get(messageId);
+        GmailMessage message = messages.get(messageId);
+        if (message == null)
+            throw new GmailNotFoundException("Gmail API failed with 404 notFound");
+        return message;
     }
 
     @Override

@@ -2,8 +2,11 @@ package com.mirkamolcode.entity;
 
 import com.mirkamolcode.detection.Confidence;
 import com.mirkamolcode.detection.EmailKind;
+import com.mirkamolcode.detection.InvoiceReferences;
+import com.mirkamolcode.model.CurrencyCode;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -52,6 +55,33 @@ public class BillingEmail extends AuditableEntity {
 
     private LocalDate accessEndsOn;
 
+    @Column(nullable = false)
+    private boolean recurrenceCandidate = false;
+
+    @Column(length = 253)
+    private String senderDomain;
+
+    @Column(length = 64)
+    private String customerReference;
+
+    @Column(length = 64)
+    private String invoiceReference;
+
+    @Column(precision = 19, scale = 4)
+    private BigDecimal parsedAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 3)
+    private CurrencyCode parsedCurrency;
+
+    private LocalDate billedOn;
+
+    @Column(nullable = false)
+    private boolean awaitingAccount = false;
+
+    @Column(nullable = false)
+    private boolean accountGuessed = false;
+
     @OneToMany(mappedBy = "billingEmail", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EmailAttachment> attachments = new ArrayList<>();
 
@@ -82,6 +112,50 @@ public class BillingEmail extends AuditableEntity {
 
     public static BillingEmail irrelevant(User user, String gmailMessageId, Instant receivedAt) {
         return new BillingEmail(user, gmailMessageId, null, EmailKind.IRRELEVANT, null, null, receivedAt, null);
+    }
+
+    public void holdForRecurrence(String senderDomain, InvoiceReferences references, BigDecimal amount, CurrencyCode currency,
+                                  LocalDate billedOn) {
+        this.recurrenceCandidate = true;
+        this.senderDomain = senderDomain;
+        this.customerReference = truncate(references.customer(), 64);
+        this.invoiceReference = truncate(references.invoice(), 64);
+        this.parsedAmount = amount;
+        this.parsedCurrency = currency;
+        this.billedOn = billedOn;
+    }
+
+    public void holdForAccount(InvoiceReferences references, BigDecimal amount, CurrencyCode currency, LocalDate billedOn) {
+        rememberCharge(references, amount, currency, billedOn);
+        this.awaitingAccount = true;
+    }
+
+    public void markAccountGuessed(InvoiceReferences references, BigDecimal amount, CurrencyCode currency, LocalDate billedOn) {
+        rememberCharge(references, amount, currency, billedOn);
+        this.accountGuessed = true;
+    }
+
+    public void returnForAccountReview() {
+        this.subscription = null;
+        this.accountGuessed = false;
+        this.awaitingAccount = true;
+    }
+
+    public void assignAccount(Subscription subscription) {
+        this.subscription = subscription;
+        this.awaitingAccount = false;
+        this.accountGuessed = false;
+    }
+
+    private void rememberCharge(InvoiceReferences references, BigDecimal amount, CurrencyCode currency, LocalDate billedOn) {
+        this.invoiceReference = truncate(references.invoice(), 64);
+        this.parsedAmount = amount;
+        this.parsedCurrency = currency;
+        this.billedOn = billedOn;
+    }
+
+    public boolean isAwaitingAccount() {
+        return awaitingAccount;
     }
 
     public void attachTo(Subscription subscription) {
@@ -130,6 +204,34 @@ public class BillingEmail extends AuditableEntity {
 
     public LocalDate getAccessEndsOn() {
         return accessEndsOn;
+    }
+
+    public String getMerchantKey() {
+        return merchantKey;
+    }
+
+    public String getSenderDomain() {
+        return senderDomain;
+    }
+
+    public String getCustomerReference() {
+        return customerReference;
+    }
+
+    public String getInvoiceReference() {
+        return invoiceReference;
+    }
+
+    public BigDecimal getParsedAmount() {
+        return parsedAmount;
+    }
+
+    public CurrencyCode getParsedCurrency() {
+        return parsedCurrency;
+    }
+
+    public LocalDate getBilledOn() {
+        return billedOn;
     }
 
     public List<EmailAttachment> getAttachments() {

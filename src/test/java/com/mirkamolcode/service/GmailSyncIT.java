@@ -19,7 +19,11 @@ import com.mirkamolcode.integration.gmail.GmailUnauthorizedException;
 import com.mirkamolcode.integration.google.GoogleOAuthClient;
 import com.mirkamolcode.integration.google.GoogleTokens;
 import com.mirkamolcode.integration.google.InvalidGrantException;
+import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
+import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.GmailConnectionStatus;
 import com.mirkamolcode.security.TokenCipher;
 import java.math.BigDecimal;
@@ -405,7 +409,8 @@ class GmailSyncIT extends AbstractTestConfig {
                 .doesNotContain("Save $10 on your first subscription box");
         assertThat(columnsOf("billing_emails")).containsExactlyInAnyOrder("id", "user_id", "subscription_id", "gmail_message_id",
                 "thread_id", "kind", "sender", "subject", "received_at", "confidence", "merchant_key", "access_ends_on",
-                "created_at", "updated_at");
+                "recurrence_candidate", "sender_domain", "customer_reference", "invoice_reference", "parsed_amount",
+                "parsed_currency", "billed_on", "awaiting_account", "account_guessed", "created_at", "updated_at");
         assertThat(columnsOf("email_attachments")).containsExactlyInAnyOrder("id", "billing_email_id", "gmail_attachment_id",
                 "filename", "mime_type", "size_bytes", "created_at", "updated_at");
         assertThat(jdbc.queryForList("select sender, subject from billing_emails where kind = 'IRRELEVANT'"))
@@ -657,6 +662,493 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldTrackEachRecurringAppleLineItemAsItsOwnSubscription_andSkipOneTimePurchases() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-multi-item-invoice.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey)
+                .containsExactlyInAnyOrder("telegram-messenger", "icloud");
+
+        Subscription telegram = subscription("telegram-messenger");
+        assertThat(telegram.getName()).isEqualTo("Telegram Messenger");
+        assertThat(telegram.getPlanName()).isEqualTo("Telegram Premium");
+        assertThat(telegram.getFrequency()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(telegram.getPrice()).isEqualByComparingTo("3.99");
+        assertThat(telegram.getCurrency()).isEqualTo(CurrencyCode.USD);
+        assertThat(telegram.getLastPaymentDate()).isEqualTo(LocalDate.of(2025, 12, 6));
+        assertThat(telegram.getNextPaymentDate()).isEqualTo(LocalDate.of(2026, 1, 7));
+        assertThat(telegram.getBillingPlatform()).isEqualTo(BillingPlatform.APPLE);
+        assertThat(telegram.getPaymentMethodType()).isEqualTo(PaymentMethodType.CARD);
+        assertThat(telegram.getCardBrand()).isEqualTo("Visa");
+        assertThat(telegram.getCardLast4()).isEqualTo("4242");
+
+        Subscription icloud = subscription("icloud");
+        assertThat(icloud.getName()).isEqualTo("iCloud+");
+        assertThat(icloud.getPlanName()).isEqualTo("200 GB");
+        assertThat(icloud.getFrequency()).isEqualTo(BillingFrequency.ANNUAL);
+        assertThat(icloud.getPrice()).isEqualByComparingTo("29.99");
+
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(telegram.getId())).hasSize(1);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(icloud.getId())).hasSize(1);
+        assertThat(countRows("billing_emails")).isEqualTo(1);
+    }
+
+    @Test
+    void sync_shouldHoldNewAppleInvoices_whileLegacyAppleRowExists_andRecordThemOnceItIsGone() {
+        // given
+        User user = userRepository.findById(userId).orElseThrow();
+        Subscription legacy = new Subscription(user, "Apple (App Store / iCloud)", new BigDecimal("3.99"), CurrencyCode.USD,
+                BillingFrequency.MONTHLY, com.mirkamolcode.model.SubscriptionStatus.ACTIVE,
+                com.mirkamolcode.model.SubscriptionCategory.OTHER, LocalDate.of(2025, 11, 6));
+        legacy.linkMerchant("apple", "apple.com");
+        subscriptionRepository.save(legacy);
+        GmailMessage invoice = EmailFixtures.load("apple-telegram-invoice.json");
+        GMAIL.mailbox(invoice);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("apple");
+        assertThat(countRows("billing_emails")).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from failed_gmail_messages where gmail_message_id = ?", Integer.class,
+                invoice.id())).isEqualTo(1);
+
+        // when
+        legacy.markDeleted();
+        subscriptionRepository.save(legacy);
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscription("telegram-messenger").getPrice()).isEqualByComparingTo("3.99");
+        assertThat(countRows("failed_gmail_messages")).isZero();
+    }
+
+    @Test
+    void sync_shouldNotTrackAppleInvoice_whenEveryLineItemIsOneTimePurchase() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-one-time-purchase.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+        assertThat(countRows("payment_history")).isZero();
+    }
+
+    @Test
+    void sync_shouldRecordOnePayment_whenSameInvoiceArrivesInTwoEmails() {
+        // given
+        GmailMessage original = EmailFixtures.load("apple-telegram-invoice.json");
+        GmailMessage resent = new GmailMessage("apple-resent", "apple-resent", original.receivedAt().plus(Duration.ofHours(2)),
+                original.from(), original.subject(), original.htmlBody(), original.textBody(), List.of(), original.headers());
+        GMAIL.mailbox(original, resent);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription telegram = subscription("telegram-messenger");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(telegram.getId())).hasSize(1);
+        assertThat(telegram.isNeedsReview()).isFalse();
+        assertThat(countRows("billing_emails")).isEqualTo(2);
+    }
+
+    @Test
+    void sync_shouldNotTrackUnknownSender_afterSingleInvoice() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+        assertThat(countRows("payment_history")).isZero();
+    }
+
+    @Test
+    void sync_shouldCreateSubscriptionNeedingReview_whenSecondSimilarInvoiceArrivesAboutAMonthLater() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription acme = subscriptionsOfUser().stream().filter(subscription -> subscription.getName().equals("Acme Hosting"))
+                .findFirst().orElseThrow();
+        assertThat(acme.getFrequency()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(acme.getPrice()).isEqualByComparingTo("8.10");
+        assertThat(acme.isNeedsReview()).isTrue();
+        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.SIMILAR_INVOICES);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("8.1", "7.5");
+    }
+
+    @Test
+    void sync_shouldNotCreateSubscription_whenInvoicesBelongToDifferentCustomers() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000777", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
+    void sync_shouldNotCreateSubscription_whenInvoicesAreNotAboutOneCycleApart() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-08-20T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
+    void sync_shouldRaiseConfidence_butStayInNeedsReview_whenThirdSimilarInvoiceArrives() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription acme = subscriptionsOfUser().getFirst();
+        assertThat(acme.isNeedsReview()).isTrue();
+        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.SIMILAR_INVOICES_REPEATED);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId())).hasSize(3);
+    }
+
+    @Test
+    void sync_shouldKeepDismissedSimilarInvoicesHidden_andNotCreateThemAgain() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"));
+        underTest.sync(userId);
+        Long acmeId = subscriptionsOfUser().getFirst().getId();
+        webTestClient.post().uri(API + "/subscriptions/" + acmeId + "/hide").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().is2xxSuccessful();
+        GmailMessage october = acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90");
+        GMAIL.historyAdds(october.id());
+        GMAIL.deliver(october);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).singleElement().satisfies(acme -> {
+            assertThat(acme.getId()).isEqualTo(acmeId);
+            assertThat(acme.isHidden()).isTrue();
+        });
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acmeId)).hasSize(3);
+    }
+
+    @Test
+    void sync_shouldKeepTwoCustomerAccountsAtSameProviderAsSeparateSubscriptions() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000201", "2026-08-15T05:00:00Z", "K0000000777", "20.00"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000202", "2026-09-15T05:00:00Z", "K0000000777", "21.00"),
+                acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).hasSize(2).allSatisfy(acme -> assertThat(acme.getName()).isEqualTo("Acme Hosting"));
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getCustomerReference)
+                .containsExactlyInAnyOrder("K0000000009", "K0000000777");
+        Subscription first = subscriptionOfCustomer("K0000000009");
+        Subscription second = subscriptionOfCustomer("K0000000777");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(first.getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("7.9", "8.1", "7.5");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(second.getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("21", "20");
+    }
+
+    @Test
+    void sync_shouldKeepTwoHetznerAccountsAsSeparateSubscriptions() {
+        // given
+        GmailMessage firstAccount = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage secondAccount = new GmailMessage("hetzner-second", "hetzner-second", firstAccount.receivedAt(), firstAccount.from(),
+                "Hetzner Online GmbH - Invoice 000000000002 (K0000000002)", firstAccount.htmlBody().replace("10.09", "4.51"),
+                firstAccount.textBody(), List.of(), firstAccount.headers());
+        GMAIL.mailbox(firstAccount, secondAccount);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("hetzner", "hetzner");
+        assertThat(subscriptionOfCustomer("K0000000001").getPrice()).isEqualByComparingTo("10.09");
+        assertThat(subscriptionOfCustomer("K0000000002").getPrice()).isEqualByComparingTo("4.51");
+    }
+
+    @Test
+    void sync_shouldNotGuessAccount_whenInvoiceWithoutCustomerIdCouldBelongToSeveral() {
+        // given
+        GmailMessage firstAccount = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage secondAccount = new GmailMessage("hetzner-second", "hetzner-second", firstAccount.receivedAt(), firstAccount.from(),
+                "Hetzner Online GmbH - Invoice 000000000002 (K0000000002)", firstAccount.htmlBody().replace("10.09", "4.51"),
+                firstAccount.textBody(), List.of(), firstAccount.headers());
+        GmailMessage withoutCustomer = new GmailMessage("hetzner-no-customer", "hetzner-no-customer",
+                Instant.parse("2026-11-12T05:08:00Z"), firstAccount.from(), "Hetzner Online GmbH - Invoice 000000000003",
+                firstAccount.htmlBody().replace("10.09", "6.00"), firstAccount.textBody(), List.of(), firstAccount.headers());
+        GMAIL.mailbox(firstAccount, secondAccount);
+        underTest.sync(userId);
+        GMAIL.historyAdds(withoutCustomer.id());
+        GMAIL.deliver(withoutCustomer);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).hasSize(2);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscriptionOfCustomer("K0000000001").getId())).hasSize(1);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscriptionOfCustomer("K0000000002").getId())).hasSize(1);
+        assertThat(jdbc.queryForObject("select subscription_id from billing_emails where gmail_message_id = ?", Long.class,
+                withoutCustomer.id())).isNull();
+    }
+
+    @Test
+    void awaitingAccount_shouldKeepInvoiceWithoutCustomerIdForReview_andLetUserAssignIt() {
+        // given
+        GmailMessage firstAccount = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage secondAccount = new GmailMessage("hetzner-second", "hetzner-second", firstAccount.receivedAt(), firstAccount.from(),
+                "Hetzner Online GmbH - Invoice 000000000002 (K0000000002)", firstAccount.htmlBody().replace("10.09", "4.51"),
+                firstAccount.textBody(), List.of(), firstAccount.headers());
+        GmailMessage withoutCustomer = new GmailMessage("hetzner-no-customer", "hetzner-no-customer",
+                Instant.parse("2026-11-12T05:08:00Z"), firstAccount.from(), "Hetzner Online GmbH - Invoice 000000000003",
+                firstAccount.htmlBody().replace("10.09", "6.00"), firstAccount.textBody(), List.of(), firstAccount.headers());
+        GMAIL.mailbox(withoutCustomer, secondAccount, firstAccount);
+        underTest.sync(userId);
+        Long firstId = subscriptionOfCustomer("K0000000001").getId();
+        Long emailId = jdbc.queryForObject("select id from billing_emails where gmail_message_id = ?", Long.class, withoutCustomer.id());
+
+        // when / then
+        webTestClient.get().uri(API + "/emails/awaiting-account").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].emailId").isEqualTo(emailId.intValue())
+                .jsonPath("$[0].amount").isEqualTo(6.0)
+                .jsonPath("$[0].currency").isEqualTo("USD")
+                .jsonPath("$[0].accounts.length()").isEqualTo(2)
+                .jsonPath("$[0].accounts[*].customerReference").value(references ->
+                        assertThat((List<Object>) references).containsExactlyInAnyOrder("K0000000001", "K0000000002"));
+        webTestClient.post().uri(API + "/emails/" + emailId + "/account").header("Authorization", bearer(tokens))
+                .bodyValue(java.util.Map.of("subscriptionId", firstId)).exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.id").isEqualTo(firstId.intValue());
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(firstId))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("6", "10.09");
+        webTestClient.get().uri(API + "/emails/awaiting-account").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.length()").isEqualTo(0);
+    }
+
+    @Test
+    void assignAccount_shouldRejectSubscriptionOfAnotherMerchant() {
+        // given
+        GmailMessage firstAccount = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage secondAccount = new GmailMessage("hetzner-second", "hetzner-second", firstAccount.receivedAt(), firstAccount.from(),
+                "Hetzner Online GmbH - Invoice 000000000002 (K0000000002)", firstAccount.htmlBody(), firstAccount.textBody(), List.of(),
+                firstAccount.headers());
+        GmailMessage withoutCustomer = new GmailMessage("hetzner-no-customer", "hetzner-no-customer",
+                Instant.parse("2026-11-12T05:08:00Z"), firstAccount.from(), "Hetzner Online GmbH - Invoice 000000000003",
+                firstAccount.htmlBody(), firstAccount.textBody(), List.of(), firstAccount.headers());
+        GMAIL.mailbox(withoutCustomer, secondAccount, firstAccount, NETFLIX_OCT);
+        underTest.sync(userId);
+        Long emailId = jdbc.queryForObject("select id from billing_emails where gmail_message_id = ?", Long.class, withoutCustomer.id());
+
+        // when / then
+        webTestClient.post().uri(API + "/emails/" + emailId + "/account").header("Authorization", bearer(tokens))
+                .bodyValue(java.util.Map.of("subscriptionId", subscription("netflix").getId())).exchange()
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void sync_shouldAttachInvoiceWithoutCustomerId_whenOnlyOneAccountExists() {
+        // given
+        GmailMessage invoice = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage withoutCustomer = new GmailMessage("hetzner-no-customer", "hetzner-no-customer",
+                Instant.parse("2026-11-12T05:08:00Z"), invoice.from(), "Hetzner Online GmbH - Invoice 000000000003",
+                invoice.htmlBody().replace("10.09", "6.00"), invoice.textBody(), List.of(), invoice.headers());
+        GMAIL.mailbox(withoutCustomer, invoice);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).singleElement().satisfies(hetzner -> {
+            assertThat(hetzner.getCustomerReference()).isEqualTo("K0000000001");
+            assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(hetzner.getId())).hasSize(2);
+        });
+    }
+
+    @Test
+    void confirm_shouldClearSimilarInvoicesReview_andKeepItClearedWhenMoreInvoicesArrive() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+        underTest.sync(userId);
+        Long acmeId = subscriptionsOfUser().getFirst().getId();
+
+        // when
+        webTestClient.post().uri(API + "/subscriptions/" + acmeId + "/confirm").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.needsReview").isEqualTo(false)
+                .jsonPath("$.reviewReason").isEmpty();
+        GmailMessage october = acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90");
+        GMAIL.historyAdds(october.id());
+        GMAIL.deliver(october);
+        underTest.sync(userId);
+
+        // then
+        Subscription acme = subscriptionRepository.findById(acmeId).orElseThrow();
+        assertThat(acme.getReviewReason()).isNull();
+    }
+
+    @Test
+    void confirm_shouldBeRejected_whenSubscriptionDoesNotNeedReviewForSimilarInvoices() {
+        // given
+        GMAIL.mailbox(NETFLIX_OCT);
+        underTest.sync(userId);
+
+        // when / then
+        webTestClient.post().uri(API + "/subscriptions/" + subscription("netflix").getId() + "/confirm")
+                .header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void emails_shouldListMultiItemAppleInvoice_underEverySubscriptionItPaidFor() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-multi-item-invoice.json"));
+        underTest.sync(userId);
+
+        // when / then
+        for (String merchantKey : List.of("telegram-messenger", "icloud"))
+            webTestClient.get().uri(API + "/subscriptions/" + subscription(merchantKey).getId() + "/emails")
+                    .header("Authorization", bearer(tokens)).exchange()
+                    .expectStatus().isOk()
+                    .expectBody()
+                    .jsonPath("$.length()").isEqualTo(1)
+                    .jsonPath("$[0].subject").isEqualTo("Your invoice from Apple.");
+    }
+
+    @Test
+    void sync_shouldKeepStoredCard_whenNewerReceiptDoesNotMentionIt() {
+        // given
+        GmailMessage december = EmailFixtures.load("apple-telegram-invoice.json");
+        GmailMessage january = new GmailMessage("apple-january", "apple-january", december.receivedAt().plus(Duration.ofDays(31)),
+                december.from(), december.subject(), december.htmlBody()
+                        .replace("6 December 2025", "6 January 2026")
+                        .replace("Renews 7 January 2026", "Renews 7 February 2026")
+                        .replace("MT0000TEST", "MT0000TES2")
+                        .replace("<b>Visa &bull;&bull;&bull;&bull; 4242</b>", "<b>Apple Account balance</b>"),
+                null, List.of(), december.headers());
+        GMAIL.mailbox(january, december);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription telegram = subscription("telegram-messenger");
+        assertThat(telegram.getLastPaymentDate()).isEqualTo(LocalDate.of(2026, 1, 6));
+        assertThat(telegram.getCardBrand()).isEqualTo("Visa");
+        assertThat(telegram.getCardLast4()).isEqualTo("4242");
+    }
+
+    @Test
+    void sync_shouldRecordBothPayments_whenSameNumberFollowsInvoiceOneCycleApart() {
+        // given
+        GmailMessage october = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage november = new GmailMessage("hetzner-november", "hetzner-november", october.receivedAt().plus(Duration.ofDays(31)),
+                october.from(), october.subject(), october.htmlBody().replace("10.09", "11.20"), october.textBody(), List.of(),
+                october.headers());
+        GMAIL.mailbox(november, october);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("hetzner").getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("11.2", "10.09");
+    }
+
+    @Test
+    void sync_shouldRecordOnePayment_whenSameInvoiceIsResentNextDay() {
+        // given
+        GmailMessage original = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage resent = new GmailMessage("hetzner-resent", "hetzner-resent", original.receivedAt().plus(Duration.ofDays(1)),
+                original.from(), original.subject(), original.htmlBody(), original.textBody(), List.of(), original.headers());
+        GMAIL.mailbox(resent, original);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("hetzner").getId())).hasSize(1);
+    }
+
+    @Test
+    void sync_shouldTrackRepeatInvoices_whenUnknownSenderRepeatsSameNumberAfterInvoice() {
+        // given
+        GMAIL.mailbox(acmeInvoice("778899", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("778899", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).singleElement().satisfies(acme ->
+                assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId())).hasSize(2));
+    }
+
+    @Test
+    void get_shouldExposePlanBillingPlatformAndCard_forAppleBilledSubscription() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"));
+        underTest.sync(userId);
+
+        // when / then
+        webTestClient.get().uri(API + "/subscriptions/" + subscription("telegram-messenger").getId())
+                .header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.name").isEqualTo("Telegram Messenger")
+                .jsonPath("$.planName").isEqualTo("Telegram Premium")
+                .jsonPath("$.billingPlatform").isEqualTo("APPLE")
+                .jsonPath("$.paymentMethod.type").isEqualTo("CARD")
+                .jsonPath("$.paymentMethod.cardBrand").isEqualTo("Visa")
+                .jsonPath("$.paymentMethod.cardLast4").isEqualTo("4242");
+    }
+
+    @Test
     void get_shouldExposeMerchantLogoDomain_forDetectedSubscription() {
         // given
         GMAIL.mailbox(NETFLIX_OCT);
@@ -682,6 +1174,19 @@ class GmailSyncIT extends AbstractTestConfig {
 
     private static GmailMessage receiptFromNetflix(String id, Instant receivedAt) {
         return new GmailMessage(id, id, receivedAt, NETFLIX_OCT.from(), NETFLIX_OCT.subject(), NETFLIX_OCT.htmlBody(), null);
+    }
+
+    private static GmailMessage acmeInvoice(String invoiceNumber, String receivedAt, String customer, String amount) {
+        String id = "acme-" + invoiceNumber + "-" + receivedAt.substring(0, 10);
+        return EmailFixtures.authenticated(new GmailMessage(id, id, Instant.parse(receivedAt),
+                "Acme Hosting <billing@acmehost.example>", "Invoice " + invoiceNumber + " (" + customer + ")", null,
+                "Please find your invoice attached. Amount: $ " + amount));
+    }
+
+    private Subscription subscriptionOfCustomer(String customerReference) {
+        return subscriptionsOfUser().stream()
+                .filter(subscription -> customerReference.equals(subscription.getCustomerReference()))
+                .findFirst().orElseThrow();
     }
 
     private List<Subscription> subscriptionsOfUser() {

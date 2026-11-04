@@ -1,8 +1,11 @@
 package com.mirkamolcode.entity;
 
 import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.PaymentMethod;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
@@ -80,8 +83,30 @@ public class Subscription extends AuditableEntity {
 
     private LocalDate endsOn;
 
+    @Column(length = 120)
+    private String planName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private BillingPlatform billingPlatform;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private PaymentMethodType paymentMethodType;
+
+    @Column(length = 20)
+    private String cardBrand;
+
+    @Column(length = 4)
+    private String cardLast4;
+
+    @Column(length = 64)
+    private String customerReference;
+
     @Version
     private long version;
+
+    private static final int REPEATED_INVOICES = 3;
 
     public Subscription() {}
 
@@ -119,6 +144,39 @@ public class Subscription extends AuditableEntity {
     public void linkMerchant(String merchantKey, String logoDomain) {
         this.merchantKey = merchantKey;
         this.logoDomain = logoDomain;
+    }
+
+    public void describeBilling(String planName, BillingPlatform billingPlatform, PaymentMethod paymentMethod) {
+        this.billingPlatform = billingPlatform;
+        if (planName != null)
+            this.planName = planName;
+        if (paymentMethod != null) {
+            this.paymentMethodType = paymentMethod.type();
+            this.cardBrand = paymentMethod.cardBrand();
+            this.cardLast4 = paymentMethod.cardLast4();
+        }
+    }
+
+    public void restoreLatestPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency) {
+        this.price = amount;
+        this.currency = currency;
+        this.lastPaymentDate = paidOn;
+        this.nextPaymentDate = frequency.addTo(paidOn);
+    }
+
+    public void fillMissingBilling(String planName, PaymentMethod paymentMethod) {
+        if (this.planName == null)
+            this.planName = planName;
+        if (paymentMethodType == null && paymentMethod != null) {
+            this.paymentMethodType = paymentMethod.type();
+            this.cardBrand = paymentMethod.cardBrand();
+            this.cardLast4 = paymentMethod.cardLast4();
+        }
+    }
+
+    public void assignCustomer(String customerReference) {
+        if (this.customerReference == null)
+            this.customerReference = customerReference;
     }
 
     public void recordPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency, BillingFrequency cycle,
@@ -162,6 +220,24 @@ public class Subscription extends AuditableEntity {
     private void clearReview() {
         needsReview = false;
         reviewReason = null;
+    }
+
+    public void flagSimilarInvoicesForReview(int invoicesSeen) {
+        needsReview = true;
+        reviewReason = invoicesSeen >= REPEATED_INVOICES ? ReviewReason.SIMILAR_INVOICES_REPEATED : ReviewReason.SIMILAR_INVOICES;
+    }
+
+    public boolean isReviewingSimilarInvoices() {
+        return reviewReason == ReviewReason.SIMILAR_INVOICES || reviewReason == ReviewReason.SIMILAR_INVOICES_REPEATED;
+    }
+
+    public void confirmRecurring() {
+        clearReview();
+    }
+
+    public void raiseRecurrenceConfidence(int invoicesSeen) {
+        if (reviewReason == ReviewReason.SIMILAR_INVOICES && invoicesSeen >= REPEATED_INVOICES)
+            reviewReason = ReviewReason.SIMILAR_INVOICES_REPEATED;
     }
 
     public void flagForReview() {
@@ -266,5 +342,29 @@ public class Subscription extends AuditableEntity {
 
     public long getVersion() {
         return version;
+    }
+
+    public String getPlanName() {
+        return planName;
+    }
+
+    public BillingPlatform getBillingPlatform() {
+        return billingPlatform;
+    }
+
+    public PaymentMethodType getPaymentMethodType() {
+        return paymentMethodType;
+    }
+
+    public String getCardBrand() {
+        return cardBrand;
+    }
+
+    public String getCardLast4() {
+        return cardLast4;
+    }
+
+    public String getCustomerReference() {
+        return customerReference;
     }
 }
