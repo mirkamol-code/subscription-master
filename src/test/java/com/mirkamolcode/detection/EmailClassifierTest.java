@@ -5,6 +5,7 @@ import com.mirkamolcode.integration.gmail.MessageHeaders;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,6 +118,38 @@ class EmailClassifierTest {
 
         // then
         assertThat(kind).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            Invoice 000000000002                    | The invoice amount of € 7.50 is due.
+            Your invoice from Acme Hosting          | Thanks, here is your invoice.
+            Your billing statement for October      | Amount: $12.00
+            Payment receipt #8812                   | We received your payment of $12.00
+            """)
+    void isRecurringInvoiceCandidate_shouldAcceptInvoicesAndBillingReceipts(String subject, String body) {
+        // when / then
+        assertThat(underTest.isRecurringInvoiceCandidate(messageWith(subject, body))).isTrue();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            Your Tuesday evening trip with Uber           | Total $12.40. Thanks for riding.
+            Your Amazon.com order receipt #112-1234567    | Your order has shipped.
+            Your receipt from City Museum #5512-0091      | Ticket x2, total $30.00
+            Order confirmation #4471                      | Invoice attached. Your items will be delivered soon.
+            Refund for invoice 2026-10                    | Your refund of $9.00 has been issued.
+            Your food order receipt                       | Invoice total $18.20 for your delivery.
+            Invoice from Shop                             | Sold by Seller Ltd via Marketplace. Total $40.00
+            """)
+    void isRecurringInvoiceCandidate_shouldRejectOrdersRidesRefundsAndMarketplaceReceipts(String subject, String body) {
+        // when / then
+        assertThat(underTest.isRecurringInvoiceCandidate(messageWith(subject, body))).isFalse();
+    }
+
+    private static GmailMessage messageWith(String subject, String body) {
+        return new GmailMessage("m-1", "t-1", Instant.parse("2026-10-30T09:00:00Z"), "Sender <billing@sender.example>", subject,
+                null, body);
     }
 
     private static GmailMessage messageWith(String subject, MessageHeaders headers) {

@@ -33,7 +33,9 @@ public record DetectionProperties(
             List<String> paymentFailed,
             List<String> promotion,
             List<String> accessEnds,
-            List<String> accessEndsNow
+            List<String> accessEndsNow,
+            List<String> invoice,
+            List<String> nonBilling
     ) {
     }
 
