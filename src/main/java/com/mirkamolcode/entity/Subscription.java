@@ -267,6 +267,8 @@ public class Subscription extends AuditableEntity {
         this.lastPaymentDate = paidOn;
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : cycle.addTo(paidOn);
         this.trialEndsOn = null;
+        if (reviewReason == ReviewReason.UNCONFIRMED_TRIAL)
+            clearReview();
     }
 
     public void applyStatus(SubscriptionStatus status, LocalDate endsOn, Instant evidenceAt) {
@@ -290,7 +292,7 @@ public class Subscription extends AuditableEntity {
     }
 
     public boolean isInRenewalWindow(LocalDate day, int daysBefore, int daysAfter) {
-        return !day.isBefore(nextPaymentDate.minusDays(daysBefore)) && !day.isAfter(nextPaymentDate.plusDays(daysAfter));
+        return nextPaymentDate != null && !day.isBefore(nextPaymentDate.minusDays(daysBefore)) && !day.isAfter(nextPaymentDate.plusDays(daysAfter));
     }
 
     private void clearReview() {
@@ -303,8 +305,14 @@ public class Subscription extends AuditableEntity {
         reviewReason = invoicesSeen >= REPEATED_INVOICES ? ReviewReason.SIMILAR_INVOICES_REPEATED : ReviewReason.SIMILAR_INVOICES;
     }
 
-    public boolean isReviewingSimilarInvoices() {
-        return reviewReason == ReviewReason.SIMILAR_INVOICES || reviewReason == ReviewReason.SIMILAR_INVOICES_REPEATED;
+    public void flagUnconfirmedTrial() {
+        needsReview = true;
+        reviewReason = ReviewReason.UNCONFIRMED_TRIAL;
+    }
+
+    public boolean isAwaitingConfirmation() {
+        return reviewReason == ReviewReason.SIMILAR_INVOICES || reviewReason == ReviewReason.SIMILAR_INVOICES_REPEATED
+                || reviewReason == ReviewReason.UNCONFIRMED_TRIAL;
     }
 
     public void confirmRecurring() {

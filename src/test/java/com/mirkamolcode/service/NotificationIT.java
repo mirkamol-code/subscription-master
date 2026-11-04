@@ -437,6 +437,28 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDueReminders_shouldWaitForConfirmation_beforeRemindingAboutUnknownMerchantTrial() {
+        // given
+        Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 12));
+        trial.flagUnconfirmedTrial();
+        subscriptionRepository.save(trial);
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+
+        // when
+        webTestClient.post().uri(API + "/subscriptions/" + trial.getId() + "/confirm").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk();
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.content[0].type").isEqualTo("TRIAL_ENDING");
+    }
+
+    @Test
     void sendDueReminders_shouldNotRemind_whenTrialEndDateIsUnknown() {
         // given
         trialEndingOn(null);
