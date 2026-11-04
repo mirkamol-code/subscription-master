@@ -199,6 +199,14 @@ public class Subscription extends AuditableEntity {
         reviewReason = invoicesSeen >= REPEATED_INVOICES ? ReviewReason.UNCONFIRMED_RECURRING_REPEATED : ReviewReason.UNCONFIRMED_RECURRING;
     }
 
+    public boolean isAwaitingConfirmation() {
+        return reviewReason == ReviewReason.UNCONFIRMED_RECURRING || reviewReason == ReviewReason.UNCONFIRMED_RECURRING_REPEATED;
+    }
+
+    public void confirmDetection() {
+        clearReview();
+    }
+
     public void raiseRecurrenceConfidence(int invoicesSeen) {
         if (reviewReason == ReviewReason.UNCONFIRMED_RECURRING && invoicesSeen >= REPEATED_INVOICES)
             reviewReason = ReviewReason.UNCONFIRMED_RECURRING_REPEATED;

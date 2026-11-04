@@ -188,6 +188,15 @@ public class SubscriptionService {
     }
 
     @Transactional
+    public SubscriptionResponse confirmDetection(Long id) {
+        Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
+        if (!subscription.isAwaitingConfirmation())
+            throw new ConflictException("Only an unconfirmed recurring subscription can be confirmed");
+        subscription.confirmDetection();
+        return mapper.toResponse(subscription);
+    }
+
+    @Transactional
     public SubscriptionResponse unhide(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
         subscription.unhide();

@@ -830,6 +830,42 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void confirm_shouldClearUnconfirmedReview_andKeepItClearedWhenMoreInvoicesArrive() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+        underTest.sync(userId);
+        Long acmeId = subscriptionsOfUser().getFirst().getId();
+
+        // when
+        webTestClient.post().uri(API + "/subscriptions/" + acmeId + "/confirm").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.needsReview").isEqualTo(false)
+                .jsonPath("$.reviewReason").isEmpty();
+        GmailMessage october = acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90");
+        GMAIL.historyAdds(october.id());
+        GMAIL.deliver(october);
+        underTest.sync(userId);
+
+        // then
+        Subscription acme = subscriptionRepository.findById(acmeId).orElseThrow();
+        assertThat(acme.getReviewReason()).isNull();
+    }
+
+    @Test
+    void confirm_shouldBeRejected_whenSubscriptionIsNotAwaitingConfirmation() {
+        // given
+        GMAIL.mailbox(NETFLIX_OCT);
+        underTest.sync(userId);
+
+        // when / then
+        webTestClient.post().uri(API + "/subscriptions/" + subscription("netflix").getId() + "/confirm")
+                .header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
     void get_shouldExposePlanBillingPlatformAndCard_forAppleBilledSubscription() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"));
