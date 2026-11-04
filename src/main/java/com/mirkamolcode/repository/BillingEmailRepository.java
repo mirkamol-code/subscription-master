@@ -23,6 +23,10 @@ public interface BillingEmailRepository extends JpaRepository<BillingEmail, Long
 
     List<BillingEmail> findByUserIdAndMerchantKey(Long userId, String merchantKey);
 
+    List<BillingEmail> findByUserIdAndAwaitingAccountTrueOrderByReceivedAtDesc(Long userId);
+
+    List<BillingEmail> findBySubscriptionIdAndAccountGuessedTrue(Long subscriptionId);
+
     @EntityGraph(attributePaths = "attachments")
     Optional<BillingEmail> findByIdAndUserId(Long id, Long userId);
 

@@ -157,6 +157,13 @@ public class Subscription extends AuditableEntity {
         }
     }
 
+    public void restoreLatestPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency) {
+        this.price = amount;
+        this.currency = currency;
+        this.lastPaymentDate = paidOn;
+        this.nextPaymentDate = frequency.addTo(paidOn);
+    }
+
     public void fillMissingBilling(String planName, PaymentMethod paymentMethod) {
         if (this.planName == null)
             this.planName = planName;

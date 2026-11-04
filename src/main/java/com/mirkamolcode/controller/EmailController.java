@@ -1,10 +1,15 @@
 package com.mirkamolcode.controller;
 
+import com.mirkamolcode.dto.request.AccountAssignmentRequest;
+import com.mirkamolcode.dto.response.AwaitingAccountResponse;
 import com.mirkamolcode.dto.response.EmailAttachmentFile;
 import com.mirkamolcode.dto.response.RenderedEmail;
+import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.service.EmailService;
+import jakarta.validation.Valid;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +25,18 @@ public class EmailController {
 
     public EmailController(EmailService service) {
         this.service = service;
+    }
+
+    @GetMapping("/awaiting-account")
+    @PreAuthorize("hasAuthority('EMAIL_READ_OWN')")
+    public List<AwaitingAccountResponse> awaitingAccount() {
+        return service.findAwaitingAccount();
+    }
+
+    @PostMapping("/{id}/account")
+    @PreAuthorize("hasAnyAuthority('SUBSCRIPTION_UPDATE_OWN', 'SUBSCRIPTION_UPDATE_ALL')")
+    public SubscriptionResponse assignAccount(@PathVariable Long id, @Valid @RequestBody AccountAssignmentRequest request) {
+        return service.assignAccount(id, request);
     }
 
     @GetMapping("/{id}/attachments/{attachmentId}")

@@ -105,8 +105,10 @@ public class BillingEmailRecorder {
         email.holdForRecurrence(message.senderDomain(), charge.references(), billing.amount(), billing.currency(), billing.paymentDate());
         billingEmails.save(email);
         AccountMatch account = matchAccount(user.getId(), charge.merchant().key(), charge.references().customer());
-        if (account.ambiguous())
+        if (account.ambiguous()) {
+            holdForAccount(email, charge);
             return;
+        }
         if (account.subscription().isPresent()) {
             Subscription existing = account.subscription().get();
             recordCharge(user, email, charge);
@@ -131,10 +133,54 @@ public class BillingEmailRecorder {
         subscription.describeBilling(null, null, latestCharge.paymentMethod());
         subscription.flagUnconfirmedRecurring(series.invoices().size());
         subscriptions.save(subscription);
+        returnGuessedInvoicesForReview(user.getId(), subscription);
         if (tombstone.isPresent())
             events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), subscription.getId(), merchant.displayName(),
                     latest.getBilledOn()));
         series.invoices().forEach(invoice -> backfillPayment(subscription, invoice, series.cycle()));
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void assignAccount(BillingEmail email, Subscription subscription) {
+        email.assignAccount(subscription);
+        if (email.getKind() == EmailKind.RECEIPT && email.getParsedAmount() != null && !isInvoiceAlreadyRecorded(subscription, email))
+            backfillPayment(subscription, email, subscription.getFrequency());
+        else
+            applyEvidence(subscription, email);
+    }
+
+    private void returnGuessedInvoicesForReview(Long userId, Subscription newAccount) {
+        if (newAccount.getCustomerReference() == null)
+            return;
+        subscriptions.findAllByUserIdAndMerchantKeyAndIsDeletedFalse(userId, newAccount.getMerchantKey()).stream()
+                .filter(account -> !account.getId().equals(newAccount.getId()))
+                .forEach(this::returnGuessedInvoicesForReview);
+    }
+
+    private void returnGuessedInvoicesForReview(Subscription account) {
+        List<BillingEmail> guessed = billingEmails.findBySubscriptionIdAndAccountGuessedTrue(account.getId());
+        if (guessed.isEmpty())
+            return;
+        guessed.forEach(email -> {
+            payments.deleteByBillingEmailIdAndSubscriptionId(email.getId(), account.getId());
+            email.returnForAccountReview();
+        });
+        payments.findBySubscriptionIdOrderByPaymentDateDesc(account.getId()).stream().findFirst()
+                .ifPresent(latest -> account.restoreLatestPayment(latest.getPaymentDate(), latest.getOriginalAmount(),
+                        latest.getOriginalCurrency()));
+    }
+
+    private void holdForAccount(BillingEmail email, DetectedCharge charge) {
+        ParsedBilling billing = charge.billing();
+        email.holdForAccount(charge.references(), billing == null ? null : billing.amount(), billing == null ? null : billing.currency(),
+                billing == null ? null : billing.paymentDate());
+    }
+
+    private boolean isInvoiceAlreadyRecorded(Subscription subscription, BillingEmail invoice) {
+        return invoice.getInvoiceReference() != null
+                && payments.findBySubscriptionIdAndInvoiceReference(subscription.getId(), invoice.getInvoiceReference()).stream()
+                .anyMatch(payment -> DuplicateInvoices.areSameInvoice(payment.getInvoiceReference(), payment.getPaymentDate(),
+                        invoice.getInvoiceReference(), invoice.getBilledOn()));
     }
 
     private void backfillPayment(Subscription subscription, BillingEmail invoice, BillingFrequency cycle) {
@@ -152,12 +198,20 @@ public class BillingEmailRecorder {
         Optional<MerchantTombstone> tombstone = tombstones.findByUserIdAndMerchantKey(user.getId(), charge.merchant().key());
         if (tombstone.map(deleted -> deleted.covers(email.getReceivedAt())).orElse(false))
             return;
-        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, charge, tombstone.isPresent());
+        AccountMatch account = matchAccount(user.getId(), charge.merchant().key(), charge.references().customer());
+        if (account.ambiguous()) {
+            holdForAccount(email, charge);
+            return;
+        }
+        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, charge, account, tombstone.isPresent());
         if (tracked.isEmpty())
             return;
         Subscription subscription = tracked.get().subscription();
         if (email.getSubscription() == null)
             email.attachTo(subscription);
+        if (charge.platform() == null && charge.references().customer() == null && charge.billing() != null)
+            email.markAccountGuessed(charge.references(), charge.billing().amount(), charge.billing().currency(),
+                    charge.billing().paymentDate());
         boolean alreadyPaid = isInvoiceAlreadyRecorded(subscription, charge);
         if (charge.isPayment() && !alreadyPaid)
             recordPayment(subscription, email, charge);
@@ -205,16 +259,14 @@ public class BillingEmailRecorder {
         };
     }
 
-    private Optional<TrackedSubscription> findOrCreateSubscription(User user, DetectedCharge charge, boolean wasDeleted) {
+    private Optional<TrackedSubscription> findOrCreateSubscription(User user, DetectedCharge charge, AccountMatch account, boolean wasDeleted) {
         Merchant merchant = charge.merchant();
-        AccountMatch account = matchAccount(user.getId(), merchant.key(), charge.references().customer());
-        if (account.ambiguous())
-            return Optional.empty();
         if (account.subscription().isPresent())
             return Optional.of(new TrackedSubscription(account.subscription().get(), false));
         if (!charge.isPayment())
             return Optional.empty();
         Subscription created = subscriptions.save(createSubscription(user, charge));
+        returnGuessedInvoicesForReview(user.getId(), created);
         if (wasDeleted)
             events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), created.getId(), merchant.displayName(),
                     charge.billing().paymentDate()));

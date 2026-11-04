@@ -76,6 +76,12 @@ public class BillingEmail extends AuditableEntity {
 
     private LocalDate billedOn;
 
+    @Column(nullable = false)
+    private boolean awaitingAccount = false;
+
+    @Column(nullable = false)
+    private boolean accountGuessed = false;
+
     @OneToMany(mappedBy = "billingEmail", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EmailAttachment> attachments = new ArrayList<>();
 
@@ -117,6 +123,39 @@ public class BillingEmail extends AuditableEntity {
         this.parsedAmount = amount;
         this.parsedCurrency = currency;
         this.billedOn = billedOn;
+    }
+
+    public void holdForAccount(InvoiceReferences references, BigDecimal amount, CurrencyCode currency, LocalDate billedOn) {
+        rememberCharge(references, amount, currency, billedOn);
+        this.awaitingAccount = true;
+    }
+
+    public void markAccountGuessed(InvoiceReferences references, BigDecimal amount, CurrencyCode currency, LocalDate billedOn) {
+        rememberCharge(references, amount, currency, billedOn);
+        this.accountGuessed = true;
+    }
+
+    public void returnForAccountReview() {
+        this.subscription = null;
+        this.accountGuessed = false;
+        this.awaitingAccount = true;
+    }
+
+    public void assignAccount(Subscription subscription) {
+        this.subscription = subscription;
+        this.awaitingAccount = false;
+        this.accountGuessed = false;
+    }
+
+    private void rememberCharge(InvoiceReferences references, BigDecimal amount, CurrencyCode currency, LocalDate billedOn) {
+        this.invoiceReference = truncate(references.invoice(), 64);
+        this.parsedAmount = amount;
+        this.parsedCurrency = currency;
+        this.billedOn = billedOn;
+    }
+
+    public boolean isAwaitingAccount() {
+        return awaitingAccount;
     }
 
     public void attachTo(Subscription subscription) {

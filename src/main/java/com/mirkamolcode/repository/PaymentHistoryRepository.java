@@ -22,6 +22,8 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
 
     List<PaymentHistory> findBySubscriptionIdIn(Collection<Long> subscriptionIds);
 
+    void deleteByBillingEmailIdAndSubscriptionId(Long billingEmailId, Long subscriptionId);
+
     List<PaymentHistory> findBySubscriptionUserIdAndPaymentDateBetween(Long userId, LocalDate from, LocalDate to);
 
     List<PaymentHistory> findBySubscriptionIdOrderByPaymentDateDesc(Long subscriptionId);

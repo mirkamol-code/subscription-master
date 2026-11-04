@@ -410,7 +410,7 @@ class GmailSyncIT extends AbstractTestConfig {
         assertThat(columnsOf("billing_emails")).containsExactlyInAnyOrder("id", "user_id", "subscription_id", "gmail_message_id",
                 "thread_id", "kind", "sender", "subject", "received_at", "confidence", "merchant_key", "access_ends_on",
                 "recurrence_candidate", "sender_domain", "customer_reference", "invoice_reference", "parsed_amount",
-                "parsed_currency", "billed_on", "created_at", "updated_at");
+                "parsed_currency", "billed_on", "awaiting_account", "account_guessed", "created_at", "updated_at");
         assertThat(columnsOf("email_attachments")).containsExactlyInAnyOrder("id", "billing_email_id", "gmail_attachment_id",
                 "filename", "mime_type", "size_bytes", "created_at", "updated_at");
         assertThat(jdbc.queryForList("select sender, subject from billing_emails where kind = 'IRRELEVANT'"))
@@ -897,6 +897,64 @@ class GmailSyncIT extends AbstractTestConfig {
         assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscriptionOfCustomer("K0000000002").getId())).hasSize(1);
         assertThat(jdbc.queryForObject("select subscription_id from billing_emails where gmail_message_id = ?", Long.class,
                 withoutCustomer.id())).isNull();
+    }
+
+    @Test
+    void awaitingAccount_shouldKeepInvoiceWithoutCustomerIdForReview_andLetUserAssignIt() {
+        // given
+        GmailMessage firstAccount = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage secondAccount = new GmailMessage("hetzner-second", "hetzner-second", firstAccount.receivedAt(), firstAccount.from(),
+                "Hetzner Online GmbH - Invoice 000000000002 (K0000000002)", firstAccount.htmlBody().replace("10.09", "4.51"),
+                firstAccount.textBody(), List.of(), firstAccount.headers());
+        GmailMessage withoutCustomer = new GmailMessage("hetzner-no-customer", "hetzner-no-customer",
+                Instant.parse("2026-11-12T05:08:00Z"), firstAccount.from(), "Hetzner Online GmbH - Invoice 000000000003",
+                firstAccount.htmlBody().replace("10.09", "6.00"), firstAccount.textBody(), List.of(), firstAccount.headers());
+        GMAIL.mailbox(withoutCustomer, secondAccount, firstAccount);
+        underTest.sync(userId);
+        Long firstId = subscriptionOfCustomer("K0000000001").getId();
+        Long emailId = jdbc.queryForObject("select id from billing_emails where gmail_message_id = ?", Long.class, withoutCustomer.id());
+
+        // when / then
+        webTestClient.get().uri(API + "/emails/awaiting-account").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].emailId").isEqualTo(emailId.intValue())
+                .jsonPath("$[0].amount").isEqualTo(6.0)
+                .jsonPath("$[0].currency").isEqualTo("USD")
+                .jsonPath("$[0].accounts.length()").isEqualTo(2)
+                .jsonPath("$[0].accounts[*].customerReference").value(references ->
+                        assertThat((List<Object>) references).containsExactlyInAnyOrder("K0000000001", "K0000000002"));
+        webTestClient.post().uri(API + "/emails/" + emailId + "/account").header("Authorization", bearer(tokens))
+                .bodyValue(java.util.Map.of("subscriptionId", firstId)).exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.id").isEqualTo(firstId.intValue());
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(firstId))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("6", "10.09");
+        webTestClient.get().uri(API + "/emails/awaiting-account").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.length()").isEqualTo(0);
+    }
+
+    @Test
+    void assignAccount_shouldRejectSubscriptionOfAnotherMerchant() {
+        // given
+        GmailMessage firstAccount = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage secondAccount = new GmailMessage("hetzner-second", "hetzner-second", firstAccount.receivedAt(), firstAccount.from(),
+                "Hetzner Online GmbH - Invoice 000000000002 (K0000000002)", firstAccount.htmlBody(), firstAccount.textBody(), List.of(),
+                firstAccount.headers());
+        GmailMessage withoutCustomer = new GmailMessage("hetzner-no-customer", "hetzner-no-customer",
+                Instant.parse("2026-11-12T05:08:00Z"), firstAccount.from(), "Hetzner Online GmbH - Invoice 000000000003",
+                firstAccount.htmlBody(), firstAccount.textBody(), List.of(), firstAccount.headers());
+        GMAIL.mailbox(withoutCustomer, secondAccount, firstAccount, NETFLIX_OCT);
+        underTest.sync(userId);
+        Long emailId = jdbc.queryForObject("select id from billing_emails where gmail_message_id = ?", Long.class, withoutCustomer.id());
+
+        // when / then
+        webTestClient.post().uri(API + "/emails/" + emailId + "/account").header("Authorization", bearer(tokens))
+                .bodyValue(java.util.Map.of("subscriptionId", subscription("netflix").getId())).exchange()
+                .expectStatus().isEqualTo(409);
     }
 
     @Test
