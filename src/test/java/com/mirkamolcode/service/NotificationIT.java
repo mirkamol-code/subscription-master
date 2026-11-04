@@ -393,6 +393,20 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDueReminders_shouldNotRemind_whenCancellationIsScheduledBeforeRenewal() {
+        // given
+        Subscription netflix = subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));
+        netflix.applyStatus(SubscriptionStatus.ACTIVE, LocalDate.of(2026, 11, 13), Instant.parse("2026-11-05T00:00:00Z"));
+        subscriptionRepository.save(netflix);
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
     void sendDueReminders_shouldSkipLegacyAppleRow_butRemindOtherSubscriptions() {
         // given
         legacyAppleRowDueOn(LocalDate.of(2026, 11, 13));

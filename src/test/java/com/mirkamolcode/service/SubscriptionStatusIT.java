@@ -259,6 +259,70 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     }
 
     @Test
+    void calendar_shouldNotShowNextPaymentAsUpcomingCharge_whileCancellationIsScheduled() {
+        // given
+        GMAIL.mailbox(openAiCancellation("openai-cancel", "2026-11-08T03:00:00Z"), OPENAI_RECEIPT_NOV,
+                message("spotify-nov", "2026-11-07T08:00:00Z", "Spotify <no-reply@spotify.com>", "Your Spotify Premium receipt",
+                        "Thanks for your payment. Amount charged: $10.99 per month."));
+        syncService.sync(userId);
+
+        // when / then
+        assertThat(subscription("openai").getEndsOn()).isEqualTo(LocalDate.of(2026, 12, 6));
+        webTestClient.get().uri(API + "/subscriptions/calendar?year=2026&month=12").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.days[*].subscriptions[*].name").value(names -> assertThat(names.toString())
+                        .contains("Spotify").doesNotContain("ChatGPT"));
+    }
+
+    @Test
+    void sync_shouldReactivateAndRecordPayment_whenInvoiceArrivesAfterScheduledCancellation() {
+        // given
+        GMAIL.mailbox(openAiCancellation("openai-cancel", "2026-11-08T03:00:00Z"), OPENAI_RECEIPT_NOV);
+        syncService.sync(userId);
+        CLOCK.setInstant(Instant.parse("2026-12-07T09:00:00Z"));
+        deliverLater(openAiReceipt("openai-dec", "2026-12-06T03:00:00Z"));
+
+        // when
+        syncService.sync(userId);
+
+        // then
+        Subscription openai = subscription("openai");
+        assertThat(openai.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(openai.getEndsOn()).isNull();
+        assertThat(openai.getNextPaymentDate()).isEqualTo(LocalDate.of(2027, 1, 6));
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(openai.getId())).hasSize(2);
+    }
+
+    @Test
+    void sync_shouldCancelRightAway_whenCancellationHasNoDateAndNextPaymentDateHasPassed() {
+        // given
+        CLOCK.setInstant(Instant.parse("2026-12-20T09:00:00Z"));
+        GMAIL.mailbox(message("openai-cancel-late", "2026-12-15T03:00:00Z", "OpenAI <noreply@tm.openai.com>",
+                "Your ChatGPT Plus subscription was canceled", "Your subscription was canceled."), OPENAI_RECEIPT_NOV);
+
+        // when
+        syncService.sync(userId);
+
+        // then
+        Subscription openai = subscription("openai");
+        assertThat(openai.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+        assertThat(openai.getEndsOn()).isNull();
+    }
+
+    @Test
+    void sync_shouldNotCancel_whenOnlyPaymentFails() {
+        // given
+        GMAIL.mailbox(OPENAI_FAILED, OPENAI_RECEIPT_OCT);
+
+        // when
+        syncService.sync(userId);
+
+        // then
+        assertThat(subscription("openai").getStatus()).isNotEqualTo(SubscriptionStatus.CANCELLED);
+    }
+
+    @Test
     void sync_shouldNotReactivateCancelledPlan_fromReplayedReceiptWithoutAmount_butFlagItForReview() {
         // given
         GmailMessage receiptWithoutAmount = message("openai-no-amount", "2026-11-10T03:00:00Z", "OpenAI <noreply@tm.openai.com>",
@@ -688,6 +752,11 @@ class SubscriptionStatusIT extends AbstractTestConfig {
     private static GmailMessage openAiReceipt(String id, String receivedAt) {
         return message(id, receivedAt, "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus receipt",
                 "Thanks for your payment. Amount paid: $20.00 per month for ChatGPT Plus.");
+    }
+
+    private static GmailMessage openAiCancellation(String id, String receivedAt) {
+        return message(id, receivedAt, "OpenAI <noreply@tm.openai.com>", "Your ChatGPT Plus subscription was canceled",
+                "Your subscription was canceled. You'll keep access until December 6, 2026.");
     }
 
     private static GmailMessage message(String id, String receivedAt, String from, String subject, String text) {

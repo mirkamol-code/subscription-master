@@ -245,6 +245,7 @@ public class SubscriptionService {
 
         Specification<Subscription> spec = SubscriptionSpecifications.visible()
                 .and(SubscriptionSpecifications.hasStatus(SubscriptionStatus.ACTIVE))
+                .and(SubscriptionSpecifications.renewsAtNextPayment())
                 .and(SubscriptionSpecifications.nextPaymentDateFrom(from))
                 .and(SubscriptionSpecifications.nextPaymentDateTo(to));
 
@@ -263,6 +264,7 @@ public class SubscriptionService {
 
         Specification<Subscription> spec = SubscriptionSpecifications.visible()
                 .and(SubscriptionSpecifications.hasStatus(SubscriptionStatus.ACTIVE))
+                .and(SubscriptionSpecifications.renewsAtNextPayment())
                 .and(SubscriptionSpecifications.nextPaymentDateFrom(from))
                 .and(SubscriptionSpecifications.nextPaymentDateTo(to));
 

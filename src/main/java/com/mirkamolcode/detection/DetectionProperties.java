@@ -30,6 +30,7 @@ public record DetectionProperties(
             List<String> recurring,
             List<String> paymentConfirmation,
             List<String> cancellation,
+            List<String> cancellationConditional,
             List<String> paymentFailed,
             List<String> promotion,
             List<String> accessEnds,

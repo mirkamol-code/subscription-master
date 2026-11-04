@@ -22,6 +22,10 @@ public final class SubscriptionSpecifications {
         return (root, q, b) -> b.equal(root.get("user").get("id"), userId);
     }
 
+    public static Specification<Subscription> renewsAtNextPayment() {
+        return (root, q, b) -> b.or(b.isNull(root.get("endsOn")), b.greaterThan(root.get("endsOn"), root.get("nextPaymentDate")));
+    }
+
     public static Specification<Subscription> visible() {
         return (root, q, b) -> b.and(b.isFalse(root.get("isDeleted")), b.isFalse(root.get("isHidden")));
     }
