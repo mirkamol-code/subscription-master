@@ -22,12 +22,14 @@ class ProductionConfigTest {
     }
 
     @Test
-    void prodProfile_shouldNeverSeedDemoDataOrLogSql() {
+    void configs_shouldHaveNoDemoDataSeeding_andProdShouldNotLogSql() {
         // when
+        PropertySource<?> base = load("application.yml");
         PropertySource<?> prod = load("application-prod.yml");
 
         // then
-        assertThat(String.valueOf(prod.getProperty("app.seed.enabled"))).isEqualTo("false");
+        assertThat(base.getProperty("app.seed.enabled")).isNull();
+        assertThat(prod.getProperty("app.seed.enabled")).isNull();
         assertThat(String.valueOf(prod.getProperty("spring.jpa.properties.hibernate.show_sql"))).isEqualTo("false");
     }
 
