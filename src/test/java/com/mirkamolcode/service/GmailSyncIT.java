@@ -709,6 +709,24 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldRecordOnePayment_whenSameInvoiceArrivesInTwoEmails() {
+        // given
+        GmailMessage original = EmailFixtures.load("apple-telegram-invoice.json");
+        GmailMessage resent = new GmailMessage("apple-resent", "apple-resent", original.receivedAt().plus(Duration.ofHours(2)),
+                original.from(), original.subject(), original.htmlBody(), original.textBody(), List.of(), original.headers());
+        GMAIL.mailbox(original, resent);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription telegram = subscription("telegram-messenger");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(telegram.getId())).hasSize(1);
+        assertThat(telegram.isNeedsReview()).isFalse();
+        assertThat(countRows("billing_emails")).isEqualTo(2);
+    }
+
+    @Test
     void get_shouldExposePlanBillingPlatformAndCard_forAppleBilledSubscription() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"));

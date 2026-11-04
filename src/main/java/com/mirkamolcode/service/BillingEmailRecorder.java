@@ -102,11 +102,20 @@ public class BillingEmailRecorder {
         Subscription subscription = tracked.get().subscription();
         if (email.getSubscription() == null)
             email.attachTo(subscription);
-        if (charge.isPayment())
+        boolean alreadyPaid = isInvoiceAlreadyRecorded(subscription, charge);
+        if (charge.isPayment() && !alreadyPaid)
             recordPayment(subscription, email, charge);
-        applyEvidence(subscription, email);
+        if (alreadyPaid)
+            statusService.apply(subscription, toStatusEvidence(email), email);
+        else
+            applyEvidence(subscription, email);
         if (tracked.get().newlyLinked())
             replayUnattachedStatusEmails(user.getId(), subscription, tombstone);
+    }
+
+    private boolean isInvoiceAlreadyRecorded(Subscription subscription, DetectedCharge charge) {
+        return charge.invoiceReference() != null
+                && payments.existsBySubscriptionIdAndInvoiceReference(subscription.getId(), charge.invoiceReference());
     }
 
     private void replayUnattachedStatusEmails(Long userId, Subscription subscription, Optional<MerchantTombstone> tombstone) {
@@ -172,8 +181,10 @@ public class BillingEmailRecorder {
                 billing.nextBillingDate(), billing.confidence());
         if (billing.paymentDate().equals(subscription.getLastPaymentDate()))
             subscription.describeBilling(charge.planName(), charge.platform(), charge.paymentMethod());
-        payments.save(new PaymentHistory(subscription, email, billing.paymentDate(), billing.amount(), billing.currency(),
-                exchangeRates.rateToUzs(billing.currency())));
+        PaymentHistory payment = new PaymentHistory(subscription, email, billing.paymentDate(), billing.amount(), billing.currency(),
+                exchangeRates.rateToUzs(billing.currency()));
+        payment.referenceInvoice(charge.invoiceReference());
+        payments.save(payment);
     }
 
     private static void addAttachment(BillingEmail email, GmailAttachment attachment) {
