@@ -994,6 +994,53 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldRecordBothPayments_whenSameNumberFollowsInvoiceOneCycleApart() {
+        // given
+        GmailMessage october = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage november = new GmailMessage("hetzner-november", "hetzner-november", october.receivedAt().plus(Duration.ofDays(31)),
+                october.from(), october.subject(), october.htmlBody().replace("10.09", "11.20"), october.textBody(), List.of(),
+                october.headers());
+        GMAIL.mailbox(november, october);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("hetzner").getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("11.2", "10.09");
+    }
+
+    @Test
+    void sync_shouldRecordOnePayment_whenSameInvoiceIsResentNextDay() {
+        // given
+        GmailMessage original = EmailFixtures.load("hetzner-invoice.json");
+        GmailMessage resent = new GmailMessage("hetzner-resent", "hetzner-resent", original.receivedAt().plus(Duration.ofDays(1)),
+                original.from(), original.subject(), original.htmlBody(), original.textBody(), List.of(), original.headers());
+        GMAIL.mailbox(resent, original);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("hetzner").getId())).hasSize(1);
+    }
+
+    @Test
+    void sync_shouldTrackRepeatInvoices_whenUnknownSenderRepeatsSameNumberAfterInvoice() {
+        // given
+        GMAIL.mailbox(acmeInvoice("778899", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("778899", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).singleElement().satisfies(acme ->
+                assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId())).hasSize(2));
+    }
+
+    @Test
     void get_shouldExposePlanBillingPlatformAndCard_forAppleBilledSubscription() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"));
@@ -1041,7 +1088,8 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     private static GmailMessage acmeInvoice(String invoiceNumber, String receivedAt, String customer, String amount) {
-        return EmailFixtures.authenticated(new GmailMessage("acme-" + invoiceNumber, "acme-" + invoiceNumber, Instant.parse(receivedAt),
+        String id = "acme-" + invoiceNumber + "-" + receivedAt.substring(0, 10);
+        return EmailFixtures.authenticated(new GmailMessage(id, id, Instant.parse(receivedAt),
                 "Acme Hosting <billing@acmehost.example>", "Invoice " + invoiceNumber + " (" + customer + ")", null,
                 "Please find your invoice attached. Amount: $ " + amount));
     }

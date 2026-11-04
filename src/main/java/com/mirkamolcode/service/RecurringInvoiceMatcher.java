@@ -6,12 +6,10 @@ import com.mirkamolcode.model.BillingFrequency;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
@@ -42,10 +40,10 @@ public class RecurringInvoiceMatcher {
     }
 
     private static List<BillingEmail> distinctInvoices(List<BillingEmail> sorted) {
-        Set<String> seenReferences = new HashSet<>();
         List<BillingEmail> distinct = new ArrayList<>();
         for (BillingEmail invoice : sorted)
-            if (invoice.getInvoiceReference() == null || seenReferences.add(invoice.getInvoiceReference()))
+            if (distinct.stream().noneMatch(kept -> DuplicateInvoices.areSameInvoice(kept.getInvoiceReference(), kept.getBilledOn(),
+                    invoice.getInvoiceReference(), invoice.getBilledOn())))
                 distinct.add(invoice);
         return distinct;
     }

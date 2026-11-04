@@ -170,8 +170,11 @@ public class BillingEmailRecorder {
     }
 
     private boolean isInvoiceAlreadyRecorded(Subscription subscription, DetectedCharge charge) {
-        return charge.invoiceReference() != null
-                && payments.existsBySubscriptionIdAndInvoiceReference(subscription.getId(), charge.invoiceReference());
+        if (charge.invoiceReference() == null || charge.billing() == null)
+            return false;
+        return payments.findBySubscriptionIdAndInvoiceReference(subscription.getId(), charge.invoiceReference()).stream()
+                .anyMatch(payment -> DuplicateInvoices.areSameInvoice(payment.getInvoiceReference(), payment.getPaymentDate(),
+                        charge.invoiceReference(), charge.billing().paymentDate()));
     }
 
     private void replayUnattachedStatusEmails(Long userId, Subscription subscription, Optional<MerchantTombstone> tombstone) {
