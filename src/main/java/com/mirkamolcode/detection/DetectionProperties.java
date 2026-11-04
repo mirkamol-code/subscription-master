@@ -31,6 +31,8 @@ public record DetectionProperties(
             List<String> paymentConfirmation,
             List<String> cancellation,
             List<String> cancellationConditional,
+            List<String> priceChange,
+            List<String> priceChangeEffective,
             List<String> paymentFailed,
             List<String> promotion,
             List<String> accessEnds,
@@ -47,7 +49,8 @@ public record DetectionProperties(
             List<String> senders,
             String logoDomain,
             SubscriptionCategory category,
-            BillingFrequency defaultCycle
+            BillingFrequency defaultCycle,
+            boolean usageBased
     ) {
         public MerchantConfig {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);

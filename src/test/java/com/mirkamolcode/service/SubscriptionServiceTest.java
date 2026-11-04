@@ -323,6 +323,6 @@ class SubscriptionServiceTest {
                 subscription.getCategory(), subscription.getStartDate(), subscription.getNextPaymentDate(),
                 subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.getReviewReason(), subscription.getReviewNote(), subscription.isHidden(),
                 subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getVersion(),
-                null, null, null);
+                null, null, null, null);
     }
 }

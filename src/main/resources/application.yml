@@ -93,6 +93,8 @@ app:
         payment-confirmation: ["thanks for your payment", "thank you for your payment", "payment received", "amount charged", "you paid", "we charged", "your card was charged", "payment confirmation"]
         cancellation: ["has been canceled", "has been cancelled", "subscription was canceled", "subscription was cancelled", "subscription canceled", "subscription cancelled", "won't renew", "will not renew", "plan ended", "plan has ended", "plan has been canceled", "plan has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
         cancellation-conditional: ["if you cancel", "you can cancel", "cancel anytime", "cancel at any time", "how to cancel", "want to cancel", "to cancel", "once cancelled", "once canceled", "if you decide to cancel"]
+        price-change: ["price is changing", "prices are changing", "price will change", "price change", "price increase", "price update", "new price", "updating our prices", "updating the price"]
+        price-change-effective: [starting, effective, beginning, "takes effect", "on or after"]
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
         promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, "free trial", webinar, newsletter]
         access-ends: [until, "ends on", "end on", "will end", "expires on", "expire on", "access until", "active until"]
@@ -122,7 +124,7 @@ app:
         - { key: github, display-name: GitHub, senders: [github.com], category: PRODUCTIVITY }
         - { key: canva, display-name: Canva, senders: [canva.com], category: PRODUCTIVITY }
         - { key: dropbox, display-name: Dropbox, senders: [dropbox.com, dropboxmail.com], category: PRODUCTIVITY }
-        - { key: hetzner, display-name: Hetzner, aliases: [Hetzner Online, Hetzner Cloud], senders: [hetzner.com, hetzner.de], category: INFRASTRUCTURE, default-cycle: MONTHLY }
+        - { key: hetzner, display-name: Hetzner, aliases: [Hetzner Online, Hetzner Cloud], senders: [hetzner.com, hetzner.de], category: INFRASTRUCTURE, default-cycle: MONTHLY, usage-based: true }
   google:
     oauth-base-url: https://oauth2.googleapis.com
     connect-timeout: 2s

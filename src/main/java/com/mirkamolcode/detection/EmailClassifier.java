@@ -4,6 +4,7 @@ import com.mirkamolcode.integration.gmail.GmailMessage;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
@@ -21,6 +22,8 @@ public class EmailClassifier {
     private final Pattern paymentConfirmation;
     private final Pattern cancellation;
     private final Pattern cancellationConditional;
+    private final Pattern priceChange;
+    private final Pattern priceChangeEffective;
     private final Pattern paymentFailed;
     private final Pattern promotion;
     private final Pattern accessEnds;
@@ -38,6 +41,8 @@ public class EmailClassifier {
         this.paymentConfirmation = anyPhrase(keywords.paymentConfirmation());
         this.cancellation = anyPhrase(keywords.cancellation());
         this.cancellationConditional = anyPhrase(keywords.cancellationConditional());
+        this.priceChange = anyPhrase(keywords.priceChange());
+        this.priceChangeEffective = anyPhrase(keywords.priceChangeEffective());
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
         this.promotion = anyPhrase(keywords.promotion());
         this.accessEnds = anyPhrase(keywords.accessEnds());
@@ -56,6 +61,8 @@ public class EmailClassifier {
             return EmailKind.PAYMENT_FAILED;
         if (confirmsCancellation(message))
             return EmailKind.CANCELLATION;
+        if (priceChange.matcher(subject).find() || (!confirmsPayment && priceChange.matcher(body).find()))
+            return EmailKind.PRICE_CHANGE;
         if (paymentDue.matcher(subject).find() && !confirmsPayment)
             return EmailKind.IRRELEVANT;
         boolean isTransaction = receiptSubject.matcher(subject).find() || confirmsPayment;
@@ -71,6 +78,10 @@ public class EmailClassifier {
             return true;
         String body = message.bodyText();
         return cancellation.matcher(body).find() && !cancellationConditional.matcher(body).find();
+    }
+
+    public Optional<PriceChangeNotice> findPriceChange(GmailMessage message) {
+        return PriceChangeParser.parse(message.bodyText(), priceChangeEffective, message.receivedOnUtc());
     }
 
     public boolean mentionsFreePlan(GmailMessage message) {
@@ -109,7 +120,8 @@ public class EmailClassifier {
         return !promotion.matcher(subject).find()
                 && !paymentDue.matcher(subject).find()
                 && (receiptSubject.matcher(subject).find() || subscriptionSubject.matcher(subject).find()
-                || cancellation.matcher(subject).find() || paymentFailed.matcher(subject).find());
+                || cancellation.matcher(subject).find() || paymentFailed.matcher(subject).find()
+                || priceChange.matcher(subject).find());
     }
 
     private static boolean matchesSubjectOrBody(Pattern pattern, GmailMessage message) {

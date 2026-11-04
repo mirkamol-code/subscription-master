@@ -63,6 +63,10 @@ public class MerchantResolver {
                 null, true);
     }
 
+    public boolean isUsageBased(String merchantKey) {
+        return merchants.stream().anyMatch(merchant -> merchant.key().equals(merchantKey) && merchant.usageBased());
+    }
+
     public boolean isKnownSender(GmailMessage message) {
         return isFromProcessor(message) || findBySender(message).isPresent();
     }

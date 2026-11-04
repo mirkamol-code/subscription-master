@@ -119,6 +119,19 @@ class EmailClassifierTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"Your Netflix price is changing", "Important: price increase for your plan", "A price update for your membership"})
+    void classify_shouldDetectPriceChangeNotices(String subject) {
+        // given
+        GmailMessage message = messageWith(subject, "Your monthly price will change from $15.49 to $17.99.");
+
+        // when
+        EmailKind kind = underTest.classify(message);
+
+        // then
+        assertThat(kind).isEqualTo(EmailKind.PRICE_CHANGE);
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {
             "Your receipt from Anthropic",
             "Payment received for your Google One plan",

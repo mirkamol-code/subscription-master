@@ -1,5 +1,8 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.detection.MerchantResolver;
+import com.mirkamolcode.repository.PriceChangeRepository;
+import com.mirkamolcode.entity.PriceChange;
 import com.mirkamolcode.detection.AppleInvoiceParser;
 import com.mirkamolcode.detection.BillingEmailAnalysis;
 import com.mirkamolcode.detection.BillingEmailAnalyzer;
@@ -53,6 +56,8 @@ public class BillingEmailRecorder {
     private final SubscriptionStatusService statusService;
     private final GmailConnectionRepository connections;
     private final RecurringInvoiceMatcher recurringInvoices;
+    private final PriceChangeRepository priceChanges;
+    private final MerchantResolver merchants;
 
     public BillingEmailRecorder(BillingEmailAnalyzer analyzer,
                                 UserRepository users,
@@ -64,7 +69,9 @@ public class BillingEmailRecorder {
                                 ApplicationEventPublisher events,
                                 SubscriptionStatusService statusService,
                                 GmailConnectionRepository connections,
-                                RecurringInvoiceMatcher recurringInvoices) {
+                                RecurringInvoiceMatcher recurringInvoices,
+                                PriceChangeRepository priceChanges,
+                                MerchantResolver merchants) {
         this.analyzer = analyzer;
         this.users = users;
         this.billingEmails = billingEmails;
@@ -76,6 +83,8 @@ public class BillingEmailRecorder {
         this.statusService = statusService;
         this.connections = connections;
         this.recurringInvoices = recurringInvoices;
+        this.priceChanges = priceChanges;
+        this.merchants = merchants;
     }
 
     public void record(Long userId, GmailMessage message) {
@@ -102,7 +111,33 @@ public class BillingEmailRecorder {
             return;
         }
         billingEmails.save(email);
+        if (analysis.kind() == EmailKind.PRICE_CHANGE) {
+            recordPriceChangeNotice(user, email, analysis);
+            return;
+        }
         analysis.charges().forEach(charge -> recordCharge(user, email, charge));
+    }
+
+    private void recordPriceChangeNotice(User user, BillingEmail email, BillingEmailAnalysis analysis) {
+        String merchantKey = analysis.merchant().key();
+        AccountMatch account = matchAccount(user.getId(), merchantKey, null);
+        if (account.ambiguous())
+            return;
+        Subscription subscription = account.subscription().orElse(null);
+        if (subscription != null)
+            email.attachTo(subscription);
+        if (analysis.priceChange() == null)
+            return;
+        PriceChange change = priceChanges.save(PriceChange.fromNotice(user, merchantKey, subscription, email, analysis.priceChange()));
+        if (subscription != null)
+            subscription.noteLatestPriceChange(change);
+    }
+
+    private void attachEarlierPriceNotices(Long userId, Subscription subscription) {
+        priceChanges.findByUserIdAndMerchantKeyAndSubscriptionIsNull(userId, subscription.getMerchantKey()).forEach(change -> {
+            change.attachTo(subscription);
+            subscription.noteLatestPriceChange(change);
+        });
     }
 
     private static boolean isFromApple(GmailMessage message, BillingEmailAnalysis analysis) {
@@ -234,8 +269,10 @@ public class BillingEmailRecorder {
             statusService.apply(subscription, toStatusEvidence(email), email);
         else
             applyEvidence(subscription, email);
-        if (tracked.get().newlyLinked())
+        if (tracked.get().newlyLinked()) {
             replayUnattachedStatusEmails(user.getId(), subscription, tombstone);
+            attachEarlierPriceNotices(user.getId(), subscription);
+        }
     }
 
     private boolean isInvoiceAlreadyRecorded(Subscription subscription, DetectedCharge charge) {
@@ -271,6 +308,7 @@ public class BillingEmailRecorder {
             case CANCELLATION -> StatusEvidence.cancellation(email.getReceivedAt(), email.getAccessEndsOn());
             case PAYMENT_FAILED -> StatusEvidence.paymentFailed(email.getReceivedAt());
             case RECEIPT, IRRELEVANT -> StatusEvidence.receipt(email.getReceivedAt());
+            case PRICE_CHANGE -> throw new IllegalStateException("A price change notice is not status evidence");
         };
     }
 
@@ -340,6 +378,10 @@ public class BillingEmailRecorder {
 
     private void recordPayment(Subscription subscription, BillingEmail email, DetectedCharge charge) {
         ParsedBilling billing = charge.billing();
+        PriceChange.fromInvoice(subscription, email, billing.paymentDate(), billing.amount(), billing.currency(), billing.cycle(),
+                        billing.confidence(), merchants.isUsageBased(subscription.getMerchantKey()))
+                .map(priceChanges::save)
+                .ifPresent(subscription::noteLatestPriceChange);
         subscription.recordPayment(billing.paymentDate(), billing.amount(), billing.currency(), billing.cycle(),
                 billing.nextBillingDate(), billing.confidence());
         if (billing.paymentDate().equals(subscription.getLastPaymentDate()))

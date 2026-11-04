@@ -7,10 +7,15 @@ public record BillingEmailAnalysis(
         EmailKind kind,
         List<DetectedCharge> charges,
         LocalDate accessEndsOn,
-        boolean awaitingRepeat
+        boolean awaitingRepeat,
+        PriceChangeNotice priceChange
 ) {
     public BillingEmailAnalysis {
         charges = List.copyOf(charges);
+    }
+
+    public BillingEmailAnalysis(EmailKind kind, List<DetectedCharge> charges, LocalDate accessEndsOn, boolean awaitingRepeat) {
+        this(kind, charges, accessEndsOn, awaitingRepeat, null);
     }
 
     public static BillingEmailAnalysis irrelevant() {
@@ -19,6 +24,10 @@ public record BillingEmailAnalysis(
 
     static BillingEmailAnalysis of(EmailKind kind, Merchant merchant, ParsedBilling billing, LocalDate accessEndsOn) {
         return new BillingEmailAnalysis(kind, List.of(DetectedCharge.direct(merchant, billing)), accessEndsOn, false);
+    }
+
+    static BillingEmailAnalysis priceChange(Merchant merchant, PriceChangeNotice notice) {
+        return new BillingEmailAnalysis(EmailKind.PRICE_CHANGE, List.of(DetectedCharge.direct(merchant, null)), null, false, notice);
     }
 
     public Merchant merchant() {

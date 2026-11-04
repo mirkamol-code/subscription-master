@@ -103,6 +103,10 @@ public class Subscription extends AuditableEntity {
     @Column(length = 64)
     private String customerReference;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "latest_price_change_id")
+    private PriceChange latestPriceChange;
+
     @Version
     private long version;
 
@@ -366,5 +370,14 @@ public class Subscription extends AuditableEntity {
 
     public String getCustomerReference() {
         return customerReference;
+    }
+
+    public void noteLatestPriceChange(PriceChange change) {
+        if (change.isNewerThan(latestPriceChange))
+            latestPriceChange = change;
+    }
+
+    public PriceChange getLatestPriceChange() {
+        return latestPriceChange;
     }
 }
