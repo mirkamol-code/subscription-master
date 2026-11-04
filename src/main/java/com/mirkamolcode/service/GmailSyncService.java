@@ -169,8 +169,8 @@ public class GmailSyncService {
             } catch (GmailNotFoundException e) {
                 log.debug("Gmail message {} disappeared before sync", id);
             } catch (RuntimeException e) {
-                log.warn("Could not read headers of Gmail message {} for user {}: {}", id, userId, e.getMessage());
-                failedMessages.recordFailure(userId, id, e.getMessage());
+                log.warn("Could not read headers of Gmail message {} for user {}: {}", id, userId, LoggableError.describe(e));
+                failedMessages.recordFailure(userId, id, LoggableError.describe(e));
                 failures++;
             }
         }
@@ -206,8 +206,8 @@ public class GmailSyncService {
             failedMessages.recordTransientFailure(userId, id, e.getMessage());
             return false;
         } catch (RuntimeException e) {
-            log.warn("Could not record Gmail message {} for user {}: {}", id, userId, e.getMessage());
-            failedMessages.recordFailure(userId, id, e.getMessage());
+            log.warn("Could not record Gmail message {} for user {}: {}", id, userId, LoggableError.describe(e));
+            failedMessages.recordFailure(userId, id, LoggableError.describe(e));
             return false;
         }
     }
