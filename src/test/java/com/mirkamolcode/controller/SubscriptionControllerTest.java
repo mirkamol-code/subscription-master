@@ -4,6 +4,8 @@ import com.mirkamolcode.dto.response.CalendarResponse;
 import com.mirkamolcode.dto.response.PaymentHistoryResponse;
 import com.mirkamolcode.dto.response.SubscriptionResponse;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.CategoryConfidence;
+import com.mirkamolcode.model.CategorySource;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
@@ -59,6 +61,8 @@ class SubscriptionControllerTest {
                 BillingFrequency.MONTHLY,
                 SubscriptionStatus.ACTIVE,
                 SubscriptionCategory.ENTERTAINMENT,
+                CategorySource.DETECTED,
+                CategoryConfidence.HIGH,
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 10, 15),
                 null,

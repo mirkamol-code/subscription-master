@@ -944,6 +944,49 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldDetectCategoryOfKnownMerchant_withHighConfidence() {
+        // given
+        GMAIL.mailbox(NETFLIX_OCT);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        webTestClient.get().uri(API + "/subscriptions/" + subscription("netflix").getId()).header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.category").isEqualTo("ENTERTAINMENT")
+                .jsonPath("$.categorySource").isEqualTo("DETECTED")
+                .jsonPath("$.categoryConfidence").isEqualTo("HIGH");
+    }
+
+    @Test
+    void sync_shouldKeepCategoryTheUserChose_whenLaterReceiptArrives() {
+        // given
+        GMAIL.mailbox(NETFLIX_SEP);
+        underTest.sync(userId);
+        Subscription netflix = subscription("netflix");
+        webTestClient.put().uri(API + "/subscriptions/" + netflix.getId()).header("Authorization", bearer(tokens))
+                .bodyValue(new com.mirkamolcode.dto.request.SubscriptionRequest(netflix.getName(), netflix.getPrice(), netflix.getCurrency(),
+                        netflix.getFrequency(), netflix.getStatus(), com.mirkamolcode.model.SubscriptionCategory.PRODUCTIVITY,
+                        netflix.getStartDate()))
+                .exchange()
+                .expectStatus().isOk();
+        GMAIL.deliver(NETFLIX_OCT);
+        GMAIL.historyAdds(NETFLIX_OCT.id());
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        webTestClient.get().uri(API + "/subscriptions/" + netflix.getId()).header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.category").isEqualTo("PRODUCTIVITY")
+                .jsonPath("$.categorySource").isEqualTo("USER");
+    }
+
+    @Test
     void sync_shouldNotTrackAppleInvoice_whenEveryLineItemIsOneTimePurchase() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-one-time-purchase.json"));

@@ -101,6 +101,13 @@ app:
         invoice: [invoice, "billing statement", "payment receipt"]
         non-billing: ["order confirmation", "your order", shipped, shipping, delivery, delivered, refund, refunded, trip, ride, "food order", marketplace, "sold by"]
         access-ends-now: ["effective immediately", "ends immediately", "ended immediately", "with immediate effect"]
+      category-signals:
+        INFRASTRUCTURE: [hosting, vps, "cloud server", "dedicated server", "domain renewal", dns, cdn, "object storage", "virtual server"]
+        ENTERTAINMENT: [streaming, movies, "tv shows", music, podcasts, gaming, "game pass"]
+        EDUCATION: [course, courses, lessons, academy, tutoring, "language learning", bootcamp]
+        HEALTH: [fitness, gym, workout, meditation, yoga, "personal trainer"]
+        FINANCE: [banking, investing, brokerage, accounting, bookkeeping, "tax filing", budgeting]
+        PRODUCTIVITY: ["project management", "note taking", "password manager", "cloud storage", "team workspace", calendar]
       processors: [stripe.com, paddle.com, paddle.net, payments-noreply@google.com, googleplay-noreply@google.com, apple.com]
       personal-mailbox-domains: [gmail.com, googlemail.com, outlook.com, hotmail.com, live.com, msn.com, yahoo.com, ymail.com, icloud.com, me.com, mac.com, aol.com, proton.me, protonmail.com, gmx.com, gmx.net, mail.com, zoho.com, yandex.ru, yandex.com, ya.ru, mail.ru, inbox.ru, list.ru, bk.ru, rambler.ru]
       merchants:

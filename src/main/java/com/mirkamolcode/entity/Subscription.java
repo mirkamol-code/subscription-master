@@ -1,6 +1,9 @@
 package com.mirkamolcode.entity;
 
+import com.mirkamolcode.detection.CategoryGuess;
 import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.model.CategoryConfidence;
+import com.mirkamolcode.model.CategorySource;
 import com.mirkamolcode.detection.PaymentMethod;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.BillingPlatform;
@@ -103,6 +106,14 @@ public class Subscription extends AuditableEntity {
     @Column(length = 64)
     private String customerReference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 8)
+    private CategorySource categorySource = CategorySource.UNKNOWN;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 6)
+    private CategoryConfidence categoryConfidence;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "latest_price_change_id")
     private PriceChange latestPriceChange;
@@ -135,7 +146,11 @@ public class Subscription extends AuditableEntity {
         this.price = price;
         this.currency = currency;
         this.frequency = frequency;
-        this.category = category;
+        if (category != this.category) {
+            this.category = category;
+            this.categorySource = CategorySource.USER;
+            this.categoryConfidence = null;
+        }
         this.startDate = startDate;
         clearReview();
     }
@@ -370,6 +385,22 @@ public class Subscription extends AuditableEntity {
 
     public String getCustomerReference() {
         return customerReference;
+    }
+
+    public void applyDetectedCategory(CategoryGuess guess) {
+        if (categorySource == CategorySource.USER)
+            return;
+        this.category = guess.category();
+        this.categorySource = CategorySource.DETECTED;
+        this.categoryConfidence = guess.confidence();
+    }
+
+    public CategorySource getCategorySource() {
+        return categorySource;
+    }
+
+    public CategoryConfidence getCategoryConfidence() {
+        return categoryConfidence;
     }
 
     public void noteLatestPriceChange(PriceChange change) {

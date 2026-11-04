@@ -1,6 +1,8 @@
 package com.mirkamolcode.dto.response;
 
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.CategoryConfidence;
+import com.mirkamolcode.model.CategorySource;
 import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.PaymentMethodType;
@@ -20,6 +22,8 @@ public record SubscriptionResponse(
         BillingFrequency frequency,
         SubscriptionStatus status,
         SubscriptionCategory category,
+        CategorySource categorySource,
+        CategoryConfidence categoryConfidence,
         LocalDate startDate,
         LocalDate nextPaymentDate,
         String merchantKey,

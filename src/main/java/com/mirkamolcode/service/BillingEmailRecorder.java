@@ -1,5 +1,7 @@
 package com.mirkamolcode.service;
 
+import java.util.Arrays;
+import com.mirkamolcode.detection.CategoryClassifier;
 import com.mirkamolcode.detection.MerchantResolver;
 import com.mirkamolcode.repository.PriceChangeRepository;
 import com.mirkamolcode.entity.PriceChange;
@@ -58,6 +60,7 @@ public class BillingEmailRecorder {
     private final RecurringInvoiceMatcher recurringInvoices;
     private final PriceChangeRepository priceChanges;
     private final MerchantResolver merchants;
+    private final CategoryClassifier categories;
 
     public BillingEmailRecorder(BillingEmailAnalyzer analyzer,
                                 UserRepository users,
@@ -71,7 +74,8 @@ public class BillingEmailRecorder {
                                 GmailConnectionRepository connections,
                                 RecurringInvoiceMatcher recurringInvoices,
                                 PriceChangeRepository priceChanges,
-                                MerchantResolver merchants) {
+                                MerchantResolver merchants,
+                                CategoryClassifier categories) {
         this.analyzer = analyzer;
         this.users = users;
         this.billingEmails = billingEmails;
@@ -85,6 +89,7 @@ public class BillingEmailRecorder {
         this.recurringInvoices = recurringInvoices;
         this.priceChanges = priceChanges;
         this.merchants = merchants;
+        this.categories = categories;
     }
 
     public void record(Long userId, GmailMessage message) {
@@ -182,6 +187,7 @@ public class BillingEmailRecorder {
         subscription.assignCustomer(latest.getCustomerReference());
         subscription.describeBilling(null, null, latestCharge.paymentMethod());
         subscription.flagSimilarInvoicesForReview(series.invoices().size());
+        subscription.applyDetectedCategory(categories.classify(merchant, Arrays.asList(latest.getSubject(), latest.getSenderDomain())));
         subscriptions.save(subscription);
         returnGuessedInvoicesForReview(user.getId(), subscription);
         if (tombstone.isPresent())
@@ -253,7 +259,7 @@ public class BillingEmailRecorder {
             holdForAccount(email, charge);
             return;
         }
-        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, charge, account, tombstone.isPresent());
+        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, email, charge, account, tombstone.isPresent());
         if (tracked.isEmpty())
             return;
         Subscription subscription = tracked.get().subscription();
@@ -312,13 +318,17 @@ public class BillingEmailRecorder {
         };
     }
 
-    private Optional<TrackedSubscription> findOrCreateSubscription(User user, DetectedCharge charge, AccountMatch account, boolean wasDeleted) {
+    private Optional<TrackedSubscription> findOrCreateSubscription(User user, BillingEmail email, DetectedCharge charge, AccountMatch account,
+                                                                   boolean wasDeleted) {
         Merchant merchant = charge.merchant();
         if (account.subscription().isPresent())
             return Optional.of(new TrackedSubscription(account.subscription().get(), false));
         if (!charge.isPayment())
             return Optional.empty();
-        Subscription created = subscriptions.save(createSubscription(user, charge));
+        Subscription created = createSubscription(user, charge);
+        created.applyDetectedCategory(categories.classify(merchant, Arrays.asList(email.getSubject(), email.getSenderDomain(),
+                charge.planName())));
+        created = subscriptions.save(created);
         returnGuessedInvoicesForReview(user.getId(), created);
         if (wasDeleted)
             events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), created.getId(), merchant.displayName(),
