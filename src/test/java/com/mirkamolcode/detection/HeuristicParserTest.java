@@ -70,6 +70,7 @@ class HeuristicParserTest {
             $9.99. Your next payment is on 2026-12-01           | 2026-12-01
             $9.99. You will be charged on 11/30/2026            | 2026-11-30
             $9.99. Next charge: 30/11/2026                      | 2026-11-30
+            Telegram Premium (Monthly) Renews 7 January 2027 US$3,99 | 2027-01-07
             """)
     void parse_shouldFindNextBillingDate(String text, LocalDate nextBillingDate) {
         // when
@@ -138,6 +139,26 @@ class HeuristicParserTest {
         // then
         assertThat(parsed.amount()).isEqualByComparingTo("12.99");
         assertThat(parsed.cycle()).isEqualTo(BillingFrequency.MONTHLY);
+    }
+
+    @Test
+    void parse_shouldPickInvoiceTotal_whenTaxLineSaysCharged() {
+        // given
+        String invoice = """
+                Telegram Messenger
+                Telegram Premium (Monthly)
+                Renews 7 January 2026
+                US$3,99
+                Subtotal US$3,56
+                VAT charged at 12% US$0,43
+                Visa •••• 4242 US$3,99""";
+
+        // when
+        ParsedBilling parsed = underTest.parse(message(invoice)).orElseThrow();
+
+        // then
+        assertThat(parsed.amount()).isEqualByComparingTo("3.99");
+        assertThat(parsed.currency()).isEqualTo(CurrencyCode.USD);
     }
 
     @Test

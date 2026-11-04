@@ -34,6 +34,8 @@ public class HeuristicParser implements EmailParser {
             new AmountPattern(Pattern.compile("(?iu)(?<number>" + NUMBER + ")\\s?(?:" + UZS_WORDS + ")(?![\\p{L}])"), matcher -> CurrencyCode.UZS));
     private static final Pattern TOTAL_KEYWORD = Pattern.compile(
             "(?i)(?<!sub)total|amount (?:paid|charged)|charged|you paid|grand total");
+    private static final Pattern ADJUSTMENT_KEYWORD = Pattern.compile(
+            "(?i)\\b(?:sub\\s?total|vat|tax(?:es)?|gst|discount)\\b");
 
     private static final Pattern ANNUAL = Pattern.compile(
             "(?i)\\b(?:annual(?:ly)?|yearly|per year|a year|every year|12 months)\\b|/\\s?(?:yr|year)\\b");
@@ -47,7 +49,7 @@ public class HeuristicParser implements EmailParser {
     private static final Pattern SENTENCE_BOUNDARY = Pattern.compile("[.!?](?:\\s|$)|\\n");
 
     private static final Pattern NEXT_BILLING_KEYWORD = Pattern.compile(
-            "(?i)renews? on|renewal date|next (?:billing|payment|charge)(?: date)?|will be (?:charged|billed)|next bill");
+            "(?i)\\brenews?(?: on)?\\b|renewal date|next (?:billing|payment|charge)(?: date)?|will be (?:charged|billed)|next bill");
 
     @Override
     public boolean supports(GmailMessage message) {
@@ -86,11 +88,17 @@ public class HeuristicParser implements EmailParser {
         Amount chosen = null;
         int previousEnd = 0;
         for (Amount amount : amounts) {
-            if (TOTAL_KEYWORD.matcher(text.substring(previousEnd, amount.start())).find())
+            String label = text.substring(previousEnd, amount.start());
+            if (TOTAL_KEYWORD.matcher(label).find() && !isAdjustment(label))
                 chosen = amount;
             previousEnd = amount.end();
         }
         return Optional.ofNullable(chosen);
+    }
+
+    private static boolean isAdjustment(String label) {
+        String sameLine = label.substring(label.lastIndexOf('\n') + 1);
+        return ADJUSTMENT_KEYWORD.matcher(sameLine).find();
     }
 
     private static CurrencyCode currencyOfSymbol(Matcher matcher) {
