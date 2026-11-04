@@ -89,7 +89,7 @@ app:
         subscription-subject: ["your subscription", renewal, renewed]
         payment-due: ["payment due", "payment is due", "due soon", "upcoming payment", "upcoming renewal", "renews soon", "will be charged", "we will charge"]
         free-plan: [free, "at no cost", "no charge"]
-        recurring: [subscription, membership, plan, renews, renewal, auto-renewing, "per month", "per year", monthly, annually, yearly]
+        recurring: [subscription, membership, plan, renews, renewal, auto-renewing, "per month", "per year", monthly, annually, yearly, "billing period", "will be debited", "debited from your", "direct debit", "automatically charged", "retrospective basis", "monthly invoice"]
         payment-confirmation: ["thanks for your payment", "thank you for your payment", "payment received", "amount charged", "you paid", "we charged", "your card was charged", "payment confirmation"]
         cancellation: ["has been canceled", "has been cancelled", "subscription was canceled", "subscription was cancelled", "subscription canceled", "subscription cancelled", "won't renew", "will not renew", "plan ended", "plan has ended", "plan has been canceled", "plan has been cancelled", "membership ended", "membership has ended", "subscription ended", "subscription has ended", "sorry to see you go", "cancellation confirmed", "we've canceled", "we have cancelled"]
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
@@ -113,6 +113,7 @@ app:
         - { key: github, display-name: GitHub, senders: [github.com], category: PRODUCTIVITY }
         - { key: canva, display-name: Canva, senders: [canva.com], category: PRODUCTIVITY }
         - { key: dropbox, display-name: Dropbox, senders: [dropbox.com, dropboxmail.com], category: PRODUCTIVITY }
+        - { key: hetzner, display-name: Hetzner, aliases: [Hetzner Online, Hetzner Cloud], senders: [hetzner.com, hetzner.de], category: OTHER, default-cycle: MONTHLY }
   google:
     oauth-base-url: https://oauth2.googleapis.com
     connect-timeout: 2s

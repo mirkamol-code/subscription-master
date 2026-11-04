@@ -21,6 +21,37 @@ class BillingEmailAnalyzerTest {
             List.of(new HeuristicParser(), new NetflixParser(), new SchemaOrgParser()));
 
     @Test
+    void analyze_shouldDetectHetznerInvoice_whenEmailNeverSaysSubscription() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("hetzner-invoice.json"));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.merchant().key()).isEqualTo("hetzner");
+        assertThat(analysis.merchant().displayName()).isEqualTo("Hetzner");
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("10.09");
+        assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.USD);
+        assertThat(analysis.billing().cycle()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(analysis.billing().paymentDate()).isEqualTo(LocalDate.of(2026, 10, 12));
+    }
+
+    @Test
+    void analyze_shouldDetectUnknownSenderInvoice_whenItMentionsBillingPeriodAndAutomaticDebit() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-12T05:08:00Z"),
+                "Acme Hosting <billing@acmehost.example>", "Invoice 000000000002", null,
+                "The invoice amount of € 7.50 will be debited from your account. The billing period is the previous month."));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("7.50");
+        assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.EUR);
+    }
+
+    @Test
     void analyze_shouldReadSenderSpecificReceipt_withHighConfidence() {
         // when
         BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("netflix-receipt.json"));

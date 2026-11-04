@@ -1,0 +1,69 @@
+{
+  "id": "19b0hetzner000001",
+  "threadId": "19b0hetzner000001",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Dear Mr Alex Doe, Enclosed you will find your current invoice 000000000001 in PDF format.",
+  "historyId": "200001",
+  "internalDate": "1791781680000",
+  "sizeEstimate": 60000,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/mixed",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Noreply Billing - Hetzner Online GmbH <noreply.billing@hetzner.com>"
+      },
+      {
+        "name": "To",
+        "value": "alex.doe@example.com"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@hetzner.com header.s=s1 header.b=abc; spf=pass (google.com: domain of bounces@hetzner.com designates 198.51.100.30 as permitted sender) smtp.mailfrom=bounces@hetzner.com; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=hetzner.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Hetzner Online GmbH - Invoice 000000000001 (K0000000001)"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/html",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/html; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 656,
+          "data": "PGh0bWw-PGJvZHk-PHRhYmxlPjx0cj48dGQ-CjxwPkRlYXIgTXIgQWxleCBEb2UsPC9wPgo8cD5FbmNsb3NlZCB5b3Ugd2lsbCBmaW5kIHlvdXIgY3VycmVudCBpbnZvaWNlIDAwMDAwMDAwMDAwMSBpbiBQREYgZm9ybWF0LjwvcD4KPHA-VGhlIG9wZW4gaW52b2ljZSBhbW91bnQgb2YgJmFtcDtkb2xsYXI7IDEwLjA5IHdpbGwgc29vbiBiZSBkZWJpdGVkIGZyb20geW91ciBjcmVkaXQgY2FyZC48L3A-CjxwPldlIGJpbGwgZm9yIG91ciBzZXJ2aWNlcyBvbiBhIHJldHJvc3BlY3RpdmUgYmFzaXMuIFRoaXMgbWVhbnMgdGhhdCB0aGUgYmlsbGluZyBwZXJpb2QgZm9yIHRoaXMgaW52b2ljZSBpcyB0aGUgcHJldmlvdXMgbW9udGguPC9wPgo8cD5Gb3IgbW9yZSBpbmZvcm1hdGlvbiwgcGxlYXNlIHJlZmVyIHRvIHRoZSBmb2xsb3dpbmcgYXJ0aWNsZTogPGEgaHJlZj0iaHR0cHM6Ly9kb2NzLmV4YW1wbGUuY29tL2JpbGxpbmciPmh0dHBzOi8vZG9jcy5leGFtcGxlLmNvbS9iaWxsaW5nPC9hPjwvcD4KPHA-VG8gdmlldyBhbmQgcHJpbnQgdGhlIGludm9pY2UgYSBQREYgcmVhZGVyIGlzIHJlcXVpcmVkLjwvcD4KPHA-QmVzdCByZWdhcmRzPC9wPjxwPllvdXIgSGV0em5lciBPbmxpbmUgVGVhbTwvcD4KPC90ZD48L3RyPjwvdGFibGU-PC9ib2R5PjwvaHRtbD4"
+        }
+      },
+      {
+        "partId": "1",
+        "mimeType": "application/pdf",
+        "filename": "Hetzner_2026-10-12_R000000000001.pdf",
+        "headers": [
+          {
+            "name": "Content-Disposition",
+            "value": "attachment; filename=\"Hetzner_2026-10-12_R000000000001.pdf\""
+          }
+        ],
+        "body": {
+          "attachmentId": "ANGjdJ8_recorded_attachment_id_hetzner",
+          "size": 52000
+        }
+      }
+    ]
+  }
+}
