@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AppleInvoiceParser implements PlatformInvoiceParser {
-    private static final String APPLE_DOMAIN = "apple.com";
+    public static final String APPLE_DOMAIN = "apple.com";
     private static final Pattern BILLING_SUBJECT = Pattern.compile("(?i)\\b(?:invoice|receipt)\\b");
     private static final Pattern ORDER_ID = Pattern.compile("(?i)^order id:\\s*(?<id>\\S+)");
     private static final Pattern ITEMS_START = Pattern.compile("(?i)^apple account:");

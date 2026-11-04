@@ -1,5 +1,7 @@
 package com.mirkamolcode.service;
 
+import com.mirkamolcode.detection.MerchantResolver;
+
 import java.util.List;
 import java.util.Map;
 
@@ -8,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LegacyAppleRows {
-    public static final String LEGACY_APPLE_KEY = "apple";
+    public static final String LEGACY_APPLE_KEY = MerchantResolver.LEGACY_APPLE_KEY;
 
     private final NamedParameterJdbcTemplate jdbc;
 
