@@ -1,5 +1,8 @@
 package com.mirkamolcode.service;
 
+import java.time.ZoneOffset;
+import java.time.LocalDate;
+import com.mirkamolcode.detection.TrialDetails;
 import java.util.Arrays;
 import com.mirkamolcode.detection.CategoryClassifier;
 import com.mirkamolcode.detection.MerchantResolver;
@@ -120,6 +123,10 @@ public class BillingEmailRecorder {
             recordPriceChangeNotice(user, email, analysis);
             return;
         }
+        if (analysis.kind() == EmailKind.TRIAL_STARTED) {
+            recordTrial(user, email, analysis);
+            return;
+        }
         analysis.charges().forEach(charge -> recordCharge(user, email, charge));
     }
 
@@ -136,6 +143,29 @@ public class BillingEmailRecorder {
         PriceChange change = priceChanges.save(PriceChange.fromNotice(user, merchantKey, subscription, email, analysis.priceChange()));
         if (subscription != null)
             subscription.noteLatestPriceChange(change);
+    }
+
+    private void recordTrial(User user, BillingEmail email, BillingEmailAnalysis analysis) {
+        Merchant merchant = analysis.merchant();
+        Optional<MerchantTombstone> tombstone = tombstones.findByUserIdAndMerchantKey(user.getId(), merchant.key());
+        if (tombstone.map(deleted -> deleted.covers(email.getReceivedAt())).orElse(false))
+            return;
+        AccountMatch account = matchAccount(user.getId(), merchant.key(), null);
+        if (account.ambiguous())
+            return;
+        TrialDetails trial = analysis.trial();
+        if (account.subscription().isPresent()) {
+            Subscription existing = account.subscription().get();
+            email.attachTo(existing);
+            if (existing.isTrial() && existing.getTrialEndsOn() == null)
+                existing.describeTrial(trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
+            return;
+        }
+        Subscription started = Subscription.startTrial(user, merchant.displayName(), merchant.category(),
+                LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC), trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
+        started.linkMerchant(merchant.key(), merchant.logoDomain());
+        started.applyDetectedCategory(categories.classify(merchant, Arrays.asList(email.getSubject(), email.getSenderDomain())));
+        email.attachTo(subscriptions.save(started));
     }
 
     private void attachEarlierPriceNotices(Long userId, Subscription subscription) {
@@ -314,7 +344,7 @@ public class BillingEmailRecorder {
             case CANCELLATION -> StatusEvidence.cancellation(email.getReceivedAt(), email.getAccessEndsOn());
             case PAYMENT_FAILED -> StatusEvidence.paymentFailed(email.getReceivedAt());
             case RECEIPT, IRRELEVANT -> StatusEvidence.receipt(email.getReceivedAt());
-            case PRICE_CHANGE -> throw new IllegalStateException("A price change notice is not status evidence");
+            case PRICE_CHANGE, TRIAL_STARTED -> throw new IllegalStateException(email.getKind() + " email is not status evidence");
         };
     }
 

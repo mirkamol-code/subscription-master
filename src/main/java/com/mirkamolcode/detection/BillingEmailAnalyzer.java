@@ -52,6 +52,10 @@ public class BillingEmailAnalyzer {
                 : resolved.get();
         if (kind == EmailKind.CANCELLATION)
             return BillingEmailAnalysis.of(kind, merchant, null, classifier.findAccessEndDate(message));
+        if (kind == EmailKind.TRIAL_STARTED)
+            return merchant.known()
+                    ? BillingEmailAnalysis.trialStarted(merchant, classifier.findTrialDetails(message))
+                    : BillingEmailAnalysis.irrelevant();
         if (kind == EmailKind.PRICE_CHANGE)
             return merchant.known()
                     ? BillingEmailAnalysis.priceChange(merchant, classifier.findPriceChange(message).orElse(null))

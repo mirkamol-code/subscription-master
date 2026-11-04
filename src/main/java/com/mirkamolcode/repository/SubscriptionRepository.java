@@ -43,9 +43,20 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     @Query("""
             select s.id from Subscription s
-             where s.isDeleted = false and s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
-               and ((s.endsOn is not null and s.endsOn <= :latestLocalDate)
-                    or (s.endsOn is null and s.nextPaymentDate < :overdueBefore))
+             where s.isDeleted = false and s.isHidden = false and s.endsOn is null
+               and s.status = com.mirkamolcode.model.SubscriptionStatus.TRIAL
+               and s.trialEndsOn between :from and :to
+             order by s.id
+            """)
+    List<Long> findTrialReminderCandidateIds(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("""
+            select s.id from Subscription s
+             where s.isDeleted = false
+               and ((s.status in (com.mirkamolcode.model.SubscriptionStatus.ACTIVE, com.mirkamolcode.model.SubscriptionStatus.TRIAL)
+                     and s.endsOn is not null and s.endsOn <= :latestLocalDate)
+                    or (s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
+                        and s.endsOn is null and s.nextPaymentDate < :overdueBefore))
              order by s.id
             """)
     List<Long> findDailyRuleCandidateIds(@Param("latestLocalDate") LocalDate latestLocalDate,
@@ -67,7 +78,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     @Query("""
             select s.currency as currency, count(s) as count, sum(s.price) as total from Subscription s
              where s.isDeleted = false and s.isHidden = false
-               and s.status <> com.mirkamolcode.model.SubscriptionStatus.CANCELLED
+               and s.status in (com.mirkamolcode.model.SubscriptionStatus.ACTIVE, com.mirkamolcode.model.SubscriptionStatus.BILLING_REQUIRED)
                and s.nextPaymentDate between :from and :to
                and (s.endsOn is null or s.endsOn > s.nextPaymentDate)
              group by s.currency
@@ -111,7 +122,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     @Query("""
             select s from Subscription s join fetch s.user
              where s.isDeleted = false and s.isHidden = false
-               and s.status <> com.mirkamolcode.model.SubscriptionStatus.CANCELLED
+               and s.status in (com.mirkamolcode.model.SubscriptionStatus.ACTIVE, com.mirkamolcode.model.SubscriptionStatus.BILLING_REQUIRED)
                and (s.nextPaymentDate between :from and :to or s.endsOn between :from and :to)
                and (:merchantSlug is null or s.merchantSlug = :merchantSlug)
                and (:status is null or s.status = :status)

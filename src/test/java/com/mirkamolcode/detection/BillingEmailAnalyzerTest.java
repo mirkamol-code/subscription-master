@@ -24,6 +24,76 @@ class BillingEmailAnalyzerTest {
             List.of(new AppleInvoiceParser()));
 
     @Test
+    void analyze_shouldReadTrialEndPriceAndCycle_fromTrialStartedEmail() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(netflixTrial("Your free trial has started",
+                "Welcome! Your free trial ends on December 4, 2026. After your trial, you'll be charged $15.49 per month."));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.TRIAL_STARTED);
+        assertThat(analysis.merchant().key()).isEqualTo("netflix");
+        assertThat(analysis.trial().endsOn()).isEqualTo(LocalDate.of(2026, 12, 4));
+        assertThat(analysis.trial().priceAfterTrial().amount()).isEqualByComparingTo("15.49");
+        assertThat(analysis.trial().priceAfterTrial().currency()).isEqualTo(CurrencyCode.USD);
+        assertThat(analysis.trial().cycle()).isEqualTo(BillingFrequency.MONTHLY);
+    }
+
+    @Test
+    void analyze_shouldLeaveTrialPriceAndCycleEmpty_whenEmailDoesNotStateThem() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(netflixTrial("Your free trial has started",
+                "Welcome! Your free trial ends on December 4, 2026."));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.TRIAL_STARTED);
+        assertThat(analysis.trial().endsOn()).isEqualTo(LocalDate.of(2026, 12, 4));
+        assertThat(analysis.trial().priceAfterTrial()).isNull();
+        assertThat(analysis.trial().cycle()).isNull();
+    }
+
+    @Test
+    void analyze_shouldIgnoreZeroChargeOfTrial_andKeepPriceAfterTrial() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(netflixTrial("Your free trial has started",
+                "Today's charge: $0.00. Your trial ends on December 4, 2026, then $15.49 per month."));
+
+        // then
+        assertThat(analysis.trial().priceAfterTrial().amount()).isEqualByComparingTo("15.49");
+    }
+
+    @Test
+    void analyze_shouldNotGuessTrialPrice_whenEmailShowsSeveralPrices() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(netflixTrial("Your free trial has started",
+                "Your trial ends on December 4, 2026. Plans: Basic $7.99 per month, Premium $22.99 per month."));
+
+        // then
+        assertThat(analysis.trial().priceAfterTrial()).isNull();
+    }
+
+    @Test
+    void analyze_shouldIgnoreFreeTrialMarketing() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(netflixTrial("Start your free trial today",
+                "Try Netflix free for 30 days. Join now."));
+
+        // then
+        assertThat(analysis.kind()).isNotEqualTo(EmailKind.TRIAL_STARTED);
+        assertThat(analysis.isPayment()).isFalse();
+    }
+
+    @Test
+    void analyze_shouldIgnoreTrialFromUnknownSender() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.authenticated(new GmailMessage("m-1", "t-1",
+                Instant.parse("2026-11-04T09:00:00Z"), "Acme <hello@acme.example>", "Your free trial has started", null,
+                "Your free trial ends on December 4, 2026. Then $5.00 per month.")));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
     void analyze_shouldReadOldPriceNewPriceAndEffectiveDate_fromPriceChangeNotice() {
         // when
         BillingEmailAnalysis analysis = underTest.analyze(netflixNotice(
@@ -674,6 +744,11 @@ class BillingEmailAnalyzerTest {
 
         // then
         assertThat(candidate).isTrue();
+    }
+
+    private static GmailMessage netflixTrial(String subject, String body) {
+        return EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-04T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", subject, null, body));
     }
 
     private static GmailMessage netflixNotice(String body) {

@@ -1,5 +1,6 @@
 package com.mirkamolcode.model;
 public enum SubscriptionStatus {
+    TRIAL("Free trial"),
     ACTIVE("Active"),
     CANCELLED("Cancelled"),
     BILLING_REQUIRED("Billing required");

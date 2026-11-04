@@ -2,6 +2,7 @@ package com.mirkamolcode.entity;
 
 import com.mirkamolcode.detection.CategoryGuess;
 import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.Money;
 import com.mirkamolcode.model.CategoryConfidence;
 import com.mirkamolcode.model.CategorySource;
 import com.mirkamolcode.detection.PaymentMethod;
@@ -33,15 +34,15 @@ public class Subscription extends AuditableEntity {
     @Column(nullable = false, length = 120)
     private String name;
 
-    @Column(nullable = false, precision = 19, scale = 4)
+    @Column(precision = 19, scale = 4)
     private BigDecimal price;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 3)
+    @Column(length = 3)
     private CurrencyCode currency;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 16)
+    @Column(length = 16)
     private BillingFrequency frequency;
 
     @Enumerated(EnumType.STRING)
@@ -55,8 +56,9 @@ public class Subscription extends AuditableEntity {
     @Column(nullable = false)
     private LocalDate startDate;
 
-    @Column(nullable = false)
     private LocalDate nextPaymentDate;
+
+    private LocalDate trialEndsOn;
 
     @Column(nullable = false)
     private boolean isDeleted = false;
@@ -141,6 +143,34 @@ public class Subscription extends AuditableEntity {
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : frequency.addTo(startDate);
     }
 
+    public static Subscription startTrial(User user, String name, SubscriptionCategory category, LocalDate startedOn,
+                                          LocalDate trialEndsOn, Money priceAfterTrial, BillingFrequency cycle) {
+        Subscription trial = new Subscription();
+        trial.user = user;
+        trial.name = name;
+        trial.status = SubscriptionStatus.TRIAL;
+        trial.category = category;
+        trial.startDate = startedOn;
+        trial.describeTrial(trialEndsOn, priceAfterTrial, cycle);
+        return trial;
+    }
+
+    public void describeTrial(LocalDate trialEndsOn, Money priceAfterTrial, BillingFrequency cycle) {
+        this.trialEndsOn = trialEndsOn;
+        this.nextPaymentDate = trialEndsOn;
+        this.price = priceAfterTrial == null ? null : priceAfterTrial.amount();
+        this.currency = priceAfterTrial == null ? null : priceAfterTrial.currency();
+        this.frequency = cycle;
+    }
+
+    public boolean isTrial() {
+        return status == SubscriptionStatus.TRIAL;
+    }
+
+    public LocalDate getTrialEndsOn() {
+        return trialEndsOn;
+    }
+
     public void update(String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionCategory category, LocalDate startDate) {
         this.name = name;
         this.price = price;
@@ -202,7 +232,7 @@ public class Subscription extends AuditableEntity {
                               LocalDate nextPaymentDate, Confidence confidence) {
         if (lastPaymentDate != null && paidOn.isBefore(lastPaymentDate))
             return;
-        boolean changed = price.compareTo(amount) != 0 || this.currency != currency || frequency != cycle;
+        boolean changed = price == null || price.compareTo(amount) != 0 || this.currency != currency || frequency != cycle;
         if (confidence == Confidence.LOW && changed)
             needsReview = true;
         this.price = amount;
@@ -210,6 +240,7 @@ public class Subscription extends AuditableEntity {
         this.frequency = cycle;
         this.lastPaymentDate = paidOn;
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : cycle.addTo(paidOn);
+        this.trialEndsOn = null;
     }
 
     public void applyStatus(SubscriptionStatus status, LocalDate endsOn, Instant evidenceAt) {

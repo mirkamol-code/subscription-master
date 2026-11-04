@@ -231,6 +231,57 @@ class SubscriptionStatusPolicyTest {
         assertThat(decide(snapshot(ACTIVE, EARLIER, LocalDate.of(2026, 11, 20)), StatusEvidence.scheduledEnd(LATER))).isEmpty();
     }
 
+    @Test
+    void evaluate_shouldKeepTrialUntilItEnds_whenTrialIsCancelled() {
+        // when
+        StatusDecision decision = decide(new StatusSnapshot(SubscriptionStatus.TRIAL, EARLIER, null, LocalDate.of(2026, 12, 4)),
+                StatusEvidence.cancellation(LATER, null)).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(SubscriptionStatus.TRIAL);
+        assertThat(decision.endsOn()).isEqualTo(LocalDate.of(2026, 12, 4));
+        assertThat(decision.reason()).isEqualTo(StatusChangeReason.CANCELLATION_SCHEDULED);
+    }
+
+    @Test
+    void evaluate_shouldCancelTrialRightAway_whenItsEndDateIsUnknown() {
+        // when
+        StatusDecision decision = decide(new StatusSnapshot(SubscriptionStatus.TRIAL, EARLIER, null, null),
+                StatusEvidence.cancellation(LATER, null)).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(CANCELLED);
+    }
+
+    @Test
+    void evaluate_shouldEndCancelledTrial_whenItsEndArrives() {
+        // when
+        StatusDecision decision = decide(new StatusSnapshot(SubscriptionStatus.TRIAL, EARLIER, LocalDate.of(2026, 11, 9), null),
+                StatusEvidence.scheduledEnd(LATER)).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(CANCELLED);
+        assertThat(decision.reason()).isEqualTo(StatusChangeReason.SCHEDULED_END);
+    }
+
+    @Test
+    void evaluate_shouldNeverMarkTrialOverdue() {
+        // then
+        assertThat(decide(new StatusSnapshot(SubscriptionStatus.TRIAL, EARLIER, null, LocalDate.of(2026, 11, 1)),
+                StatusEvidence.overdue(LATER))).isEmpty();
+    }
+
+    @Test
+    void evaluate_shouldActivateTrial_whenFirstPaidReceiptArrives() {
+        // when
+        StatusDecision decision = decide(new StatusSnapshot(SubscriptionStatus.TRIAL, EARLIER, null, LocalDate.of(2026, 12, 4)),
+                StatusEvidence.receipt(LATER)).orElseThrow();
+
+        // then
+        assertThat(decision.status()).isEqualTo(ACTIVE);
+        assertThat(decision.endsOn()).isNull();
+    }
+
     private Optional<StatusDecision> decide(StatusSnapshot current, StatusEvidence evidence) {
         return underTest.evaluate(current, evidence, TODAY);
     }

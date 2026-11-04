@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 import static com.mirkamolcode.model.SubscriptionStatus.ACTIVE;
+import static com.mirkamolcode.model.SubscriptionStatus.TRIAL;
 import static com.mirkamolcode.model.SubscriptionStatus.BILLING_REQUIRED;
 import static com.mirkamolcode.model.SubscriptionStatus.CANCELLED;
 
@@ -29,7 +30,8 @@ public class SubscriptionStatusPolicy {
             case OVERDUE -> current.status() == ACTIVE && current.endsOn() == null
                     ? decide(current, evidence, BILLING_REQUIRED, null, StatusChangeReason.OVERDUE)
                     : Optional.empty();
-            case SCHEDULED_END -> current.status() == ACTIVE && current.endsOn() != null && !today.isBefore(current.endsOn())
+            case SCHEDULED_END -> (current.status() == ACTIVE || current.status() == TRIAL) && current.endsOn() != null
+                    && !today.isBefore(current.endsOn())
                     ? decide(current, evidence, CANCELLED, null, StatusChangeReason.SCHEDULED_END)
                     : Optional.empty();
         };
@@ -37,8 +39,9 @@ public class SubscriptionStatusPolicy {
 
     private static Optional<StatusDecision> decideCancellation(StatusSnapshot current, StatusEvidence evidence, LocalDate today) {
         LocalDate accessEndsOn = evidence.accessEndsOn() != null ? evidence.accessEndsOn() : current.nextPaymentDate();
+        SubscriptionStatus keptStatus = current.status() == TRIAL ? TRIAL : ACTIVE;
         if (accessEndsOn != null && today.isBefore(accessEndsOn))
-            return decide(current, evidence, ACTIVE, accessEndsOn, StatusChangeReason.CANCELLATION_SCHEDULED);
+            return decide(current, evidence, keptStatus, accessEndsOn, StatusChangeReason.CANCELLATION_SCHEDULED);
         return decide(current, evidence, CANCELLED, null, StatusChangeReason.EMAIL_CANCELLATION);
     }
 

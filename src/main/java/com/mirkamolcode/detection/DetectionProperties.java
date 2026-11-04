@@ -36,6 +36,8 @@ public record DetectionProperties(
             List<String> cancellationConditional,
             List<String> priceChange,
             List<String> priceChangeEffective,
+            List<String> trialStarted,
+            List<String> trialEnds,
             List<String> paymentFailed,
             List<String> promotion,
             List<String> accessEnds,

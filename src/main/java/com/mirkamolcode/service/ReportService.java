@@ -87,14 +87,20 @@ public class ReportService {
             case SERVICE -> subscription.getName();
             case CATEGORY -> subscription.getCategory().label();
             case STATUS -> subscription.getStatus().label();
-            case BILLING -> subscription.getFrequency().label();
-            case PRICE -> roundMoney(subscription.getPrice());
-            case CURRENCY -> subscription.getCurrency().name();
-            case YEARLY_COST -> roundMoney(calculateYearlyCost(subscription));
-            case YEARLY_COST_UZS -> roundMoney(calculateYearlyCost(subscription).multiply(rates.rateToUzs(subscription.getCurrency())));
+            case BILLING -> subscription.getFrequency() == null ? "" : subscription.getFrequency().label();
+            case PRICE -> subscription.getPrice() == null ? "" : roundMoney(subscription.getPrice());
+            case CURRENCY -> subscription.getCurrency() == null ? "" : subscription.getCurrency().name();
+            case YEARLY_COST -> hasKnownCost(subscription) ? roundMoney(calculateYearlyCost(subscription)) : "";
+            case YEARLY_COST_UZS -> hasKnownCost(subscription)
+                    ? roundMoney(calculateYearlyCost(subscription).multiply(rates.rateToUzs(subscription.getCurrency())))
+                    : "";
             case STARTED -> formatDate(subscription.getStartDate());
             case NEXT_PAYMENT -> formatDate(subscription.getNextPaymentDate());
         };
+    }
+
+    private static boolean hasKnownCost(Subscription subscription) {
+        return !subscription.isTrial() && subscription.getPrice() != null && subscription.getFrequency() != null;
     }
 
     private static BigDecimal calculateYearlyCost(Subscription subscription) {

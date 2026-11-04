@@ -5,5 +5,6 @@ public enum EmailKind {
     CANCELLATION,
     PAYMENT_FAILED,
     PRICE_CHANGE,
+    TRIAL_STARTED,
     IRRELEVANT
 }

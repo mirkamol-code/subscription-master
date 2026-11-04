@@ -38,6 +38,18 @@ public class NotificationMessageFactory {
                 amount + " will be charged for " + name + " on " + due + ".");
     }
 
+    public NotificationMessage trialEnding(Subscription subscription) {
+        String name = subscription.getName();
+        String endsOn = DATE.format(subscription.getTrialEndsOn());
+        String after = subscription.getPrice() == null
+                ? "Check the price before it starts charging."
+                : subscription.getPrice().setScale(2, RoundingMode.HALF_UP).toPlainString() + " " + subscription.getCurrency()
+                        + " may be charged after it ends.";
+        return message(NotificationType.TRIAL_ENDING, NotificationSeverity.INFO, subscription.getId(),
+                "Your " + name + " free trial ends on " + endsOn,
+                "Your " + name + " free trial ends on " + endsOn + ". " + after);
+    }
+
     public NotificationMessage statusChanged(SubscriptionStatusChangedEvent event, ZoneId zone) {
         String name = event.subscriptionName();
         String on = DATE.format(event.effectiveAt().atZone(zone).toLocalDate());

@@ -987,6 +987,65 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldTrackFreeTrial_withoutCountingItAsPaymentOrSpending() {
+        // given
+        GMAIL.mailbox(netflixTrial("Welcome! Your free trial ends on December 4, 2026. After your trial, you'll be charged $22.99 per month."));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription netflix = subscription("netflix");
+        assertThat(netflix.getStatus()).isEqualTo(com.mirkamolcode.model.SubscriptionStatus.TRIAL);
+        assertThat(netflix.getTrialEndsOn()).isEqualTo(LocalDate.of(2026, 12, 4));
+        assertThat(netflix.getPrice()).isEqualByComparingTo("22.99");
+        assertThat(netflix.getFrequency()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(netflix.getId())).isEmpty();
+        webTestClient.get().uri(API + "/statistics/summary").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.monthlyTotalUzs").value(total -> assertThat(new BigDecimal(total.toString())).isZero());
+    }
+
+    @Test
+    void sync_shouldTrackFreeTrial_withUnknownPriceLeftEmpty() {
+        // given
+        GMAIL.mailbox(netflixTrial("Welcome! Your free trial ends on December 4, 2026."));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        webTestClient.get().uri(API + "/subscriptions/" + subscription("netflix").getId()).header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("TRIAL")
+                .jsonPath("$.trialEndsOn").isEqualTo("2026-12-04")
+                .jsonPath("$.price").isEmpty()
+                .jsonPath("$.currency").isEmpty();
+    }
+
+    @Test
+    void sync_shouldConvertTrialIntoSameSubscription_whenFirstPaidInvoiceArrives() {
+        // given
+        GMAIL.mailbox(netflixTrial("Welcome! Your free trial ends on November 30, 2026."));
+        underTest.sync(userId);
+        GMAIL.deliver(NETFLIX_NOV);
+        GMAIL.historyAdds(NETFLIX_NOV.id());
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).hasSize(1);
+        Subscription netflix = subscription("netflix");
+        assertThat(netflix.getStatus()).isEqualTo(com.mirkamolcode.model.SubscriptionStatus.ACTIVE);
+        assertThat(netflix.getTrialEndsOn()).isNull();
+        assertThat(netflix.getPrice()).isEqualByComparingTo("22.99");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(netflix.getId())).hasSize(1);
+    }
+
+    @Test
     void sync_shouldNotTrackAppleInvoice_whenEveryLineItemIsOneTimePurchase() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-one-time-purchase.json"));
@@ -1459,6 +1518,11 @@ class GmailSyncIT extends AbstractTestConfig {
 
     private List<String> columnsOf(String table) {
         return jdbc.queryForList("select column_name from information_schema.columns where table_name = ?", String.class, table);
+    }
+
+    private static GmailMessage netflixTrial(String body) {
+        return new GmailMessage("netflix-trial", "netflix-trial", Instant.parse("2026-11-04T09:00:00Z"),
+                "Netflix <info@account.netflix.com>", "Your free trial has started", null, body);
     }
 
     private Subscription saveLegacyAppleRow() {

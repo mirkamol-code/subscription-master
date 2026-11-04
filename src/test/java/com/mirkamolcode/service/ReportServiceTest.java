@@ -86,6 +86,20 @@ class ReportServiceTest {
     }
 
     @Test
+    void csv_shouldLeaveCostCellsBlank_forFreeTrialWithUnknownPrice() {
+        // given
+        givenSubscriptions(Subscription.startTrial(user, "Streamio", SubscriptionCategory.ENTERTAINMENT, LocalDate.of(2026, 11, 1),
+                LocalDate.of(2026, 12, 1), null, null));
+
+        // when
+        String csv = new String(underTest.csv(Arrays.asList(ReportColumn.values())), StandardCharsets.UTF_8);
+
+        // then
+        assertThat(csv.lines()).element(1).isEqualTo("Streamio,Entertainment,Free trial,,,,,,2026-11-01,2026-12-01");
+        verifyNoInteractions(exchangeRateService);
+    }
+
+    @Test
     void csv_shouldReturnOnlyHeader_whenUserHasNoSubscriptions() {
         // given
         givenSubscriptions();
