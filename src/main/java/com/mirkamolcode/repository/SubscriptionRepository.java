@@ -35,9 +35,11 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
              where s.isDeleted = false and s.isHidden = false and s.endsOn is null
                and s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
                and s.nextPaymentDate between :from and :to
+               and (s.merchantKey is null or s.merchantKey <> :excludedMerchantKey)
              order by s.id
             """)
-    List<Long> findReminderCandidateIds(@Param("from") LocalDate from, @Param("to") LocalDate to);
+    List<Long> findReminderCandidateIds(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                        @Param("excludedMerchantKey") String excludedMerchantKey);
 
     @Query("""
             select s.id from Subscription s
