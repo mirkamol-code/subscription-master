@@ -14,9 +14,12 @@ final class MoneyParser {
     private static final String NUMBER = "\\d{1,3}(?:[ ,.\\u00A0]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?";
     private static final String SYMBOLS = "[$€£₽₸₺¥]";
     private static final String CODES = "USD|EUR|GBP|RUB|KZT|TRY|JPY|CNY|UZS";
+    private static final String NOT_FOREIGN_DOLLAR = "(?:(?<!\\p{L})US|(?<!\\p{L}))";
+    static final Pattern ADJUSTMENT_LABEL = Pattern.compile("(?i)\\b(?:sub\\s?total|vat|tax(?:es)?|gst|discount|credit)\\b");
     private static final String UZS_WORDS = "so['ʻ‘’`]?m|сум|сўм";
     private static final List<AmountPattern> AMOUNT_PATTERNS = List.of(
-            new AmountPattern(Pattern.compile("(?<symbol>" + SYMBOLS + ")\\s?(?<number>" + NUMBER + ")"), MoneyParser::currencyOfSymbol),
+            new AmountPattern(Pattern.compile(NOT_FOREIGN_DOLLAR + "(?<symbol>" + SYMBOLS + ")\\s?(?<number>" + NUMBER + ")"),
+                    MoneyParser::currencyOfSymbol),
             new AmountPattern(Pattern.compile("(?<number>" + NUMBER + ")\\s?(?<symbol>" + SYMBOLS + ")"), MoneyParser::currencyOfSymbol),
             new AmountPattern(Pattern.compile("\\b(?<code>" + CODES + ")\\s?(?<number>" + NUMBER + ")"), MoneyParser::currencyOfCode),
             new AmountPattern(Pattern.compile("(?<number>" + NUMBER + ")\\s?(?<code>" + CODES + ")\\b"), MoneyParser::currencyOfCode),

@@ -134,6 +134,16 @@ class EmailClassifierTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
+            Invoice 000000000004                    | Purchase order 4411 is referenced on this invoice.
+            Your invoice from Acme Hosting          | Order ID: MT0000TEST. In order to avoid late fees, pay by the due date.
+            """)
+    void isRecurringInvoiceCandidate_shouldAcceptInvoices_thatOnlyMentionOrderNumbers(String subject, String body) {
+        // when / then
+        assertThat(underTest.isRecurringInvoiceCandidate(messageWith(subject, body))).isTrue();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
             Your Tuesday evening trip with Uber           | Total $12.40. Thanks for riding.
             Your Amazon.com order receipt #112-1234567    | Your order has shipped.
             Your receipt from City Museum #5512-0091      | Ticket x2, total $30.00

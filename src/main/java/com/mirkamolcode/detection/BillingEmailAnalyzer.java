@@ -2,6 +2,7 @@ package com.mirkamolcode.detection;
 
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,15 +37,19 @@ public class BillingEmailAnalyzer {
         EmailKind kind = classifier.classify(message);
         if (kind == EmailKind.IRRELEVANT || !senders.isTrusted(message))
             return BillingEmailAnalysis.irrelevant();
-        if (kind == EmailKind.RECEIPT) {
-            Optional<BillingEmailAnalysis> platformInvoice = analyzePlatformInvoice(message);
-            if (platformInvoice.isPresent())
-                return platformInvoice.get();
+        Optional<PlatformInvoiceParser> platformParser = kind == EmailKind.RECEIPT ? findPlatformParser(message) : Optional.empty();
+        if (platformParser.isPresent()) {
+            Optional<PlatformInvoice> invoice = platformParser.get().parse(message);
+            if (invoice.isPresent())
+                return toAnalysis(platformParser.get(), invoice.get(), message);
         }
         Optional<Merchant> resolved = merchants.resolve(message);
         if (resolved.isEmpty())
             return BillingEmailAnalysis.irrelevant();
-        Merchant merchant = resolved.get();
+        BillingPlatform unreadPlatform = platformParser.map(PlatformInvoiceParser::platform).orElse(null);
+        Merchant merchant = unreadPlatform != null && !resolved.get().known()
+                ? merchants.unreadPlatformInvoice(unreadPlatform)
+                : resolved.get();
         if (kind == EmailKind.CANCELLATION)
             return BillingEmailAnalysis.of(kind, merchant, null, classifier.findAccessEndDate(message));
         if (kind != EmailKind.RECEIPT)
@@ -56,21 +61,14 @@ public class BillingEmailAnalyzer {
         boolean awaitingRepeat = !merchant.known() && !hasRecurringBilling(parsed, message);
         if (awaitingRepeat && !(hasAmount(parsed) && classifier.isRecurringInvoiceCandidate(message)))
             return BillingEmailAnalysis.irrelevant();
-        ParsedBilling billing = complete(parsed, merchant, message);
+        ParsedBilling billing = unreadPlatform == null ? complete(parsed, merchant, message) : complete(parsed, merchant, message).withLowConfidence();
         PaymentMethod paymentMethod = PaymentMethodParser.find(message.bodyText()).orElse(null);
-        return new BillingEmailAnalysis(kind, List.of(new DetectedCharge(merchant, null, null, paymentMethod,
+        return new BillingEmailAnalysis(kind, List.of(new DetectedCharge(merchant, null, unreadPlatform, paymentMethod,
                 InvoiceReferences.find(message.subject(), message.bodyText()), billing)), null, awaitingRepeat);
     }
 
-    private Optional<BillingEmailAnalysis> analyzePlatformInvoice(GmailMessage message) {
-        for (PlatformInvoiceParser platformParser : platformParsers) {
-            if (!platformParser.supports(message))
-                continue;
-            Optional<PlatformInvoice> invoice = platformParser.parse(message);
-            if (invoice.isPresent())
-                return Optional.of(toAnalysis(platformParser, invoice.get(), message));
-        }
-        return Optional.empty();
+    private Optional<PlatformInvoiceParser> findPlatformParser(GmailMessage message) {
+        return platformParsers.stream().filter(platformParser -> platformParser.supports(message)).findFirst();
     }
 
     private BillingEmailAnalysis toAnalysis(PlatformInvoiceParser platformParser, PlatformInvoice invoice, GmailMessage message) {

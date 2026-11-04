@@ -22,6 +22,10 @@ public record ParsedBilling(
         return cycle != null;
     }
 
+    public ParsedBilling withLowConfidence() {
+        return new ParsedBilling(amount, currency, cycle, paymentDate, nextBillingDate, Confidence.LOW);
+    }
+
     public ParsedBilling withoutAmount() {
         return new ParsedBilling(null, null, cycle, paymentDate, nextBillingDate, confidence);
     }

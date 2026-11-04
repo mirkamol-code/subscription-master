@@ -3,6 +3,7 @@ package com.mirkamolcode.detection;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.MessageHeaders;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.SubscriptionCategory;
@@ -44,7 +45,7 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
-    void analyze_shouldDetectUnknownSenderInvoice_whenItMentionsBillingPeriodAndAutomaticDebit() {
+    void analyze_shouldOnlyHoldUnknownSenderInvoiceForRepeat_evenWhenItMentionsBillingPeriodAndAutomaticDebit() {
         // given
         GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-12T05:08:00Z"),
                 "Acme Hosting <billing@acmehost.example>", "Invoice 000000000002", null,
@@ -55,8 +56,26 @@ class BillingEmailAnalyzerTest {
 
         // then
         assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.awaitingRepeat()).isTrue();
         assertThat(analysis.billing().amount()).isEqualByComparingTo("7.50");
         assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.EUR);
+    }
+
+    @Test
+    void analyze_shouldKeepAppleInvoiceUnderPlatformKey_whenLayoutCannotBeParsed() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-12-07T13:20:00Z"),
+                "Apple <no_reply@email.apple.com>", "Your invoice from Apple.", null,
+                "Rechnung\nSome Game Plus\nAbo verlängert sich am 7. Januar 2027\nTotal US$3,99"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.merchant().key()).isEqualTo("apple-unparsed");
+        assertThat(analysis.merchant().key()).isNotEqualTo("apple");
+        assertThat(analysis.charges().getFirst().platform()).isEqualTo(BillingPlatform.APPLE);
+        assertThat(analysis.billing().confidence()).isEqualTo(Confidence.LOW);
     }
 
     @Test

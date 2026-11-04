@@ -3,6 +3,7 @@ package com.mirkamolcode.detection;
 import com.mirkamolcode.model.CurrencyCode;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 public record Money(BigDecimal amount, CurrencyCode currency) {
     @Override
@@ -12,6 +13,6 @@ public record Money(BigDecimal amount, CurrencyCode currency) {
 
     @Override
     public int hashCode() {
-        return 31 * amount.stripTrailingZeros().hashCode() + currency.hashCode();
+        return Objects.hash(amount.stripTrailingZeros(), currency);
     }
 }

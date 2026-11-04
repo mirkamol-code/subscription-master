@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -159,6 +160,22 @@ class HeuristicParserTest {
         // then
         assertThat(parsed.amount()).isEqualByComparingTo("3.99");
         assertThat(parsed.currency()).isEqualTo(CurrencyCode.USD);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"Total A$9.99 per month", "Total CA$9.99 per month", "Total HK$ 9.99 per month"})
+    void parse_shouldNotReadForeignDollarsAsUsDollars(String text) {
+        // when / then
+        assertThat(underTest.parse(message(text))).isEmpty();
+    }
+
+    @Test
+    void parse_shouldSkipCreditLine_whenPickingTotal() {
+        // when
+        ParsedBilling parsed = underTest.parse(message("Plan $20.00\nTotal $15.00\nCredit total carried forward $5.00")).orElseThrow();
+
+        // then
+        assertThat(parsed.amount()).isEqualByComparingTo("15.00");
     }
 
     @Test

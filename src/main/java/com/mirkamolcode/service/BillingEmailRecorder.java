@@ -104,10 +104,13 @@ public class BillingEmailRecorder {
         ParsedBilling billing = charge.billing();
         email.holdForRecurrence(message.senderDomain(), charge.references(), billing.amount(), billing.currency(), billing.paymentDate());
         billingEmails.save(email);
-        Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), charge.merchant().key());
-        if (existing.isPresent()) {
+        AccountMatch account = matchAccount(user.getId(), charge.merchant().key(), charge.references().customer());
+        if (account.ambiguous())
+            return;
+        if (account.subscription().isPresent()) {
+            Subscription existing = account.subscription().get();
             recordCharge(user, email, charge);
-            existing.get().raiseRecurrenceConfidence((int) payments.countBySubscriptionId(existing.get().getId()));
+            existing.raiseRecurrenceConfidence((int) billingEmails.countBySubscriptionIdAndRecurrenceCandidateTrue(existing.getId()));
             return;
         }
         List<BillingEmail> candidates = billingEmails.findByUserIdAndSenderDomainAndRecurrenceCandidateTrue(user.getId(), message.senderDomain());
@@ -124,6 +127,7 @@ public class BillingEmailRecorder {
                 series.cycle(), SubscriptionStatus.ACTIVE, merchant.category(), series.first().getBilledOn(),
                 series.cycle().addTo(latest.getBilledOn()));
         subscription.linkMerchant(merchant.key(), merchant.logoDomain());
+        subscription.assignCustomer(latest.getCustomerReference());
         subscription.describeBilling(null, null, latestCharge.paymentMethod());
         subscription.flagUnconfirmedRecurring(series.invoices().size());
         subscriptions.save(subscription);
@@ -200,9 +204,11 @@ public class BillingEmailRecorder {
 
     private Optional<TrackedSubscription> findOrCreateSubscription(User user, DetectedCharge charge, boolean wasDeleted) {
         Merchant merchant = charge.merchant();
-        Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), merchant.key());
-        if (existing.isPresent())
-            return Optional.of(new TrackedSubscription(existing.get(), false));
+        AccountMatch account = matchAccount(user.getId(), merchant.key(), charge.references().customer());
+        if (account.ambiguous())
+            return Optional.empty();
+        if (account.subscription().isPresent())
+            return Optional.of(new TrackedSubscription(account.subscription().get(), false));
         if (!charge.isPayment())
             return Optional.empty();
         Subscription created = subscriptions.save(createSubscription(user, charge));
@@ -215,12 +221,47 @@ public class BillingEmailRecorder {
     private record TrackedSubscription(Subscription subscription, boolean newlyLinked) {
     }
 
+    private AccountMatch matchAccount(Long userId, String merchantKey, String customerReference) {
+        List<Subscription> accounts = subscriptions.findAllByUserIdAndMerchantKeyAndIsDeletedFalse(userId, merchantKey);
+        if (customerReference == null)
+            return switch (accounts.size()) {
+                case 0 -> AccountMatch.none();
+                case 1 -> AccountMatch.of(accounts.getFirst());
+                default -> AccountMatch.unclear();
+            };
+        Optional<Subscription> sameCustomer = accounts.stream()
+                .filter(account -> customerReference.equals(account.getCustomerReference()))
+                .findFirst();
+        if (sameCustomer.isPresent())
+            return AccountMatch.of(sameCustomer.get());
+        if (accounts.size() == 1 && accounts.getFirst().getCustomerReference() == null) {
+            accounts.getFirst().assignCustomer(customerReference);
+            return AccountMatch.of(accounts.getFirst());
+        }
+        return AccountMatch.none();
+    }
+
+    private record AccountMatch(Optional<Subscription> subscription, boolean ambiguous) {
+        static AccountMatch of(Subscription subscription) {
+            return new AccountMatch(Optional.of(subscription), false);
+        }
+
+        static AccountMatch none() {
+            return new AccountMatch(Optional.empty(), false);
+        }
+
+        static AccountMatch unclear() {
+            return new AccountMatch(Optional.empty(), true);
+        }
+    }
+
     private static Subscription createSubscription(User user, DetectedCharge charge) {
         Merchant merchant = charge.merchant();
         ParsedBilling billing = charge.billing();
         Subscription subscription = new Subscription(user, merchant.displayName(), billing.amount(), billing.currency(),
                 billing.cycle(), SubscriptionStatus.ACTIVE, merchant.category(), billing.paymentDate(), billing.nextBillingDate());
         subscription.linkMerchant(merchant.key(), merchant.logoDomain());
+        subscription.assignCustomer(charge.references().customer());
         subscription.describeBilling(charge.planName(), charge.platform(), charge.paymentMethod());
         if (billing.confidence() == Confidence.LOW)
             subscription.flagForReview();
@@ -233,6 +274,8 @@ public class BillingEmailRecorder {
                 billing.nextBillingDate(), billing.confidence());
         if (billing.paymentDate().equals(subscription.getLastPaymentDate()))
             subscription.describeBilling(charge.planName(), charge.platform(), charge.paymentMethod());
+        else
+            subscription.fillMissingBilling(charge.planName(), charge.paymentMethod());
         PaymentHistory payment = new PaymentHistory(subscription, email, billing.paymentDate(), billing.amount(), billing.currency(),
                 exchangeRates.rateToUzs(billing.currency()));
         payment.referenceInvoice(charge.invoiceReference());

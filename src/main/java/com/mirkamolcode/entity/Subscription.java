@@ -100,6 +100,9 @@ public class Subscription extends AuditableEntity {
     @Column(length = 4)
     private String cardLast4;
 
+    @Column(length = 64)
+    private String customerReference;
+
     @Version
     private long version;
 
@@ -144,11 +147,29 @@ public class Subscription extends AuditableEntity {
     }
 
     public void describeBilling(String planName, BillingPlatform billingPlatform, PaymentMethod paymentMethod) {
-        this.planName = planName;
         this.billingPlatform = billingPlatform;
-        this.paymentMethodType = paymentMethod == null ? null : paymentMethod.type();
-        this.cardBrand = paymentMethod == null ? null : paymentMethod.cardBrand();
-        this.cardLast4 = paymentMethod == null ? null : paymentMethod.cardLast4();
+        if (planName != null)
+            this.planName = planName;
+        if (paymentMethod != null) {
+            this.paymentMethodType = paymentMethod.type();
+            this.cardBrand = paymentMethod.cardBrand();
+            this.cardLast4 = paymentMethod.cardLast4();
+        }
+    }
+
+    public void fillMissingBilling(String planName, PaymentMethod paymentMethod) {
+        if (this.planName == null)
+            this.planName = planName;
+        if (paymentMethodType == null && paymentMethod != null) {
+            this.paymentMethodType = paymentMethod.type();
+            this.cardBrand = paymentMethod.cardBrand();
+            this.cardLast4 = paymentMethod.cardLast4();
+        }
+    }
+
+    public void assignCustomer(String customerReference) {
+        if (this.customerReference == null)
+            this.customerReference = customerReference;
     }
 
     public void recordPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency, BillingFrequency cycle,
@@ -334,5 +355,9 @@ public class Subscription extends AuditableEntity {
 
     public String getCardLast4() {
         return cardLast4;
+    }
+
+    public String getCustomerReference() {
+        return customerReference;
     }
 }

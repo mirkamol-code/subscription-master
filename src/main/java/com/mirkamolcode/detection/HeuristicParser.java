@@ -23,8 +23,6 @@ import org.springframework.stereotype.Component;
 public class HeuristicParser implements EmailParser {
     private static final Pattern TOTAL_KEYWORD = Pattern.compile(
             "(?i)(?<!sub)total|amount (?:paid|charged)|charged|you paid|grand total");
-    private static final Pattern ADJUSTMENT_KEYWORD = Pattern.compile(
-            "(?i)\\b(?:sub\\s?total|vat|tax(?:es)?|gst|discount)\\b");
 
     private static final Pattern ANNUAL = Pattern.compile(
             "(?i)\\b(?:annual(?:ly)?|yearly|per year|a year|every year|12 months)\\b|/\\s?(?:yr|year)\\b");
@@ -74,7 +72,7 @@ public class HeuristicParser implements EmailParser {
 
     private static boolean isAdjustment(String label) {
         String sameLine = label.substring(label.lastIndexOf('\n') + 1);
-        return ADJUSTMENT_KEYWORD.matcher(sameLine).find();
+        return MoneyParser.ADJUSTMENT_LABEL.matcher(sameLine).find();
     }
 
     private static BillingFrequency findCycle(String text, Amount amount) {

@@ -19,8 +19,6 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
 
     boolean existsBySubscriptionIdAndInvoiceReference(Long subscriptionId, String invoiceReference);
 
-    long countBySubscriptionId(Long subscriptionId);
-
     List<PaymentHistory> findBySubscriptionUserIdAndPaymentDateBetween(Long userId, LocalDate from, LocalDate to);
 
     List<PaymentHistory> findBySubscriptionIdOrderByPaymentDateDesc(Long subscriptionId);

@@ -24,7 +24,6 @@ public class AppleInvoiceParser implements PlatformInvoiceParser {
     private static final Pattern PLAN_WITH_CYCLE = Pattern.compile("^(?<plan>.*?)\\s*\\((?<cycle>[^)]+)\\)$");
     private static final Pattern RENEWS = Pattern.compile("(?i)^renews\\s+(?<date>.+)$");
     private static final Pattern TOTAL_LABEL = Pattern.compile("(?i)\\btotal\\b");
-    private static final Pattern ADJUSTMENT_LABEL = Pattern.compile("(?i)\\b(?:sub\\s?total|vat|tax(?:es)?|gst|discount)\\b");
     private static final Pattern LEADING_WITH = Pattern.compile("(?i)^with\\s+");
 
     @Override
@@ -60,13 +59,16 @@ public class AppleInvoiceParser implements PlatformInvoiceParser {
         List<LineItem> items = new ArrayList<>();
         List<String> block = new ArrayList<>();
         for (String line : lines) {
-            Optional<Money> price = readWholeLineAmount(line);
-            if (price.isPresent() && !block.isEmpty()) {
-                items.add(toLineItem(block, price.get()));
-                block.clear();
-            } else if (price.isEmpty()) {
+            Optional<PricedLine> priced = readTrailingPrice(line);
+            if (priced.isEmpty()) {
                 block.add(line);
+                continue;
             }
+            if (!priced.get().text().isEmpty())
+                block.add(priced.get().text());
+            if (!block.isEmpty())
+                items.add(toLineItem(block, priced.get().price()));
+            block.clear();
         }
         return items;
     }
@@ -107,7 +109,7 @@ public class AppleInvoiceParser implements PlatformInvoiceParser {
         Money lastUnlabelled = null;
         for (String line : billingLines) {
             List<MoneyParser.MoneyMatch> amounts = MoneyParser.findAll(line);
-            if (amounts.isEmpty() || ADJUSTMENT_LABEL.matcher(line).find())
+            if (amounts.isEmpty() || MoneyParser.ADJUSTMENT_LABEL.matcher(line).find())
                 continue;
             Money amount = amounts.getLast().money();
             boolean namesPaymentMethod = PaymentMethodParser.find(line).isPresent();
@@ -118,13 +120,15 @@ public class AppleInvoiceParser implements PlatformInvoiceParser {
         return Optional.ofNullable(labelled != null ? labelled : lastUnlabelled);
     }
 
-    private static Optional<Money> readWholeLineAmount(String line) {
+    private static Optional<PricedLine> readTrailingPrice(String line) {
         List<MoneyParser.MoneyMatch> amounts = MoneyParser.findAll(line);
-        if (amounts.size() != 1)
+        if (amounts.isEmpty() || !line.substring(amounts.getLast().end()).isBlank())
             return Optional.empty();
-        MoneyParser.MoneyMatch match = amounts.getFirst();
-        String rest = (line.substring(0, match.start()) + line.substring(match.end())).replaceAll("(?i)US|\\s", "");
-        return rest.isEmpty() ? Optional.of(match.money()) : Optional.empty();
+        MoneyParser.MoneyMatch price = amounts.getLast();
+        return Optional.of(new PricedLine(line.substring(0, price.start()).strip(), price.money()));
+    }
+
+    private record PricedLine(String text, Money price) {
     }
 
     private static LocalDate findInvoiceDate(List<String> header) {

@@ -14,7 +14,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface BillingEmailRepository extends JpaRepository<BillingEmail, Long> {
-    Optional<BillingEmail> findByIdAndSubscriptionId(Long id, Long subscriptionId);
+    @Query("""
+            select e from BillingEmail e where e.id = :id and (e.subscription.id = :subscriptionId
+                or exists (select p from PaymentHistory p where p.billingEmail = e and p.subscription.id = :subscriptionId))""")
+    Optional<BillingEmail> findByIdAndSubscriptionId(@Param("id") Long id, @Param("subscriptionId") Long subscriptionId);
+
+    long countBySubscriptionIdAndRecurrenceCandidateTrue(Long subscriptionId);
 
     @EntityGraph(attributePaths = "attachments")
     Optional<BillingEmail> findByIdAndUserId(Long id, Long userId);
@@ -27,7 +32,11 @@ public interface BillingEmailRepository extends JpaRepository<BillingEmail, Long
     List<BillingEmail> findByUserIdAndSenderDomainAndRecurrenceCandidateTrue(Long userId, String senderDomain);
 
     @EntityGraph(attributePaths = "attachments")
-    List<BillingEmail> findBySubscriptionIdOrderByReceivedAtDesc(Long subscriptionId);
+    @Query("""
+            select e from BillingEmail e where e.subscription.id = :subscriptionId
+                or exists (select p from PaymentHistory p where p.billingEmail = e and p.subscription.id = :subscriptionId)
+            order by e.receivedAt desc""")
+    List<BillingEmail> findBySubscriptionIdOrderByReceivedAtDesc(@Param("subscriptionId") Long subscriptionId);
 
     @Modifying
     @Query("delete from BillingEmail e where e.user.id = :userId")

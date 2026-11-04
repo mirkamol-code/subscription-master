@@ -1,10 +1,12 @@
 package com.mirkamolcode.detection;
 
+import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.PaymentMethodType;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
@@ -60,6 +62,29 @@ class AppleInvoiceParserTest {
 
         // then
         assertThat(invoice.items()).extracting(LineItem::recurring).containsExactly(false);
+    }
+
+    @Test
+    void parse_shouldReadItem_whenLastDetailLineAndPriceShareOneLine() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2025-12-07T13:20:00Z"),
+                "Apple <no_reply@email.apple.com>", "Your invoice from Apple.", """
+                <div>6 December 2025</div><div>Order ID: MT0000TEST</div><div>Apple Account: alex.doe@example.com</div>
+                <table><tr><td><div>Telegram Messenger</div><div>Telegram Premium (Monthly)</div><div>Renews 7 January 2026</div>iPhone 14 Pro</td>
+                <td>US$3,99</td></tr></table>
+                <h2>Billing and Payment</h2><table><tr><td>Visa •••• 4242</td><td>US$3,99</td></tr></table>
+                """, null));
+
+        // when
+        PlatformInvoice invoice = underTest.parse(message).orElseThrow();
+
+        // then
+        assertThat(invoice.items()).singleElement().satisfies(item -> {
+            assertThat(item.title()).isEqualTo("Telegram Messenger");
+            assertThat(item.planName()).isEqualTo("Telegram Premium");
+            assertThat(item.cycle()).isEqualTo(BillingFrequency.MONTHLY);
+            assertThat(item.price().amount()).isEqualByComparingTo("3.99");
+        });
     }
 
     @Test
