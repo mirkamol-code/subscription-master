@@ -23,6 +23,7 @@ import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
 import com.mirkamolcode.model.PaymentMethodType;
+import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.GmailConnectionStatus;
 import com.mirkamolcode.security.TokenCipher;
 import java.math.BigDecimal;
@@ -408,7 +409,8 @@ class GmailSyncIT extends AbstractTestConfig {
                 .doesNotContain("Save $10 on your first subscription box");
         assertThat(columnsOf("billing_emails")).containsExactlyInAnyOrder("id", "user_id", "subscription_id", "gmail_message_id",
                 "thread_id", "kind", "sender", "subject", "received_at", "confidence", "merchant_key", "access_ends_on",
-                "created_at", "updated_at");
+                "recurrence_candidate", "sender_domain", "customer_reference", "invoice_reference", "parsed_amount",
+                "parsed_currency", "billed_on", "created_at", "updated_at");
         assertThat(columnsOf("email_attachments")).containsExactlyInAnyOrder("id", "billing_email_id", "gmail_attachment_id",
                 "filename", "mime_type", "size_bytes", "created_at", "updated_at");
         assertThat(jdbc.queryForList("select sender, subject from billing_emails where kind = 'IRRELEVANT'"))
@@ -727,6 +729,107 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldNotTrackUnknownSender_afterSingleInvoice() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+        assertThat(countRows("payment_history")).isZero();
+    }
+
+    @Test
+    void sync_shouldCreateUnconfirmedSubscription_whenSecondSimilarInvoiceArrivesAboutAMonthLater() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription acme = subscriptionsOfUser().stream().filter(subscription -> subscription.getName().equals("Acme Hosting"))
+                .findFirst().orElseThrow();
+        assertThat(acme.getFrequency()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(acme.getPrice()).isEqualByComparingTo("8.10");
+        assertThat(acme.isNeedsReview()).isTrue();
+        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.UNCONFIRMED_RECURRING);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .containsExactly("8.1", "7.5");
+    }
+
+    @Test
+    void sync_shouldNotCreateSubscription_whenInvoicesBelongToDifferentCustomers() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000777", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
+    void sync_shouldNotCreateSubscription_whenInvoicesAreNotAboutOneCycleApart() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-08-20T05:00:00Z", "K0000000009", "7.50"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
+    void sync_shouldRaiseConfidence_butStayUnconfirmed_whenThirdSimilarInvoiceArrives() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
+                acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription acme = subscriptionsOfUser().getFirst();
+        assertThat(acme.isNeedsReview()).isTrue();
+        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.UNCONFIRMED_RECURRING_REPEATED);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId())).hasSize(3);
+    }
+
+    @Test
+    void sync_shouldKeepDismissedRecurringInvoiceHidden_andNotCreateItAgain() {
+        // given
+        GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
+                acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"));
+        underTest.sync(userId);
+        Long acmeId = subscriptionsOfUser().getFirst().getId();
+        webTestClient.post().uri(API + "/subscriptions/" + acmeId + "/hide").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().is2xxSuccessful();
+        GmailMessage october = acmeInvoice("000000000103", "2026-10-12T05:00:00Z", "K0000000009", "7.90");
+        GMAIL.historyAdds(october.id());
+        GMAIL.deliver(october);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).singleElement().satisfies(acme -> {
+            assertThat(acme.getId()).isEqualTo(acmeId);
+            assertThat(acme.isHidden()).isTrue();
+        });
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acmeId)).hasSize(3);
+    }
+
+    @Test
     void get_shouldExposePlanBillingPlatformAndCard_forAppleBilledSubscription() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"));
@@ -771,6 +874,12 @@ class GmailSyncIT extends AbstractTestConfig {
 
     private static GmailMessage receiptFromNetflix(String id, Instant receivedAt) {
         return new GmailMessage(id, id, receivedAt, NETFLIX_OCT.from(), NETFLIX_OCT.subject(), NETFLIX_OCT.htmlBody(), null);
+    }
+
+    private static GmailMessage acmeInvoice(String invoiceNumber, String receivedAt, String customer, String amount) {
+        return EmailFixtures.authenticated(new GmailMessage("acme-" + invoiceNumber, "acme-" + invoiceNumber, Instant.parse(receivedAt),
+                "Acme Hosting <billing@acmehost.example>", "Invoice " + invoiceNumber + " (" + customer + ")", null,
+                "Please find your invoice attached. Amount: $ " + amount));
     }
 
     private List<Subscription> subscriptionsOfUser() {

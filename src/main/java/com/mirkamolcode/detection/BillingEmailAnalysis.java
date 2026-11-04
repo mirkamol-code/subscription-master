@@ -6,18 +6,19 @@ import java.util.List;
 public record BillingEmailAnalysis(
         EmailKind kind,
         List<DetectedCharge> charges,
-        LocalDate accessEndsOn
+        LocalDate accessEndsOn,
+        boolean awaitingRepeat
 ) {
     public BillingEmailAnalysis {
         charges = List.copyOf(charges);
     }
 
     public static BillingEmailAnalysis irrelevant() {
-        return new BillingEmailAnalysis(EmailKind.IRRELEVANT, List.of(), null);
+        return new BillingEmailAnalysis(EmailKind.IRRELEVANT, List.of(), null, false);
     }
 
     static BillingEmailAnalysis of(EmailKind kind, Merchant merchant, ParsedBilling billing, LocalDate accessEndsOn) {
-        return new BillingEmailAnalysis(kind, List.of(DetectedCharge.direct(merchant, billing)), accessEndsOn);
+        return new BillingEmailAnalysis(kind, List.of(DetectedCharge.direct(merchant, billing)), accessEndsOn, false);
     }
 
     public Merchant merchant() {

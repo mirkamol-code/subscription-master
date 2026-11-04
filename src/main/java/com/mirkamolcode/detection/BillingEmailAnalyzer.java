@@ -53,12 +53,13 @@ public class BillingEmailAnalyzer {
         Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message).map(BillingEmailAnalyzer::dropNonPositiveAmount);
         if (classifier.mentionsFreePlan(message) && !hasAmount(parsed))
             return BillingEmailAnalysis.irrelevant();
-        if (!merchant.known() && !hasRecurringBilling(parsed, message))
+        boolean awaitingRepeat = !merchant.known() && !hasRecurringBilling(parsed, message);
+        if (awaitingRepeat && !(hasAmount(parsed) && classifier.isRecurringInvoiceCandidate(message)))
             return BillingEmailAnalysis.irrelevant();
         ParsedBilling billing = complete(parsed, merchant, message);
         PaymentMethod paymentMethod = PaymentMethodParser.find(message.bodyText()).orElse(null);
         return new BillingEmailAnalysis(kind, List.of(new DetectedCharge(merchant, null, null, paymentMethod,
-                InvoiceReferences.find(message.subject(), message.bodyText()), billing)), null);
+                InvoiceReferences.find(message.subject(), message.bodyText()), billing)), null, awaitingRepeat);
     }
 
     private Optional<BillingEmailAnalysis> analyzePlatformInvoice(GmailMessage message) {
@@ -83,7 +84,7 @@ public class BillingEmailAnalyzer {
         List<DetectedCharge> charges = recurring.stream()
                 .map(item -> toCharge(platformParser, invoice, item, pricesAddUp, message))
                 .toList();
-        return new BillingEmailAnalysis(EmailKind.RECEIPT, charges, null);
+        return new BillingEmailAnalysis(EmailKind.RECEIPT, charges, null, false);
     }
 
     private DetectedCharge toCharge(PlatformInvoiceParser platformParser, PlatformInvoice invoice, LineItem item, boolean pricesAddUp,

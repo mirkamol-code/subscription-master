@@ -103,6 +103,8 @@ public class Subscription extends AuditableEntity {
     @Version
     private long version;
 
+    private static final int REPEATED_INVOICES = 3;
+
     public Subscription() {}
 
     public Subscription(User user, String name, BigDecimal price, CurrencyCode currency, BillingFrequency frequency, SubscriptionStatus status, SubscriptionCategory category, LocalDate startDate) {
@@ -190,6 +192,16 @@ public class Subscription extends AuditableEntity {
     private void clearReview() {
         needsReview = false;
         reviewReason = null;
+    }
+
+    public void flagUnconfirmedRecurring(int invoicesSeen) {
+        needsReview = true;
+        reviewReason = invoicesSeen >= REPEATED_INVOICES ? ReviewReason.UNCONFIRMED_RECURRING_REPEATED : ReviewReason.UNCONFIRMED_RECURRING;
+    }
+
+    public void raiseRecurrenceConfidence(int invoicesSeen) {
+        if (reviewReason == ReviewReason.UNCONFIRMED_RECURRING && invoicesSeen >= REPEATED_INVOICES)
+            reviewReason = ReviewReason.UNCONFIRMED_RECURRING_REPEATED;
     }
 
     public void flagForReview() {

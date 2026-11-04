@@ -60,6 +60,31 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
+    void analyze_shouldHoldUnknownSenderInvoiceForRepeat_whenItHasNoRecurringWording() {
+        // given
+        GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-10-12T05:08:00Z"),
+                "Acme Hosting <billing@acmehost.example>", "Invoice 000000000003 (K0000000009)", null,
+                "Please find your invoice attached. Amount: € 7.50"));
+
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(message);
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.RECEIPT);
+        assertThat(analysis.awaitingRepeat()).isTrue();
+        assertThat(analysis.merchant().known()).isFalse();
+        assertThat(analysis.billing().amount()).isEqualByComparingTo("7.50");
+        assertThat(analysis.charges().getFirst().references()).isEqualTo(new InvoiceReferences("000000000003", "K0000000009"));
+    }
+
+    @Test
+    void analyze_shouldNotHoldOneOffReceiptsForRepeat() {
+        // when / then
+        assertThat(underTest.analyze(EmailFixtures.load("uber-trip-receipt.json")).kind()).isEqualTo(EmailKind.IRRELEVANT);
+        assertThat(underTest.analyze(EmailFixtures.load("stripe-one-off-receipt.json")).kind()).isEqualTo(EmailKind.IRRELEVANT);
+    }
+
+    @Test
     void analyze_shouldReadSenderSpecificReceipt_withHighConfidence() {
         // when
         BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("netflix-receipt.json"));

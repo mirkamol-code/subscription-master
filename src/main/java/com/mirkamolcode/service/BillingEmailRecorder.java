@@ -16,6 +16,7 @@ import com.mirkamolcode.entity.User;
 import com.mirkamolcode.event.SubscriptionRetrackedEvent;
 import com.mirkamolcode.integration.gmail.GmailAttachment;
 import com.mirkamolcode.integration.gmail.GmailMessage;
+import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.BillingEmailRepository;
 import com.mirkamolcode.repository.GmailConnectionRepository;
@@ -48,6 +49,7 @@ public class BillingEmailRecorder {
     private final ApplicationEventPublisher events;
     private final SubscriptionStatusService statusService;
     private final GmailConnectionRepository connections;
+    private final RecurringInvoiceMatcher recurringInvoices;
 
     public BillingEmailRecorder(BillingEmailAnalyzer analyzer,
                                 UserRepository users,
@@ -58,7 +60,8 @@ public class BillingEmailRecorder {
                                 ExchangeRateService exchangeRates,
                                 ApplicationEventPublisher events,
                                 SubscriptionStatusService statusService,
-                                GmailConnectionRepository connections) {
+                                GmailConnectionRepository connections,
+                                RecurringInvoiceMatcher recurringInvoices) {
         this.analyzer = analyzer;
         this.users = users;
         this.billingEmails = billingEmails;
@@ -69,6 +72,7 @@ public class BillingEmailRecorder {
         this.events = events;
         this.statusService = statusService;
         this.connections = connections;
+        this.recurringInvoices = recurringInvoices;
     }
 
     public void record(Long userId, GmailMessage message) {
@@ -88,8 +92,56 @@ public class BillingEmailRecorder {
         message.attachments().stream()
                 .filter(attachment -> PDF.equalsIgnoreCase(attachment.mimeType()))
                 .forEach(attachment -> addAttachment(email, attachment));
+        if (analysis.awaitingRepeat()) {
+            recordRecurrenceCandidate(user, email, message, analysis.charges().getFirst());
+            return;
+        }
         billingEmails.save(email);
         analysis.charges().forEach(charge -> recordCharge(user, email, charge));
+    }
+
+    private void recordRecurrenceCandidate(User user, BillingEmail email, GmailMessage message, DetectedCharge charge) {
+        ParsedBilling billing = charge.billing();
+        email.holdForRecurrence(message.senderDomain(), charge.references(), billing.amount(), billing.currency(), billing.paymentDate());
+        billingEmails.save(email);
+        Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), charge.merchant().key());
+        if (existing.isPresent()) {
+            recordCharge(user, email, charge);
+            existing.get().raiseRecurrenceConfidence((int) payments.countBySubscriptionId(existing.get().getId()));
+            return;
+        }
+        List<BillingEmail> candidates = billingEmails.findByUserIdAndSenderDomainAndRecurrenceCandidateTrue(user.getId(), message.senderDomain());
+        recurringInvoices.findSeries(email, candidates).ifPresent(series -> trackSeries(user, charge, series));
+    }
+
+    private void trackSeries(User user, DetectedCharge latestCharge, RecurringInvoiceMatcher.RecurringSeries series) {
+        Merchant merchant = latestCharge.merchant();
+        Optional<MerchantTombstone> tombstone = tombstones.findByUserIdAndMerchantKey(user.getId(), merchant.key());
+        if (tombstone.map(deleted -> deleted.covers(series.latest().getReceivedAt())).orElse(false))
+            return;
+        BillingEmail latest = series.latest();
+        Subscription subscription = new Subscription(user, merchant.displayName(), latest.getParsedAmount(), latest.getParsedCurrency(),
+                series.cycle(), SubscriptionStatus.ACTIVE, merchant.category(), series.first().getBilledOn(),
+                series.cycle().addTo(latest.getBilledOn()));
+        subscription.linkMerchant(merchant.key(), merchant.logoDomain());
+        subscription.describeBilling(null, null, latestCharge.paymentMethod());
+        subscription.flagUnconfirmedRecurring(series.invoices().size());
+        subscriptions.save(subscription);
+        if (tombstone.isPresent())
+            events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), subscription.getId(), merchant.displayName(),
+                    latest.getBilledOn()));
+        series.invoices().forEach(invoice -> backfillPayment(subscription, invoice, series.cycle()));
+    }
+
+    private void backfillPayment(Subscription subscription, BillingEmail invoice, BillingFrequency cycle) {
+        if (invoice.getSubscription() == null)
+            invoice.attachTo(subscription);
+        subscription.recordPayment(invoice.getBilledOn(), invoice.getParsedAmount(), invoice.getParsedCurrency(), cycle, null, Confidence.LOW);
+        PaymentHistory payment = new PaymentHistory(subscription, invoice, invoice.getBilledOn(), invoice.getParsedAmount(),
+                invoice.getParsedCurrency(), exchangeRates.rateToUzs(invoice.getParsedCurrency()));
+        payment.referenceInvoice(invoice.getInvoiceReference());
+        payments.save(payment);
+        applyEvidence(subscription, invoice);
     }
 
     private void recordCharge(User user, BillingEmail email, DetectedCharge charge) {
