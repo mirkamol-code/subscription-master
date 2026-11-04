@@ -6,7 +6,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 
-import org.jsoup.Jsoup;
+import org.jsoup.parser.Parser;
 
 public record GmailMessage(
         String id,
@@ -19,6 +19,8 @@ public record GmailMessage(
         List<GmailAttachment> attachments,
         MessageHeaders headers
 ) {
+    private static final int MAX_ENTITY_DECODING_PASSES = 2;
+
     public GmailMessage(String id, String threadId, Instant receivedAt, String from, String subject, String htmlBody, String textBody) {
         this(id, threadId, receivedAt, from, subject, htmlBody, textBody, List.of());
     }
@@ -40,8 +42,19 @@ public record GmailMessage(
 
     public String bodyText() {
         if (textBody != null && !textBody.isBlank())
-            return textBody;
-        return htmlBody == null ? "" : Jsoup.parse(htmlBody).text();
+            return decodeEntities(textBody);
+        return htmlBody == null ? "" : decodeEntities(HtmlText.toLines(htmlBody));
+    }
+
+    private static String decodeEntities(String text) {
+        String decoded = text;
+        for (int pass = 0; pass < MAX_ENTITY_DECODING_PASSES; pass++) {
+            String next = Parser.unescapeEntities(decoded, false);
+            if (next.equals(decoded))
+                return decoded;
+            decoded = next;
+        }
+        return decoded;
     }
 
     public String senderDomain() {
