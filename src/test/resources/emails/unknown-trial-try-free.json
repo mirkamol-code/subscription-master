@@ -1,0 +1,67 @@
+{
+  "id": "19d0trial00tryfree",
+  "threadId": "19d0trial00tryfree",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Hi Alex,\nTry free for 30 days. Your free trial has started the moment you join.\n",
+  "historyId": "200001",
+  "internalDate": "1793696400000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@example.com"
+      },
+      {
+        "name": "From",
+        "value": "Acme Notes <hello@acmenotes.example>"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@acmenotes.example; spf=pass smtp.mailfrom=bounces@acmenotes.example; dmarc=pass header.from=acmenotes.example"
+      },
+      {
+        "name": "To",
+        "value": "Alex Doe <alex.doe@example.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Try Acme Notes Pro free for 30 days"
+      },
+      {
+        "name": "Date",
+        "value": "Tue, 03 Nov 2026 09:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative; boundary=\"000000000000boundary\""
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 99,
+          "data": "SGkgQWxleCwKVHJ5IGZyZWUgZm9yIDMwIGRheXMuIFlvdXIgZnJlZSB0cmlhbCBoYXMgc3RhcnRlZCB0aGUgbW9tZW50IHlvdSBqb2luLgpUaGUgQWNtZSBOb3RlcyB0ZWFt"
+        }
+      }
+    ]
+  }
+}
