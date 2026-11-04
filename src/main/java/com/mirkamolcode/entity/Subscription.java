@@ -222,22 +222,22 @@ public class Subscription extends AuditableEntity {
         reviewReason = null;
     }
 
-    public void flagUnconfirmedRecurring(int invoicesSeen) {
+    public void flagSimilarInvoicesForReview(int invoicesSeen) {
         needsReview = true;
-        reviewReason = invoicesSeen >= REPEATED_INVOICES ? ReviewReason.UNCONFIRMED_RECURRING_REPEATED : ReviewReason.UNCONFIRMED_RECURRING;
+        reviewReason = invoicesSeen >= REPEATED_INVOICES ? ReviewReason.SIMILAR_INVOICES_REPEATED : ReviewReason.SIMILAR_INVOICES;
     }
 
-    public boolean isAwaitingConfirmation() {
-        return reviewReason == ReviewReason.UNCONFIRMED_RECURRING || reviewReason == ReviewReason.UNCONFIRMED_RECURRING_REPEATED;
+    public boolean isReviewingSimilarInvoices() {
+        return reviewReason == ReviewReason.SIMILAR_INVOICES || reviewReason == ReviewReason.SIMILAR_INVOICES_REPEATED;
     }
 
-    public void confirmDetection() {
+    public void confirmRecurring() {
         clearReview();
     }
 
     public void raiseRecurrenceConfidence(int invoicesSeen) {
-        if (reviewReason == ReviewReason.UNCONFIRMED_RECURRING && invoicesSeen >= REPEATED_INVOICES)
-            reviewReason = ReviewReason.UNCONFIRMED_RECURRING_REPEATED;
+        if (reviewReason == ReviewReason.SIMILAR_INVOICES && invoicesSeen >= REPEATED_INVOICES)
+            reviewReason = ReviewReason.SIMILAR_INVOICES_REPEATED;
     }
 
     public void flagForReview() {

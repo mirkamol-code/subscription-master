@@ -188,11 +188,11 @@ public class SubscriptionService {
     }
 
     @Transactional
-    public SubscriptionResponse confirmDetection(Long id) {
+    public SubscriptionResponse confirmRecurring(Long id) {
         Subscription subscription = requiredAccessible(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        if (!subscription.isAwaitingConfirmation())
-            throw new ConflictException("Only an unconfirmed recurring subscription can be confirmed");
-        subscription.confirmDetection();
+        if (!subscription.isReviewingSimilarInvoices())
+            throw new ConflictException("Only a subscription that needs review for similar invoices can be confirmed");
+        subscription.confirmRecurring();
         return mapper.toResponse(subscription);
     }
 

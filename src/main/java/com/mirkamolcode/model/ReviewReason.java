@@ -2,8 +2,8 @@ package com.mirkamolcode.model;
 
 public enum ReviewReason {
     AMOUNT_UNREADABLE("Receipt found, amount unreadable."),
-    UNCONFIRMED_RECURRING("Two similar invoices found. Confirm this is a subscription or hide it."),
-    UNCONFIRMED_RECURRING_REPEATED("Three or more similar invoices found. Confirm this is a subscription or hide it.");
+    SIMILAR_INVOICES("Two similar invoices found. Confirm this is a subscription or hide it."),
+    SIMILAR_INVOICES_REPEATED("Three or more similar invoices found. Confirm this is a subscription or hide it.");
 
     private final String note;
 

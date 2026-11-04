@@ -31,16 +31,32 @@ _Avoid_: Auth code, ticket
 ## Subscriptions
 
 **Subscription**:
-A recurring paid service from one Merchant that a User is billed for. Every Subscription comes from at least one receipt Billing email; Users cannot add one by hand.
-_Avoid_: Plan, membership, service
+A recurring paid service from one Merchant account that a User is billed for. Every Subscription comes from at least one receipt Billing email; Users cannot add one by hand.
+_Avoid_: Membership, service
+
+**Plan**:
+The tier of a Subscription as the Merchant names it, such as Telegram Premium or 200 GB.
+_Avoid_: Tier, package
+
+**Merchant account**:
+One of a User's customer accounts at a Merchant, known by the customer ID the Merchant prints on its invoices. Each Merchant account is its own Subscription.
+_Avoid_: Account (alone), customer number
 
 **Merchant**:
 The company that bills a User for a Subscription, such as Netflix or Spotify.
 _Avoid_: Vendor, provider, sender
 
 **Payment processor**:
-A company that sends receipts on a Merchant's behalf, such as Stripe, Paddle, Google Play or Apple; the Merchant is read from the receipt, not from the sender.
+A company that sends receipts on a Merchant's behalf, such as Stripe or Paddle; the Merchant is read from the receipt, not from the sender.
 _Avoid_: Gateway, reseller
+
+**Billing platform**:
+A store that bills a User for other Merchants' Subscriptions and sends the invoice itself, such as Apple, Google Play or PayPal. One invoice can bill several Subscriptions; the Subscription is "billed through" the Billing platform.
+_Avoid_: Store, payment processor, reseller
+
+**Payment method**:
+The card or wallet a Subscription is charged to, known only by its card brand and last four digits, never the full card number.
+_Avoid_: Card details, billing method
 
 **Billing cycle**:
 How often a Subscription charges: weekly, monthly or annually.
@@ -51,7 +67,7 @@ One charge for a Subscription, evidenced by one receipt or invoice.
 _Avoid_: Transaction, charge record
 
 **Billing email**:
-An email from a Merchant or its Payment processor about a Subscription: a receipt, a cancellation, or a payment failure. It counts only when Gmail confirms the sender's domain and it is not a reply, forward, mailing-list thread, payment-due reminder, free-plan notice or newsletter.
+An email from a Merchant, its Payment processor or a Billing platform about a Subscription: a receipt, a cancellation, or a payment failure. It counts only when Gmail confirms the sender's domain and it is not a reply, forward, mailing-list thread, payment-due reminder, free-plan notice or newsletter.
 _Avoid_: Receipt (when meaning any billing email), message
 
 **Exchange rate**:
@@ -77,6 +93,14 @@ _Avoid_: Ignored, archived, deleted
 **Needs review**:
 A Subscription whose amount, currency or Billing cycle was guessed rather than read, or whose renewal receipt arrived with an unreadable amount, waiting for the User to confirm or correct it. A receipt without an amount is never a Payment until the User confirms the amount.
 _Avoid_: Unverified, unconfirmed
+
+**Similar invoices**:
+A reason a Subscription Needs review: it was found only from two or more invoices of an unknown Merchant about one Billing cycle apart, and waits for the User to confirm it or hide it.
+_Avoid_: Unconfirmed subscription, suspected subscription
+
+**Awaiting account**:
+A Billing email that names no customer ID from a Merchant the User has several Merchant accounts with, waiting for the User to pick which Merchant account it belongs to.
+_Avoid_: Unassigned email, orphan receipt
 
 ## Status
 

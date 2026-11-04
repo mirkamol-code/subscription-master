@@ -742,7 +742,7 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldCreateUnconfirmedSubscription_whenSecondSimilarInvoiceArrivesAboutAMonthLater() {
+    void sync_shouldCreateSubscriptionNeedingReview_whenSecondSimilarInvoiceArrivesAboutAMonthLater() {
         // given
         GMAIL.mailbox(acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
                 acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
@@ -756,7 +756,7 @@ class GmailSyncIT extends AbstractTestConfig {
         assertThat(acme.getFrequency()).isEqualTo(BillingFrequency.MONTHLY);
         assertThat(acme.getPrice()).isEqualByComparingTo("8.10");
         assertThat(acme.isNeedsReview()).isTrue();
-        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.UNCONFIRMED_RECURRING);
+        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.SIMILAR_INVOICES);
         assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId()))
                 .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
                 .containsExactly("8.1", "7.5");
@@ -789,7 +789,7 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldRaiseConfidence_butStayUnconfirmed_whenThirdSimilarInvoiceArrives() {
+    void sync_shouldRaiseConfidence_butStayInNeedsReview_whenThirdSimilarInvoiceArrives() {
         // given
         GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
                 acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
@@ -801,12 +801,12 @@ class GmailSyncIT extends AbstractTestConfig {
         // then
         Subscription acme = subscriptionsOfUser().getFirst();
         assertThat(acme.isNeedsReview()).isTrue();
-        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.UNCONFIRMED_RECURRING_REPEATED);
+        assertThat(acme.getReviewReason()).isEqualTo(ReviewReason.SIMILAR_INVOICES_REPEATED);
         assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(acme.getId())).hasSize(3);
     }
 
     @Test
-    void sync_shouldKeepDismissedRecurringInvoiceHidden_andNotCreateItAgain() {
+    void sync_shouldKeepDismissedSimilarInvoicesHidden_andNotCreateThemAgain() {
         // given
         GMAIL.mailbox(acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"),
                 acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"));
@@ -977,7 +977,7 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void confirm_shouldClearUnconfirmedReview_andKeepItClearedWhenMoreInvoicesArrive() {
+    void confirm_shouldClearSimilarInvoicesReview_andKeepItClearedWhenMoreInvoicesArrive() {
         // given
         GMAIL.mailbox(acmeInvoice("000000000102", "2026-09-12T05:00:00Z", "K0000000009", "8.10"),
                 acmeInvoice("000000000101", "2026-08-12T05:00:00Z", "K0000000009", "7.50"));
@@ -1001,7 +1001,7 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void confirm_shouldBeRejected_whenSubscriptionIsNotAwaitingConfirmation() {
+    void confirm_shouldBeRejected_whenSubscriptionDoesNotNeedReviewForSimilarInvoices() {
         // given
         GMAIL.mailbox(NETFLIX_OCT);
         underTest.sync(userId);

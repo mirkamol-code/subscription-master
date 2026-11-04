@@ -131,7 +131,7 @@ public class BillingEmailRecorder {
         subscription.linkMerchant(merchant.key(), merchant.logoDomain());
         subscription.assignCustomer(latest.getCustomerReference());
         subscription.describeBilling(null, null, latestCharge.paymentMethod());
-        subscription.flagUnconfirmedRecurring(series.invoices().size());
+        subscription.flagSimilarInvoicesForReview(series.invoices().size());
         subscriptions.save(subscription);
         returnGuessedInvoicesForReview(user.getId(), subscription);
         if (tombstone.isPresent())
