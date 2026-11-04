@@ -6,5 +6,6 @@ public enum SubscriptionCategory {
     EDUCATION,
     HEALTH,
     FINANCE,
+    INFRASTRUCTURE,
     OTHER
 }

@@ -40,6 +40,12 @@ public class MerchantResolver {
         return Optional.of(unknownMerchant(senderLabel(message), message.senderDomain()));
     }
 
+    public Merchant resolveService(String title) {
+        return findNamedIn(title, merchants)
+                .map(MerchantResolver::toMerchant)
+                .orElseGet(() -> unknownMerchant(title, null));
+    }
+
     public boolean isKnownSender(GmailMessage message) {
         return isFromProcessor(message) || findBySender(message).isPresent();
     }

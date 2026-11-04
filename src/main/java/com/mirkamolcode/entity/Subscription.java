@@ -1,8 +1,11 @@
 package com.mirkamolcode.entity;
 
 import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.PaymentMethod;
 import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.ReviewReason;
 import com.mirkamolcode.model.SubscriptionCategory;
 import com.mirkamolcode.model.SubscriptionStatus;
@@ -80,6 +83,23 @@ public class Subscription extends AuditableEntity {
 
     private LocalDate endsOn;
 
+    @Column(length = 120)
+    private String planName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private BillingPlatform billingPlatform;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private PaymentMethodType paymentMethodType;
+
+    @Column(length = 20)
+    private String cardBrand;
+
+    @Column(length = 4)
+    private String cardLast4;
+
     @Version
     private long version;
 
@@ -119,6 +139,14 @@ public class Subscription extends AuditableEntity {
     public void linkMerchant(String merchantKey, String logoDomain) {
         this.merchantKey = merchantKey;
         this.logoDomain = logoDomain;
+    }
+
+    public void describeBilling(String planName, BillingPlatform billingPlatform, PaymentMethod paymentMethod) {
+        this.planName = planName;
+        this.billingPlatform = billingPlatform;
+        this.paymentMethodType = paymentMethod == null ? null : paymentMethod.type();
+        this.cardBrand = paymentMethod == null ? null : paymentMethod.cardBrand();
+        this.cardLast4 = paymentMethod == null ? null : paymentMethod.cardLast4();
     }
 
     public void recordPayment(LocalDate paidOn, BigDecimal amount, CurrencyCode currency, BillingFrequency cycle,
@@ -266,5 +294,25 @@ public class Subscription extends AuditableEntity {
 
     public long getVersion() {
         return version;
+    }
+
+    public String getPlanName() {
+        return planName;
+    }
+
+    public BillingPlatform getBillingPlatform() {
+        return billingPlatform;
+    }
+
+    public PaymentMethodType getPaymentMethodType() {
+        return paymentMethodType;
+    }
+
+    public String getCardBrand() {
+        return cardBrand;
+    }
+
+    public String getCardLast4() {
+        return cardLast4;
     }
 }

@@ -18,7 +18,8 @@ class BillingEmailAnalyzerTest {
             new EmailClassifier(properties),
             new MerchantResolver(properties),
             new SenderVerifier(properties),
-            List.of(new HeuristicParser(), new NetflixParser(), new SchemaOrgParser()));
+            List.of(new HeuristicParser(), new NetflixParser(), new SchemaOrgParser()),
+            List.of(new AppleInvoiceParser()));
 
     @Test
     void analyze_shouldDetectHetznerInvoice_whenEmailNeverSaysSubscription() {
@@ -486,7 +487,7 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
-    void analyze_shouldResolveAppleItself_whenAppleReceiptNamesNoOtherMerchant() {
+    void analyze_shouldResolveAppleOwnedService_whenAppleReceiptNamesNoOtherMerchant() {
         // given
         GmailMessage message = EmailFixtures.authenticated(new GmailMessage("m-1", "t-1", Instant.parse("2026-11-02T09:00:00Z"),
                 "Apple <no_reply@email.apple.com>", "Your receipt from Apple.", null,
@@ -496,7 +497,8 @@ class BillingEmailAnalyzerTest {
         BillingEmailAnalysis analysis = underTest.analyze(message);
 
         // then
-        assertThat(analysis.merchant().key()).isEqualTo("apple");
+        assertThat(analysis.merchant().key()).isEqualTo("icloud");
+        assertThat(analysis.merchant().displayName()).isEqualTo("iCloud+");
     }
 
     @Test

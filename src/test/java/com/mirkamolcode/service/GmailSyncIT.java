@@ -19,7 +19,10 @@ import com.mirkamolcode.integration.gmail.GmailUnauthorizedException;
 import com.mirkamolcode.integration.google.GoogleOAuthClient;
 import com.mirkamolcode.integration.google.GoogleTokens;
 import com.mirkamolcode.integration.google.InvalidGrantException;
+import com.mirkamolcode.model.BillingFrequency;
+import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.GmailConnectionStatus;
 import com.mirkamolcode.security.TokenCipher;
 import java.math.BigDecimal;
@@ -654,6 +657,55 @@ class GmailSyncIT extends AbstractTestConfig {
                     assertThat(event.merchantName()).isEqualTo("Netflix");
                     assertThat(event.chargedOn()).isEqualTo(LocalDate.ofInstant(chargedAgain, java.time.ZoneOffset.UTC));
                 });
+    }
+
+    @Test
+    void sync_shouldTrackEachRecurringAppleLineItemAsItsOwnSubscription_andSkipOneTimePurchases() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-multi-item-invoice.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey)
+                .containsExactlyInAnyOrder("telegram-messenger", "icloud");
+
+        Subscription telegram = subscription("telegram-messenger");
+        assertThat(telegram.getName()).isEqualTo("Telegram Messenger");
+        assertThat(telegram.getPlanName()).isEqualTo("Telegram Premium");
+        assertThat(telegram.getFrequency()).isEqualTo(BillingFrequency.MONTHLY);
+        assertThat(telegram.getPrice()).isEqualByComparingTo("3.99");
+        assertThat(telegram.getCurrency()).isEqualTo(CurrencyCode.USD);
+        assertThat(telegram.getLastPaymentDate()).isEqualTo(LocalDate.of(2025, 12, 6));
+        assertThat(telegram.getNextPaymentDate()).isEqualTo(LocalDate.of(2026, 1, 7));
+        assertThat(telegram.getBillingPlatform()).isEqualTo(BillingPlatform.APPLE);
+        assertThat(telegram.getPaymentMethodType()).isEqualTo(PaymentMethodType.CARD);
+        assertThat(telegram.getCardBrand()).isEqualTo("Visa");
+        assertThat(telegram.getCardLast4()).isEqualTo("4242");
+
+        Subscription icloud = subscription("icloud");
+        assertThat(icloud.getName()).isEqualTo("iCloud+");
+        assertThat(icloud.getPlanName()).isEqualTo("200 GB");
+        assertThat(icloud.getFrequency()).isEqualTo(BillingFrequency.ANNUAL);
+        assertThat(icloud.getPrice()).isEqualByComparingTo("29.99");
+
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(telegram.getId())).hasSize(1);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(icloud.getId())).hasSize(1);
+        assertThat(countRows("billing_emails")).isEqualTo(1);
+    }
+
+    @Test
+    void sync_shouldNotTrackAppleInvoice_whenEveryLineItemIsOneTimePurchase() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-one-time-purchase.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+        assertThat(countRows("payment_history")).isZero();
     }
 
     @Test

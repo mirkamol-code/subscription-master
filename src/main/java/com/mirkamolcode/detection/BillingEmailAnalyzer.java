@@ -3,6 +3,7 @@ package com.mirkamolcode.detection;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.model.BillingFrequency;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -18,35 +19,88 @@ public class BillingEmailAnalyzer {
     private final MerchantResolver merchants;
     private final SenderVerifier senders;
     private final List<EmailParser> parsers;
+    private final List<PlatformInvoiceParser> platformParsers;
 
-    public BillingEmailAnalyzer(EmailClassifier classifier, MerchantResolver merchants, SenderVerifier senders, List<EmailParser> parsers) {
+    public BillingEmailAnalyzer(EmailClassifier classifier, MerchantResolver merchants, SenderVerifier senders, List<EmailParser> parsers,
+                                List<PlatformInvoiceParser> platformParsers) {
         this.classifier = classifier;
         this.merchants = merchants;
         this.senders = senders;
         List<EmailParser> ordered = new ArrayList<>(parsers);
         AnnotationAwareOrderComparator.sort(ordered);
         this.parsers = List.copyOf(ordered);
+        this.platformParsers = List.copyOf(platformParsers);
     }
 
     public BillingEmailAnalysis analyze(GmailMessage message) {
         EmailKind kind = classifier.classify(message);
         if (kind == EmailKind.IRRELEVANT || !senders.isTrusted(message))
             return BillingEmailAnalysis.irrelevant();
+        if (kind == EmailKind.RECEIPT) {
+            Optional<BillingEmailAnalysis> platformInvoice = analyzePlatformInvoice(message);
+            if (platformInvoice.isPresent())
+                return platformInvoice.get();
+        }
         Optional<Merchant> resolved = merchants.resolve(message);
         if (resolved.isEmpty())
             return BillingEmailAnalysis.irrelevant();
         Merchant merchant = resolved.get();
         if (kind == EmailKind.CANCELLATION)
-            return new BillingEmailAnalysis(kind, merchant, null, classifier.findAccessEndDate(message));
+            return BillingEmailAnalysis.of(kind, merchant, null, classifier.findAccessEndDate(message));
         if (kind != EmailKind.RECEIPT)
-            return new BillingEmailAnalysis(kind, merchant, null, null);
+            return BillingEmailAnalysis.of(kind, merchant, null, null);
 
         Optional<ParsedBilling> parsed = parseWithFirstMatchingParser(message).map(BillingEmailAnalyzer::dropNonPositiveAmount);
         if (classifier.mentionsFreePlan(message) && !hasAmount(parsed))
             return BillingEmailAnalysis.irrelevant();
         if (!merchant.known() && !hasRecurringBilling(parsed, message))
             return BillingEmailAnalysis.irrelevant();
-        return new BillingEmailAnalysis(kind, merchant, complete(parsed, merchant, message), null);
+        return BillingEmailAnalysis.of(kind, merchant, complete(parsed, merchant, message), null);
+    }
+
+    private Optional<BillingEmailAnalysis> analyzePlatformInvoice(GmailMessage message) {
+        for (PlatformInvoiceParser platformParser : platformParsers) {
+            if (!platformParser.supports(message))
+                continue;
+            Optional<PlatformInvoice> invoice = platformParser.parse(message);
+            if (invoice.isPresent())
+                return Optional.of(toAnalysis(platformParser, invoice.get(), message));
+        }
+        return Optional.empty();
+    }
+
+    private BillingEmailAnalysis toAnalysis(PlatformInvoiceParser platformParser, PlatformInvoice invoice, GmailMessage message) {
+        List<LineItem> recurring = invoice.items().stream()
+                .filter(LineItem::recurring)
+                .filter(item -> item.price() != null && item.price().amount().signum() > 0)
+                .toList();
+        if (recurring.isEmpty())
+            return BillingEmailAnalysis.irrelevant();
+        boolean pricesAddUp = invoice.items().size() == 1 || addsUpTo(invoice.items(), invoice.total());
+        List<DetectedCharge> charges = recurring.stream()
+                .map(item -> toCharge(platformParser, invoice, item, pricesAddUp, message))
+                .toList();
+        return new BillingEmailAnalysis(EmailKind.RECEIPT, charges, null);
+    }
+
+    private DetectedCharge toCharge(PlatformInvoiceParser platformParser, PlatformInvoice invoice, LineItem item, boolean pricesAddUp,
+                                    GmailMessage message) {
+        Merchant merchant = merchants.resolveService(item.title());
+        Money price = invoice.items().size() == 1 && invoice.total() != null ? invoice.total() : item.price();
+        LocalDate paidOn = invoice.invoiceDate() != null ? invoice.invoiceDate() : message.receivedOnUtc();
+        BillingFrequency knownCycle = item.cycle() != null ? item.cycle() : merchant.defaultCycle();
+        BillingFrequency cycle = knownCycle != null ? knownCycle : BillingFrequency.MONTHLY;
+        LocalDate nextBillingDate = item.renewsOn() != null ? item.renewsOn() : cycle.addTo(paidOn);
+        Confidence confidence = knownCycle != null && pricesAddUp ? Confidence.HIGH : Confidence.LOW;
+        ParsedBilling billing = new ParsedBilling(price.amount(), price.currency(), cycle, paidOn, nextBillingDate, confidence);
+        return new DetectedCharge(merchant, item.planName(), platformParser.platform(), invoice.paymentMethod(), billing);
+    }
+
+    private static boolean addsUpTo(List<LineItem> items, Money total) {
+        if (total == null || items.stream().anyMatch(item -> item.price() == null || item.price().currency() != total.currency()))
+            return false;
+        BigDecimal sum = items.stream().map(item -> item.price().amount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return sum.compareTo(total.amount()) == 0;
     }
 
     public boolean isCandidate(GmailMessage headers) {

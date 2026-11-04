@@ -103,7 +103,13 @@ app:
         - { key: spotify, display-name: Spotify, senders: [spotify.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: youtube-premium, display-name: YouTube Premium, aliases: [YouTube, YouTube Music], senders: [youtube.com], category: ENTERTAINMENT, default-cycle: MONTHLY }
         - { key: google-one, display-name: Google One, aliases: [Google One AI Premium, Google AI Pro, Google AI Premium, Google AI Ultra, Gemini Advanced, Gemini Pro], senders: [], logo-domain: one.google.com, category: OTHER, default-cycle: MONTHLY }
-        - { key: apple, display-name: Apple (App Store / iCloud), aliases: [Apple, iCloud, iCloud+, App Store, Apple Music, Apple TV+], senders: [apple.com], category: OTHER }
+        - { key: icloud, display-name: iCloud+, aliases: [iCloud], senders: [], logo-domain: icloud.com, category: PRODUCTIVITY }
+        - { key: apple-music, display-name: Apple Music, senders: [], logo-domain: apple.com, category: ENTERTAINMENT }
+        - { key: apple-tv, display-name: Apple TV+, aliases: [Apple TV], senders: [], logo-domain: apple.com, category: ENTERTAINMENT }
+        - { key: apple-one, display-name: Apple One, senders: [], logo-domain: apple.com, category: ENTERTAINMENT }
+        - { key: apple-arcade, display-name: Apple Arcade, senders: [], logo-domain: apple.com, category: ENTERTAINMENT }
+        - { key: apple-news, display-name: Apple News+, aliases: [Apple News], senders: [], logo-domain: apple.com, category: OTHER }
+        - { key: apple-fitness, display-name: Apple Fitness+, aliases: [Apple Fitness], senders: [], logo-domain: apple.com, category: HEALTH }
         - { key: amazon-prime, display-name: Amazon Prime, aliases: [Prime Video, Amazon Prime Video], senders: [prime@amazon.com, primevideo.com], category: ENTERTAINMENT }
         - { key: microsoft, display-name: Microsoft, aliases: [Microsoft 365, Office 365, Xbox Game Pass], senders: [microsoft.com, microsoftstore.com], category: PRODUCTIVITY }
         - { key: adobe, display-name: Adobe, aliases: [Adobe Creative Cloud, Creative Cloud], senders: [adobe.com], category: PRODUCTIVITY }

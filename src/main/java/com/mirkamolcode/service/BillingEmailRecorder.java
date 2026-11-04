@@ -3,6 +3,7 @@ package com.mirkamolcode.service;
 import com.mirkamolcode.detection.BillingEmailAnalysis;
 import com.mirkamolcode.detection.BillingEmailAnalyzer;
 import com.mirkamolcode.detection.Confidence;
+import com.mirkamolcode.detection.DetectedCharge;
 import com.mirkamolcode.detection.EmailKind;
 import com.mirkamolcode.detection.Merchant;
 import com.mirkamolcode.detection.ParsedBilling;
@@ -87,26 +88,25 @@ public class BillingEmailRecorder {
         message.attachments().stream()
                 .filter(attachment -> PDF.equalsIgnoreCase(attachment.mimeType()))
                 .forEach(attachment -> addAttachment(email, attachment));
-
-        Optional<MerchantTombstone> tombstone = tombstones.findByUserIdAndMerchantKey(userId, analysis.merchant().key());
-        if (tombstone.map(deleted -> deleted.covers(message.receivedAt())).orElse(false)) {
-            billingEmails.save(email);
-            return;
-        }
-
-        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, analysis, tombstone.isPresent());
-        if (tracked.isEmpty()) {
-            billingEmails.save(email);
-            return;
-        }
-        Subscription subscription = tracked.get().subscription();
-        email.attachTo(subscription);
         billingEmails.save(email);
-        if (analysis.isPayment())
-            recordPayment(subscription, email, billing);
+        analysis.charges().forEach(charge -> recordCharge(user, email, charge));
+    }
+
+    private void recordCharge(User user, BillingEmail email, DetectedCharge charge) {
+        Optional<MerchantTombstone> tombstone = tombstones.findByUserIdAndMerchantKey(user.getId(), charge.merchant().key());
+        if (tombstone.map(deleted -> deleted.covers(email.getReceivedAt())).orElse(false))
+            return;
+        Optional<TrackedSubscription> tracked = findOrCreateSubscription(user, charge, tombstone.isPresent());
+        if (tracked.isEmpty())
+            return;
+        Subscription subscription = tracked.get().subscription();
+        if (email.getSubscription() == null)
+            email.attachTo(subscription);
+        if (charge.isPayment())
+            recordPayment(subscription, email, charge);
         applyEvidence(subscription, email);
         if (tracked.get().newlyLinked())
-            replayUnattachedStatusEmails(userId, subscription, tombstone);
+            replayUnattachedStatusEmails(user.getId(), subscription, tombstone);
     }
 
     private void replayUnattachedStatusEmails(Long userId, Subscription subscription, Optional<MerchantTombstone> tombstone) {
@@ -121,7 +121,8 @@ public class BillingEmailRecorder {
     }
 
     private void applyEvidence(Subscription subscription, BillingEmail email) {
-        boolean isReceiptWithoutPayment = email.getKind() == EmailKind.RECEIPT && !payments.existsByBillingEmailId(email.getId());
+        boolean isReceiptWithoutPayment = email.getKind() == EmailKind.RECEIPT
+                && !payments.existsByBillingEmailIdAndSubscriptionId(email.getId(), subscription.getId());
         if (isReceiptWithoutPayment)
             statusService.reviewReceiptWithoutAmount(subscription, email.getReceivedAt());
         else
@@ -136,35 +137,41 @@ public class BillingEmailRecorder {
         };
     }
 
-    private Optional<TrackedSubscription> findOrCreateSubscription(User user, BillingEmailAnalysis analysis, boolean wasDeleted) {
-        Merchant merchant = analysis.merchant();
+    private Optional<TrackedSubscription> findOrCreateSubscription(User user, DetectedCharge charge, boolean wasDeleted) {
+        Merchant merchant = charge.merchant();
         Optional<Subscription> existing = subscriptions.findByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), merchant.key());
         if (existing.isPresent())
             return Optional.of(new TrackedSubscription(existing.get(), false));
-        if (!analysis.isPayment())
+        if (!charge.isPayment())
             return Optional.empty();
-        Subscription created = subscriptions.save(createSubscription(user, merchant, analysis.billing()));
+        Subscription created = subscriptions.save(createSubscription(user, charge));
         if (wasDeleted)
             events.publishEvent(new SubscriptionRetrackedEvent(user.getId(), created.getId(), merchant.displayName(),
-                    analysis.billing().paymentDate()));
+                    charge.billing().paymentDate()));
         return Optional.of(new TrackedSubscription(created, true));
     }
 
     private record TrackedSubscription(Subscription subscription, boolean newlyLinked) {
     }
 
-    private static Subscription createSubscription(User user, Merchant merchant, ParsedBilling billing) {
+    private static Subscription createSubscription(User user, DetectedCharge charge) {
+        Merchant merchant = charge.merchant();
+        ParsedBilling billing = charge.billing();
         Subscription subscription = new Subscription(user, merchant.displayName(), billing.amount(), billing.currency(),
                 billing.cycle(), SubscriptionStatus.ACTIVE, merchant.category(), billing.paymentDate(), billing.nextBillingDate());
         subscription.linkMerchant(merchant.key(), merchant.logoDomain());
+        subscription.describeBilling(charge.planName(), charge.platform(), charge.paymentMethod());
         if (billing.confidence() == Confidence.LOW)
             subscription.flagForReview();
         return subscription;
     }
 
-    private void recordPayment(Subscription subscription, BillingEmail email, ParsedBilling billing) {
+    private void recordPayment(Subscription subscription, BillingEmail email, DetectedCharge charge) {
+        ParsedBilling billing = charge.billing();
         subscription.recordPayment(billing.paymentDate(), billing.amount(), billing.currency(), billing.cycle(),
                 billing.nextBillingDate(), billing.confidence());
+        if (billing.paymentDate().equals(subscription.getLastPaymentDate()))
+            subscription.describeBilling(charge.planName(), charge.platform(), charge.paymentMethod());
         payments.save(new PaymentHistory(subscription, email, billing.paymentDate(), billing.amount(), billing.currency(),
                 exchangeRates.rateToUzs(billing.currency())));
     }
