@@ -31,7 +31,9 @@ public interface AdminUserMapper {
                 event.getUserAgent(),
                 client.device(),
                 client.browser(),
-                client.os()
+                client.os(),
+                event.getCity(),
+                event.getCountry()
         );
     }
 

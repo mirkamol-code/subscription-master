@@ -4,6 +4,8 @@ import com.mirkamolcode.entity.GmailConnection;
 import com.mirkamolcode.entity.LoginEvent;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.event.GmailConnectedEvent;
+import com.mirkamolcode.integration.geo.GeoLocation;
+import com.mirkamolcode.integration.geo.GeoLocationService;
 import com.mirkamolcode.repository.GmailConnectionRepository;
 import com.mirkamolcode.repository.LoginEventRepository;
 import com.mirkamolcode.security.TokenCipher;
@@ -29,6 +31,7 @@ public class GoogleLoginService {
     private final LoginCodeService loginCodes;
     private final ApplicationEventPublisher events;
     private final LoginEventRepository loginEvents;
+    private final GeoLocationService geoLocations;
     private final Clock clock;
 
     public GoogleLoginService(GoogleUserProvisioner provisioner,
@@ -37,6 +40,7 @@ public class GoogleLoginService {
                               LoginCodeService loginCodes,
                               ApplicationEventPublisher events,
                               LoginEventRepository loginEvents,
+                              GeoLocationService geoLocations,
                               Clock clock) {
         this.provisioner = provisioner;
         this.connections = connections;
@@ -44,6 +48,7 @@ public class GoogleLoginService {
         this.loginCodes = loginCodes;
         this.events = events;
         this.loginEvents = loginEvents;
+        this.geoLocations = geoLocations;
         this.clock = clock;
     }
 
@@ -58,7 +63,8 @@ public class GoogleLoginService {
     private void recordLogin(User user, LoginContext context) {
         Instant now = clock.instant();
         user.recordLogin(now);
-        loginEvents.save(new LoginEvent(user, now, context.ip(), context.userAgent()));
+        GeoLocation geo = geoLocations.locate(context.ip());
+        loginEvents.save(new LoginEvent(user, now, context.ip(), context.userAgent(), geo.city(), geo.country()));
     }
 
     private void connectGmail(User user, String refreshToken, Set<String> grantedScopes) {

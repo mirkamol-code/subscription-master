@@ -22,7 +22,7 @@ class AdminUserMapperTest {
         User user = new User("admin@example.com", Set.of(Role.ADMIN));
         Instant now = Instant.parse("2026-11-04T10:00:00Z");
         String ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
-        LoginEvent event = new LoginEvent(user, now, "192.168.1.1", ua);
+        LoginEvent event = new LoginEvent(user, now, "192.168.1.1", ua, "Tashkent", "Uzbekistan");
 
         // when
         LoginEventResponse response = mapper.toResponse(event);
@@ -35,6 +35,8 @@ class AdminUserMapperTest {
         assertThat(response.device()).isEqualTo("Desktop");
         assertThat(response.browser()).isEqualTo("Chrome");
         assertThat(response.os()).isEqualTo("macOS");
+        assertThat(response.city()).isEqualTo("Tashkent");
+        assertThat(response.country()).isEqualTo("Uzbekistan");
     }
 
     @Test

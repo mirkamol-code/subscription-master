@@ -1,0 +1,2 @@
+ALTER TABLE login_events ADD COLUMN city VARCHAR(100);
+ALTER TABLE login_events ADD COLUMN country VARCHAR(100);

@@ -9,6 +9,8 @@ public record LoginEventResponse(
         String userAgent,
         String device,
         String browser,
-        String os
+        String os,
+        String city,
+        String country
 ) {
 }
