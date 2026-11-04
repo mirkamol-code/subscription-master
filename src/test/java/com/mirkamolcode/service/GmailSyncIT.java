@@ -1046,6 +1046,108 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldTrackUnknownMerchantTrial_asFreeTrialThatNeedsReview() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("unknown-trial-started.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription trial = subscription("acme-notes");
+        assertThat(trial.getStatus()).isEqualTo(com.mirkamolcode.model.SubscriptionStatus.TRIAL);
+        assertThat(trial.getTrialEndsOn()).isEqualTo(LocalDate.of(2026, 12, 4));
+        assertThat(trial.isNeedsReview()).isTrue();
+        assertThat(trial.getReviewReason()).isEqualTo(com.mirkamolcode.model.ReviewReason.UNCONFIRMED_TRIAL);
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(trial.getId())).isEmpty();
+    }
+
+    @Test
+    void sync_shouldNeverRecordZeroTrialChargeAsPayment() {
+        // given
+        GmailMessage started = EmailFixtures.load("unknown-trial-started.json");
+        GMAIL.mailbox(copy(started, "19d0trial0000zero", "2026-11-04T09:00:00Z", "Thanks for signing up.",
+                "Thanks for signing up. Today's charge: $0.00."));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription trial = subscription("acme-notes");
+        assertThat(trial.getStatus()).isEqualTo(com.mirkamolcode.model.SubscriptionStatus.TRIAL);
+        assertThat(trial.getPrice()).isEqualByComparingTo("8.00");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(trial.getId())).isEmpty();
+    }
+
+    @Test
+    void sync_shouldNotTrackUnknownMerchantTrialOffer() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("unknown-trial-offer.json"), EmailFixtures.load("unknown-trial-try-free.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
+    void confirm_shouldClearReviewOfUnknownMerchantTrial() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("unknown-trial-started.json"));
+        underTest.sync(userId);
+
+        // when / then
+        webTestClient.post().uri(API + "/subscriptions/" + subscription("acme-notes").getId() + "/confirm")
+                .header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.needsReview").isEqualTo(false)
+                .jsonPath("$.status").isEqualTo("TRIAL");
+    }
+
+    @Test
+    void sync_shouldNotRecreateHiddenTrial_fromLaterTrialEmail() {
+        // given
+        GmailMessage started = EmailFixtures.load("unknown-trial-started.json");
+        GMAIL.mailbox(started);
+        underTest.sync(userId);
+        webTestClient.post().uri(API + "/subscriptions/" + subscription("acme-notes").getId() + "/hide")
+                .header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk();
+        GmailMessage again = copy(started, "19d0trial000again", "2026-11-20T09:00:00Z", "December 4, 2026", "December 20, 2026");
+        GMAIL.deliver(again);
+        GMAIL.historyAdds(again.id());
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).singleElement().satisfies(trial -> assertThat(trial.isHidden()).isTrue());
+    }
+
+    @Test
+    void sync_shouldConvertUnknownMerchantTrial_intoSameSubscription_onFirstInvoice() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("unknown-trial-started.json"));
+        underTest.sync(userId);
+        GmailMessage invoice = EmailFixtures.load("unknown-trial-invoice.json");
+        GMAIL.deliver(invoice);
+        GMAIL.historyAdds(invoice.id());
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).hasSize(1);
+        Subscription converted = subscription("acme-notes");
+        assertThat(converted.getStatus()).isEqualTo(com.mirkamolcode.model.SubscriptionStatus.ACTIVE);
+        assertThat(converted.getPrice()).isEqualByComparingTo("8.00");
+        assertThat(converted.isNeedsReview()).isFalse();
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(converted.getId())).hasSize(1);
+    }
+
+    @Test
     void sync_shouldNotTrackAppleInvoice_whenEveryLineItemIsOneTimePurchase() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-one-time-purchase.json"));

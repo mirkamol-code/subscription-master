@@ -1,6 +1,5 @@
 package com.mirkamolcode.service;
 
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +22,6 @@ public class PaymentService {
     }
 
     @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Tashkent")
-    @SchedulerLock(name = "refreshExchangeRates", lockAtMostFor = "PT30M")
     public void refreshExchangeRates() {
         exchangeRates.refreshDailyRates();
     }

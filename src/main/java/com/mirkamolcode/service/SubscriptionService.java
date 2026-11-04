@@ -190,8 +190,8 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponse confirmRecurring(Long id) {
         Subscription subscription = requiredEditable(id, Permission.SUBSCRIPTION_UPDATE_ALL);
-        if (!subscription.isReviewingSimilarInvoices())
-            throw new ConflictException("Only a subscription that needs review for similar invoices can be confirmed");
+        if (!subscription.isAwaitingConfirmation())
+            throw new ConflictException("Only a subscription that waits for confirmation can be confirmed");
         subscription.confirmRecurring();
         return mapper.toResponse(subscription);
     }

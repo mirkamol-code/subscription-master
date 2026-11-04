@@ -128,7 +128,6 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 | `STATUS_RULES_CRON` / `OVERDUE_GRACE_DAYS` | no | Status rules schedule (hourly) and overdue grace (5 days) |
 | `RENEWAL_WINDOW_DAYS_BEFORE` | no | Days before the due date an unreadable receipt counts as a renewal (3) |
 | `GMAIL_ATTACHMENT_MAX_BYTES` | no | Largest invoice PDF served, default 25 MB |
-| `APP_SEED_ENABLED` | no | Demo data for `demo@subscribemaster.local`, local only |
 | `SERVER_PORT` | no | HTTP port, default `8080` |
 | `HIBERNATE_SHOW_SQL` / `HIBERNATE_FORMAT_SQL` | no | SQL logging for debugging, default off |
 
@@ -210,7 +209,7 @@ To run the app in a container instead, put the same variables in `.env` and run 
 | Parsing | jsoup (HTML, schema.org JSON-LD, sanitizing) |
 | Notifications | Gmail API send, Web Push (`web-push`, BouncyCastle, VAPID) |
 | Database | PostgreSQL 16, Spring Data JPA, Flyway |
-| Scheduling | Spring Scheduler, ShedLock |
+| Scheduling | Spring Scheduler (single instance; jobs are idempotent) |
 | Currency | Central Bank of Uzbekistan API, Caffeine cache, circuit breaker |
 | Reports | Apache POI |
 | API docs | Springdoc OpenAPI / Swagger UI |

@@ -25,6 +25,8 @@ public class EmailClassifier {
     private final Pattern priceChange;
     private final Pattern priceChangeEffective;
     private final Pattern trialStarted;
+    private final Pattern trialStartedConfirmed;
+    private final Pattern trialOffer;
     private final Pattern trialEnds;
     private final Pattern paymentFailed;
     private final Pattern promotion;
@@ -46,6 +48,8 @@ public class EmailClassifier {
         this.priceChange = anyPhrase(keywords.priceChange());
         this.priceChangeEffective = anyPhrase(keywords.priceChangeEffective());
         this.trialStarted = anyPhrase(keywords.trialStarted());
+        this.trialStartedConfirmed = anyPhrase(keywords.trialStartedConfirmed());
+        this.trialOffer = anyPhrase(keywords.trialOffer());
         this.trialEnds = anyPhrase(keywords.trialEnds());
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
         this.promotion = anyPhrase(keywords.promotion());
@@ -67,7 +71,8 @@ public class EmailClassifier {
             return EmailKind.CANCELLATION;
         if (priceChange.matcher(subject).find() || (!confirmsPayment && priceChange.matcher(body).find()))
             return EmailKind.PRICE_CHANGE;
-        if (!confirmsPayment && matchesSubjectOrBody(trialStarted, message))
+        boolean mentionsTrialStart = matchesSubjectOrBody(trialStarted, message) || confirmsTrialStart(message);
+        if (!confirmsPayment && mentionsTrialStart && !matchesSubjectOrBody(trialOffer, message))
             return EmailKind.TRIAL_STARTED;
         if (paymentDue.matcher(subject).find() && !confirmsPayment)
             return EmailKind.IRRELEVANT;
@@ -88,6 +93,10 @@ public class EmailClassifier {
 
     public Optional<PriceChangeNotice> findPriceChange(GmailMessage message) {
         return PriceChangeParser.parse(message.bodyText(), priceChangeEffective, message.receivedOnUtc());
+    }
+
+    public boolean confirmsTrialStart(GmailMessage message) {
+        return matchesSubjectOrBody(trialStartedConfirmed, message);
     }
 
     public TrialDetails findTrialDetails(GmailMessage message) {

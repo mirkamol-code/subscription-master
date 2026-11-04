@@ -26,5 +26,3 @@ app:
     secret: ${JWT_SECRET}
   security:
     token-encryption-key: ${TOKEN_ENCRYPTION_KEY}
-  seed:
-    enabled: false

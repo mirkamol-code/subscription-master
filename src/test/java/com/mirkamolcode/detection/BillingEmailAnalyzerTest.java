@@ -83,14 +83,70 @@ class BillingEmailAnalyzerTest {
     }
 
     @Test
-    void analyze_shouldIgnoreTrialFromUnknownSender() {
+    void analyze_shouldDetectTrialFromUnknownSender_whenEmailClearlySaysItStarted() {
         // when
-        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.authenticated(new GmailMessage("m-1", "t-1",
-                Instant.parse("2026-11-04T09:00:00Z"), "Acme <hello@acme.example>", "Your free trial has started", null,
-                "Your free trial ends on December 4, 2026. Then $5.00 per month.")));
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("unknown-trial-started.json"));
 
         // then
-        assertThat(analysis.kind()).isEqualTo(EmailKind.IRRELEVANT);
+        assertThat(analysis.kind()).isEqualTo(EmailKind.TRIAL_STARTED);
+        assertThat(analysis.merchant().known()).isFalse();
+        assertThat(analysis.merchant().displayName()).isEqualTo("Acme Notes");
+        assertThat(analysis.trial().endsOn()).isEqualTo(LocalDate.of(2026, 12, 4));
+        assertThat(analysis.trial().priceAfterTrial().amount()).isEqualByComparingTo("8.00");
+        assertThat(analysis.trial().cycle()).isEqualTo(BillingFrequency.MONTHLY);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Welcome to your free trial", "Your free trial is now active",
+            "Thanks for starting your free trial"})
+    void analyze_shouldDetectTrialFromUnknownSender_forEveryClearStartPhrase(String subject) {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.authenticated(new GmailMessage("m-1", "t-1",
+                Instant.parse("2026-11-04T09:00:00Z"), "Acme Notes <hello@acmenotes.example>", subject, null,
+                "Hi Alex, enjoy Acme Notes Pro.")));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.TRIAL_STARTED);
+    }
+
+    @Test
+    void analyze_shouldNotTreatFreeTrialOfferAsTrial() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("unknown-trial-offer.json"));
+
+        // then
+        assertThat(analysis.kind()).isNotEqualTo(EmailKind.TRIAL_STARTED);
+        assertThat(analysis.isPayment()).isFalse();
+    }
+
+    @Test
+    void analyze_shouldNotTreatTryFreeEmailAsTrial_evenWhenItAlsoSaysStarted() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.load("unknown-trial-try-free.json"));
+
+        // then
+        assertThat(analysis.kind()).isNotEqualTo(EmailKind.TRIAL_STARTED);
+    }
+
+    @Test
+    void analyze_shouldNotTreatKnownMerchantOfferAsTrial() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(netflixTrial("Start your free trial",
+                "Start your free trial today. Your trial ends after 30 days."));
+
+        // then
+        assertThat(analysis.kind()).isNotEqualTo(EmailKind.TRIAL_STARTED);
+    }
+
+    @Test
+    void analyze_shouldNotTrackUnknownSenderTrial_withoutClearStartWording() {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.authenticated(new GmailMessage("m-1", "t-1",
+                Instant.parse("2026-11-04T09:00:00Z"), "Acme <hello@acme.example>", "About your account", null,
+                "Your trial ends on December 4, 2026. Then $5.00 per month.")));
+
+        // then
+        assertThat(analysis.kind()).isNotEqualTo(EmailKind.TRIAL_STARTED);
     }
 
     @Test

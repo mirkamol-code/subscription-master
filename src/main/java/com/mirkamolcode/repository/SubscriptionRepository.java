@@ -47,6 +47,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             select s.id from Subscription s
              where s.isDeleted = false and s.isHidden = false and s.endsOn is null
                and s.status = com.mirkamolcode.model.SubscriptionStatus.TRIAL
+               and (s.reviewReason is null or s.reviewReason <> com.mirkamolcode.model.ReviewReason.UNCONFIRMED_TRIAL)
                and s.trialEndsOn between :from and :to
              order by s.id
             """)

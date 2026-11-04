@@ -133,6 +133,23 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDueReminders_shouldNotifyOnce_whenTwoRunsOverlap() throws Exception {
+        // given
+        subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));
+        java.util.concurrent.ExecutorService runs = java.util.concurrent.Executors.newFixedThreadPool(2);
+
+        // when
+        List<java.util.concurrent.Future<?>> both = List.of(runs.submit(reminderJob::sendDueReminders), runs.submit(reminderJob::sendDueReminders));
+        for (java.util.concurrent.Future<?> run : both)
+            run.get();
+        runs.shutdown();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(1);
+        assertThat(GMAIL.sentRawMessages).hasSize(1);
+    }
+
+    @Test
     void sendDueReminders_shouldNotifyAgain_forTheNextBillingCycle() {
         // given
         Subscription netflix = subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));
@@ -434,6 +451,36 @@ class NotificationIT extends AbstractTestConfig {
 
         // then
         notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
+    void sendDueReminders_shouldNotRemind_aboutUnconfirmedUnknownMerchantTrial() {
+        // given
+        Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 12));
+        trial.flagUnconfirmedTrial();
+        subscriptionRepository.save(trial);
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
+    void sendDueReminders_shouldRemind_onceUnknownMerchantTrialIsConfirmed() {
+        // given
+        Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 12));
+        trial.flagUnconfirmedTrial();
+        subscriptionRepository.save(trial);
+        webTestClient.post().uri(API + "/subscriptions/" + trial.getId() + "/confirm").header("Authorization", bearer(tokens)).exchange()
+                .expectStatus().isOk();
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.content[0].type").isEqualTo("TRIAL_ENDING");
     }
 
     @Test

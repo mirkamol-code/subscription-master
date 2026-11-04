@@ -18,7 +18,6 @@
         <java.version>21</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <jjwt.version>0.12.6</jjwt.version>
-        <shedlock.version>6.3.0</shedlock.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <wiremock.version>3.13.2</wiremock.version>
         <jsoup.version>1.23.2</jsoup.version>
@@ -190,19 +189,7 @@
             <version>8.10.1</version>
         </dependency>
 
-        <!-- Prevent duplicate execution of scheduled jobs in multiple instances -->
-        <dependency>
-            <groupId>net.javacrumbs.shedlock</groupId>
-            <artifactId>shedlock-spring</artifactId>
-            <version>${shedlock.version}</version>
-        </dependency>
 
-        <!-- Store ShedLock locks in the database using JDBC -->
-        <dependency>
-            <groupId>net.javacrumbs.shedlock</groupId>
-            <artifactId>shedlock-provider-jdbc-template</artifactId>
-            <version>${shedlock.version}</version>
-        </dependency>
 
         <!-- Excel file generation and processing (.xlsx) -->
         <dependency>

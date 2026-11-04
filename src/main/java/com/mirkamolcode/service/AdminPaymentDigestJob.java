@@ -8,7 +8,6 @@ import com.mirkamolcode.model.DueEntryKind;
 import com.mirkamolcode.notification.NotificationDispatcher;
 import com.mirkamolcode.notification.NotificationMessageFactory;
 import com.mirkamolcode.repository.UserRepository;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -49,7 +48,6 @@ public class AdminPaymentDigestJob {
     }
 
     @Scheduled(cron = "${app.notifications.reminder-cron}")
-    @SchedulerLock(name = "adminPaymentDigest", lockAtMostFor = "PT50M")
     public void sendDigests() {
         for (User admin : users.findAdmins()) {
             try {

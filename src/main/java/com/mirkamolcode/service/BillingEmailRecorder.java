@@ -165,6 +165,8 @@ public class BillingEmailRecorder {
                 LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC), trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
         started.linkMerchant(merchant.key(), merchant.logoDomain());
         started.applyDetectedCategory(categories.classify(merchant, Arrays.asList(email.getSubject(), email.getSenderDomain())));
+        if (!merchant.known())
+            started.flagUnconfirmedTrial();
         Subscription saved = subscriptions.save(started);
         email.attachTo(saved);
         attachEarlierPriceNotices(user.getId(), saved);
