@@ -4,6 +4,7 @@ import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.integration.gmail.MessageHeaders;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
+import com.mirkamolcode.model.PaymentMethodType;
 import com.mirkamolcode.model.SubscriptionCategory;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,6 +35,10 @@ class BillingEmailAnalyzerTest {
         assertThat(analysis.billing().currency()).isEqualTo(CurrencyCode.USD);
         assertThat(analysis.billing().cycle()).isEqualTo(BillingFrequency.MONTHLY);
         assertThat(analysis.billing().paymentDate()).isEqualTo(LocalDate.of(2026, 10, 12));
+        assertThat(analysis.merchant().category()).isEqualTo(SubscriptionCategory.INFRASTRUCTURE);
+        assertThat(analysis.charges().getFirst().paymentMethod())
+                .isEqualTo(new PaymentMethod(PaymentMethodType.CARD, null, null));
+        assertThat(analysis.charges().getFirst().platform()).isNull();
     }
 
     @Test

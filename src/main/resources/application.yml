@@ -119,7 +119,7 @@ app:
         - { key: github, display-name: GitHub, senders: [github.com], category: PRODUCTIVITY }
         - { key: canva, display-name: Canva, senders: [canva.com], category: PRODUCTIVITY }
         - { key: dropbox, display-name: Dropbox, senders: [dropbox.com, dropboxmail.com], category: PRODUCTIVITY }
-        - { key: hetzner, display-name: Hetzner, aliases: [Hetzner Online, Hetzner Cloud], senders: [hetzner.com, hetzner.de], category: OTHER, default-cycle: MONTHLY }
+        - { key: hetzner, display-name: Hetzner, aliases: [Hetzner Online, Hetzner Cloud], senders: [hetzner.com, hetzner.de], category: INFRASTRUCTURE, default-cycle: MONTHLY }
   google:
     oauth-base-url: https://oauth2.googleapis.com
     connect-timeout: 2s

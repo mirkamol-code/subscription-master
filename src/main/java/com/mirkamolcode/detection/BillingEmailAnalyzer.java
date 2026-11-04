@@ -55,7 +55,9 @@ public class BillingEmailAnalyzer {
             return BillingEmailAnalysis.irrelevant();
         if (!merchant.known() && !hasRecurringBilling(parsed, message))
             return BillingEmailAnalysis.irrelevant();
-        return BillingEmailAnalysis.of(kind, merchant, complete(parsed, merchant, message), null);
+        ParsedBilling billing = complete(parsed, merchant, message);
+        PaymentMethod paymentMethod = PaymentMethodParser.find(message.bodyText()).orElse(null);
+        return new BillingEmailAnalysis(kind, List.of(new DetectedCharge(merchant, null, null, paymentMethod, billing)), null);
     }
 
     private Optional<BillingEmailAnalysis> analyzePlatformInvoice(GmailMessage message) {
