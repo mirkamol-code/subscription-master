@@ -24,7 +24,7 @@ spring:
         show_sql: ${HIBERNATE_SHOW_SQL:false}
   flyway.enabled: true
   cache:
-    cache-names: exchange-rates
+    cache-names: exchange-rates,geo-locations
     caffeine.spec: maximumSize=32,expireAfterWrite=24h
   jackson:
     mapper:
@@ -117,6 +117,10 @@ app:
     oauth-base-url: https://oauth2.googleapis.com
     connect-timeout: 2s
     read-timeout: 5s
+  geo:
+    base-url: ${GEO_IP_BASE_URL:http://ip-api.com/json}
+    connect-timeout: ${GEO_IP_CONNECT_TIMEOUT:2s}
+    read-timeout: ${GEO_IP_READ_TIMEOUT:2s}
 
   cbu.base-url: https://cbu.uz/uz/arkhiv-kursov-valyut/json/
   cbu.connect-timeout: ${CBU_CONNECT_TIMEOUT:5s}

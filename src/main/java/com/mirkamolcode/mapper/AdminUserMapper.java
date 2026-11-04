@@ -9,6 +9,7 @@ import com.mirkamolcode.entity.PaymentHistory;
 import com.mirkamolcode.entity.Subscription;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.model.Role;
+import com.mirkamolcode.security.UserAgentParser;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -18,7 +19,23 @@ public interface AdminUserMapper {
     @Mapping(target = "timeZone", expression = "java(user.getTimeZone().getId())")
     AdminUserResponse toResponse(User user);
 
-    LoginEventResponse toResponse(LoginEvent event);
+    default LoginEventResponse toResponse(LoginEvent event) {
+        if (event == null) {
+            return null;
+        }
+        UserAgentParser.ClientInfo client = UserAgentParser.parse(event.getUserAgent());
+        return new LoginEventResponse(
+                event.getId(),
+                event.getOccurredAt(),
+                event.getIp(),
+                event.getUserAgent(),
+                client.device(),
+                client.browser(),
+                client.os(),
+                event.getCity(),
+                event.getCountry()
+        );
+    }
 
     @Mapping(target = "merchant", source = "merchantSlug")
     AdminSubscriptionResponse toResponse(Subscription subscription);

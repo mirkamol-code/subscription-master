@@ -6,6 +6,11 @@ public record LoginEventResponse(
         Long id,
         Instant occurredAt,
         String ip,
-        String userAgent
+        String userAgent,
+        String device,
+        String browser,
+        String os,
+        String city,
+        String country
 ) {
 }

@@ -7,8 +7,11 @@ import com.mirkamolcode.dto.response.AdminUserResponse;
 import com.mirkamolcode.dto.response.AdminUserRowResponse;
 import com.mirkamolcode.dto.response.LoginEventResponse;
 import com.mirkamolcode.dto.response.MerchantOptionResponse;
+import com.mirkamolcode.entity.LoginEvent;
 import com.mirkamolcode.entity.User;
 import com.mirkamolcode.exception.NotFoundException;
+import com.mirkamolcode.integration.geo.GeoLocation;
+import com.mirkamolcode.integration.geo.GeoLocationService;
 import com.mirkamolcode.mapper.AdminUserMapper;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.LoginEventRepository;
@@ -50,6 +53,7 @@ public class AdminUserService {
     private final PaymentHistoryRepository payments;
     private final LoginEventRepository loginEvents;
     private final AdminUserMapper mapper;
+    private final GeoLocationService geoLocations;
     private final Clock clock;
 
     public AdminUserService(UserRepository users,
@@ -57,12 +61,14 @@ public class AdminUserService {
                             PaymentHistoryRepository payments,
                             LoginEventRepository loginEvents,
                             AdminUserMapper mapper,
+                            GeoLocationService geoLocations,
                             Clock clock) {
         this.users = users;
         this.subscriptions = subscriptions;
         this.payments = payments;
         this.loginEvents = loginEvents;
         this.mapper = mapper;
+        this.geoLocations = geoLocations;
         this.clock = clock;
     }
 
@@ -85,7 +91,27 @@ public class AdminUserService {
 
     public Page<LoginEventResponse> listLogins(Long userId, Pageable pageable) {
         requireUser(userId);
-        return loginEvents.findByUserIdOrderByOccurredAtDesc(userId, withoutSort(pageable)).map(mapper::toResponse);
+        return loginEvents.findByUserIdOrderByOccurredAtDesc(userId, withoutSort(pageable))
+                .map(this::toLoginResponse);
+    }
+
+    private LoginEventResponse toLoginResponse(LoginEvent event) {
+        LoginEventResponse response = mapper.toResponse(event);
+        if (response.city() != null && response.country() != null) {
+            return response;
+        }
+        GeoLocation geo = geoLocations.locate(event.getIp());
+        return new LoginEventResponse(
+                response.id(),
+                response.occurredAt(),
+                response.ip(),
+                response.userAgent(),
+                response.device(),
+                response.browser(),
+                response.os(),
+                geo.city(),
+                geo.country()
+        );
     }
 
     public List<AdminSubscriptionResponse> listSubscriptions(Long userId) {
