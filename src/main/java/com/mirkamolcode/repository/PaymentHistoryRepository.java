@@ -3,6 +3,7 @@ package com.mirkamolcode.repository;
 import com.mirkamolcode.entity.PaymentHistory;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -18,6 +19,8 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
     boolean existsByBillingEmailIdAndSubscriptionId(Long billingEmailId, Long subscriptionId);
 
     boolean existsBySubscriptionIdAndInvoiceReference(Long subscriptionId, String invoiceReference);
+
+    List<PaymentHistory> findBySubscriptionIdIn(Collection<Long> subscriptionIds);
 
     List<PaymentHistory> findBySubscriptionUserIdAndPaymentDateBetween(Long userId, LocalDate from, LocalDate to);
 

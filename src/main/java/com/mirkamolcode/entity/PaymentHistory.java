@@ -61,6 +61,10 @@ public class PaymentHistory extends AuditableEntity {
         this.invoiceReference = invoiceReference;
     }
 
+    public BillingEmail getBillingEmail() {
+        return billingEmail;
+    }
+
     public String getInvoiceReference() {
         return invoiceReference;
     }
