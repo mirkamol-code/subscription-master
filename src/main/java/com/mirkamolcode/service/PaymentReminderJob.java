@@ -38,7 +38,7 @@ public class PaymentReminderJob {
             }
         }
         for (Long subscriptionId : subscriptions.findTrialReminderCandidateIds(utcToday.minusDays(1),
-                utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK))) {
+                utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK + 1))) {
             try {
                 reminders.remindTrialEndingIfDue(subscriptionId);
             } catch (RuntimeException e) {

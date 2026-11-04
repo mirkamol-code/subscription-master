@@ -18,6 +18,15 @@ class GmailQueryTest {
     }
 
     @Test
+    void buildLookbackQuery_shouldCoverFreeTrialEmails() {
+        // when
+        String query = underTest.buildLookbackQuery();
+
+        // then
+        assertThat(query).contains("\"free trial\"");
+    }
+
+    @Test
     void buildLookbackQuery_shouldCoverReceiptWording() {
         // when
         String query = underTest.buildLookbackQuery();

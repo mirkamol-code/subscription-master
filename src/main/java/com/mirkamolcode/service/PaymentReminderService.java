@@ -47,7 +47,10 @@ public class PaymentReminderService {
     public void remindTrialEndingIfDue(Long subscriptionId) {
         Subscription subscription = subscriptions.findById(subscriptionId).orElseThrow();
         LocalDate endsOn = subscription.getTrialEndsOn();
-        if (subscription.isTrial() && subscription.getEndsOn() == null && endsOn != null && isWithinReminderWindow(subscription, endsOn))
+        if (!subscription.isTrial() || subscription.getEndsOn() != null || endsOn == null)
+            return;
+        LocalDate remindFor = subscription.isTrialEndEstimated() ? endsOn.minusDays(1) : endsOn;
+        if (isWithinReminderWindow(subscription, remindFor))
             dispatcher.dispatch(subscription.getUser().getId(), messages.trialEnding(subscription),
                     "TRIAL_ENDING:" + subscriptionId + ":" + endsOn);
     }

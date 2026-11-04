@@ -119,6 +119,16 @@ class EmailClassifierTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"Thanks for starting your free trial", "Your Acme Family Tree free trial", "Welcome to your free trial"})
+    void hasBillingSubject_shouldLetTrialEmailsThrough(String subject) {
+        // when
+        boolean billing = underTest.hasBillingSubject(messageWith(subject, MessageHeaders.none()));
+
+        // then
+        assertThat(billing).isTrue();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"Your Netflix price is changing", "Important: price increase for your plan", "A price update for your membership"})
     void classify_shouldDetectPriceChangeNotices(String subject) {
         // given

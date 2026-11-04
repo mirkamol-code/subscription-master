@@ -45,9 +45,10 @@ public class NotificationMessageFactory {
                 ? "Check the price before it starts charging."
                 : subscription.getPrice().setScale(2, RoundingMode.HALF_UP).toPlainString() + " " + subscription.getCurrency()
                         + " may be charged after it ends.";
+        String when = (subscription.isTrialEndEstimated() ? "around " : "on ") + endsOn;
         return message(NotificationType.TRIAL_ENDING, NotificationSeverity.INFO, subscription.getId(),
-                "Your " + name + " free trial ends on " + endsOn,
-                "Your " + name + " free trial ends on " + endsOn + ". " + after);
+                "Your " + name + " free trial ends " + when,
+                "Your " + name + " free trial ends " + when + ". " + after);
     }
 
     public NotificationMessage statusChanged(SubscriptionStatusChangedEvent event, ZoneId zone) {

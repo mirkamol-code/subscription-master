@@ -157,12 +157,14 @@ public class BillingEmailRecorder {
         if (account.subscription().isPresent()) {
             Subscription existing = account.subscription().get();
             email.attachTo(existing);
-            if (existing.isTrial() && existing.getTrialEndsOn() == null)
-                existing.describeTrial(trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
+            existing.refineTrial(trial);
             return;
         }
+        if (!merchant.known() && !trial.startConfirmed())
+            return;
         Subscription started = Subscription.startTrial(user, merchant.displayName(), merchant.category(),
-                LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC), trial.endsOn(), trial.priceAfterTrial(), trial.cycle());
+                LocalDate.ofInstant(email.getReceivedAt(), ZoneOffset.UTC), null, null, null);
+        started.refineTrial(trial);
         started.linkMerchant(merchant.key(), merchant.logoDomain());
         started.applyDetectedCategory(categories.classify(merchant, Arrays.asList(email.getSubject(), email.getSenderDomain())));
         if (!merchant.known())

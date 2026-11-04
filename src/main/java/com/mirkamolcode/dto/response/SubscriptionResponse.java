@@ -35,6 +35,7 @@ public record SubscriptionResponse(
         String logoDomain,
         LocalDate endsOn,
         LocalDate trialEndsOn,
+        boolean trialEndEstimated,
         long version,
         String planName,
         BillingPlatform billingPlatform,

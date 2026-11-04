@@ -80,7 +80,7 @@ app:
       async-enabled: true
       max-concurrent: 4
     detection:
-      query: 'subject:(receipt OR invoice OR "payment received" OR "your subscription" OR renewal OR renewed OR "payment failed" OR declined OR canceled OR cancelled OR "won''t renew" OR "plan ended")'
+      query: 'subject:(receipt OR invoice OR "payment received" OR "your subscription" OR renewal OR renewed OR "payment failed" OR declined OR canceled OR cancelled OR "won''t renew" OR "plan ended" OR "free trial")'
       lookback: 13m
       keywords:
         receipt-subject: [receipt, invoice, "payment received", "payment confirmation", "order confirmation", "thanks for your payment", "your receipt"]
@@ -94,8 +94,9 @@ app:
         price-change: ["price is changing", "prices are changing", "price will change", "price change", "price increase", "price update", "new price", "updating our prices", "updating the price"]
         price-change-effective: [starting, effective, beginning, "takes effect", "on or after"]
         trial-started: ["free trial has started", "trial has started", "trial has begun", "your free trial ends", "your trial ends", "trial ends on", "trial will end", "trial period ends", "won't be charged until", "will not be charged until"]
-        trial-started-confirmed: ["your free trial has started", "your trial has started", "your trial has begun", "your free trial is now active", "thanks for starting your free trial", "welcome to your free trial"]
+        trial-started-confirmed: ["your free trial has started", "free trial has started", "trial is now active", "your trial has started", "your trial has begun", "your free trial is now active", "thanks for starting your free trial", "welcome to your free trial"]
         trial-offer: ["start your free trial", "start a free trial", "try free for", "try it free", "claim your free trial", "get your free trial", "free trial offer"]
+        trial-subject: ["free trial", "your trial"]
         trial-ends: ["trial ends", "trial will end", "trial period ends", "charged until", "ends on"]
         payment-failed: ["payment failed", "payment declined", "payment was declined", "update your payment method", "billing issue", "billing problem", "unable to process your payment", "couldn't process your payment", "could not process your payment", "subscription is on hold", "payment unsuccessful"]
         promotion: [save, sale, "off your", cashback, "cash back", offer, promo, deal, discount, upgrade, webinar, newsletter]

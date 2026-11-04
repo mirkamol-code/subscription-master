@@ -440,6 +440,33 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDueReminders_shouldRemindOneDayEarlier_andSayAround_whenTrialEndIsEstimated() {
+        // given
+        Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 14));
+        subscriptionRepository.save(estimated(trial));
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications()
+                .jsonPath("$.totalElements").isEqualTo(1)
+                .jsonPath("$.content[0].title").isEqualTo("Your Streamio free trial ends around 14 Nov 2026");
+    }
+
+    @Test
+    void sendDueReminders_shouldKeepUsualTiming_whenTrialEndIsConfirmed() {
+        // given
+        trialEndingOn(LocalDate.of(2026, 11, 14));
+
+        // when
+        reminderJob.sendDueReminders();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(0);
+    }
+
+    @Test
     void sendDueReminders_shouldNotRemind_whenTrialWasCancelled() {
         // given
         Subscription trial = trialEndingOn(LocalDate.of(2026, 11, 12));
@@ -717,6 +744,11 @@ class NotificationIT extends AbstractTestConfig {
         return subscriptionRepository.save(new Subscription(owner, name, new BigDecimal("22.99"), CurrencyCode.USD,
                 BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE, SubscriptionCategory.ENTERTAINMENT,
                 nextPaymentDate.minusMonths(1), nextPaymentDate));
+    }
+
+    private static Subscription estimated(Subscription trial) {
+        org.springframework.test.util.ReflectionTestUtils.setField(trial, "trialEndEstimated", true);
+        return trial;
     }
 
     private Subscription trialEndingOn(LocalDate trialEndsOn) {
