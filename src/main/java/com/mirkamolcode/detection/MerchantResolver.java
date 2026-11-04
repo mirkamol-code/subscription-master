@@ -10,8 +10,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Component;
 
@@ -20,16 +23,21 @@ public class MerchantResolver {
     private static final Pattern RECEIPT_FROM = Pattern.compile(
             "(?iu)(?<![\\p{L}\\p{N}])(?:receipt|invoice) from ([\\p{L}\\p{N}][\\p{L}\\p{N}&' -]{0,60}?)\\s*(?:[,#(\\n]|\\.(?:\\s|$)|\\s-\\s|$)");
 
+    public static final String LEGACY_APPLE_KEY = "apple";
     private static final String UNREAD_PLATFORM_KEY_SUFFIX = "-unparsed";
+    private static final String LINE_ITEM_KEY_SUFFIX = "-item";
 
     private final List<DetectionProperties.MerchantConfig> merchants;
     private final List<String> processors;
     private final Map<DetectionProperties.MerchantConfig, Pattern> merchantNames = new LinkedHashMap<>();
+    private final Set<String> reservedKeys;
 
     public MerchantResolver(DetectionProperties properties) {
         this.merchants = List.copyOf(properties.merchants());
         this.processors = List.copyOf(properties.processors());
         merchants.forEach(merchant -> merchantNames.put(merchant, anyName(merchant.namesForMatching())));
+        this.reservedKeys = Stream.concat(merchants.stream().map(DetectionProperties.MerchantConfig::key), Stream.of(LEGACY_APPLE_KEY))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     public Optional<Merchant> resolve(GmailMessage message) {
@@ -40,13 +48,13 @@ public class MerchantResolver {
             return bySender.map(MerchantResolver::toMerchant);
         if (findNamedIn(message.subject(), merchants).isPresent())
             return Optional.empty();
-        return Optional.of(unknownMerchant(senderLabel(message), message.senderDomain()));
+        return Optional.of(unknownMerchant(senderLabel(message), message.senderDomain(), toSlug(message.senderDomain())));
     }
 
     public Merchant resolveService(String title) {
         return findNamedIn(title, merchants)
                 .map(MerchantResolver::toMerchant)
-                .orElseGet(() -> unknownMerchant(title, null));
+                .orElseGet(() -> unknownMerchant(title, null, toSlug(title) + LINE_ITEM_KEY_SUFFIX));
     }
 
     public Merchant unreadPlatformInvoice(BillingPlatform platform) {
@@ -72,7 +80,7 @@ public class MerchantResolver {
             return processorItself.map(MerchantResolver::toMerchant);
         return extractReceiptName(message.subject())
                 .or(() -> extractReceiptName(message.bodyText()))
-                .map(name -> unknownMerchant(name, null));
+                .map(name -> unknownMerchant(name, null, toSlug(name) + "-" + toSlug(message.senderDomain())));
     }
 
     private Optional<DetectionProperties.MerchantConfig> findNamedIn(String text, List<DetectionProperties.MerchantConfig> candidates) {
@@ -124,8 +132,14 @@ public class MerchantResolver {
         return message.senderName().isBlank() ? extractOrganizationLabel(message.senderDomain()) : message.senderName();
     }
 
-    private static Merchant unknownMerchant(String displayName, String logoDomain) {
-        return new Merchant(toSlug(displayName), displayName, List.of(), logoDomain, SubscriptionCategory.OTHER, null, false);
+    private Merchant unknownMerchant(String displayName, String logoDomain, String keyIfNameIsReserved) {
+        String nameKey = toSlug(displayName);
+        String key = isReservedKey(nameKey) ? keyIfNameIsReserved : nameKey;
+        return new Merchant(key, displayName, List.of(), logoDomain, SubscriptionCategory.OTHER, null, false);
+    }
+
+    private boolean isReservedKey(String key) {
+        return reservedKeys.contains(key) || key.endsWith(UNREAD_PLATFORM_KEY_SUFFIX);
     }
 
     private static String extractOrganizationLabel(String domain) {

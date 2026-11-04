@@ -768,6 +768,39 @@ class GmailSyncIT extends AbstractTestConfig {
         // then
         assertThat(countRows("failed_gmail_messages")).isZero();
         assertThat(jdbc.queryForList("select kind from billing_emails", String.class)).containsExactly("RECEIPT");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("apple").getId())).isEmpty();
+    }
+
+    @Test
+    void sync_shouldNotCreateLegacyAppleRow_fromSenderNamedApple_soRealAppleInvoicesAreNotHeld() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"),
+                appleSubscriptionConfirmation("named-apple", "Apple <billing@apple-billing.com>"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey)
+                .doesNotContain(LegacyAppleRows.LEGACY_APPLE_KEY)
+                .contains("telegram-messenger");
+        assertThat(countRows("failed_gmail_messages")).isZero();
+    }
+
+    @Test
+    void sync_shouldNotPostLookAlikeNetflixSender_ontoRealNetflixSubscription() {
+        // given
+        GMAIL.mailbox(new GmailMessage("netflix-look-alike", "netflix-look-alike", Instant.parse("2026-11-05T10:00:00Z"),
+                "Netflix <billing@netflix-mail.example>", "Your monthly invoice", null,
+                "Thanks for your payment. Amount charged: $99.99 per month."), NETFLIX_OCT);
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("netflix").getId()))
+                .extracting(payment -> payment.getOriginalAmount().stripTrailingZeros().toPlainString())
+                .doesNotContain("99.99");
     }
 
     @Test
