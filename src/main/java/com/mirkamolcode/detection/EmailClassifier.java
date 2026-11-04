@@ -71,7 +71,8 @@ public class EmailClassifier {
             return EmailKind.CANCELLATION;
         if (priceChange.matcher(subject).find() || (!confirmsPayment && priceChange.matcher(body).find()))
             return EmailKind.PRICE_CHANGE;
-        if (!confirmsPayment && matchesSubjectOrBody(trialStarted, message) && !matchesSubjectOrBody(trialOffer, message))
+        boolean mentionsTrialStart = matchesSubjectOrBody(trialStarted, message) || confirmsTrialStart(message);
+        if (!confirmsPayment && mentionsTrialStart && !matchesSubjectOrBody(trialOffer, message))
             return EmailKind.TRIAL_STARTED;
         if (paymentDue.matcher(subject).find() && !confirmsPayment)
             return EmailKind.IRRELEVANT;

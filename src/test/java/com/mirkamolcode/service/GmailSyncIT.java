@@ -1063,6 +1063,23 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldNeverRecordZeroTrialChargeAsPayment() {
+        // given
+        GmailMessage started = EmailFixtures.load("unknown-trial-started.json");
+        GMAIL.mailbox(copy(started, "19d0trial0000zero", "2026-11-04T09:00:00Z", "Thanks for signing up.",
+                "Thanks for signing up. Today's charge: $0.00."));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription trial = subscription("acme-notes");
+        assertThat(trial.getStatus()).isEqualTo(com.mirkamolcode.model.SubscriptionStatus.TRIAL);
+        assertThat(trial.getPrice()).isEqualByComparingTo("8.00");
+        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(trial.getId())).isEmpty();
+    }
+
+    @Test
     void sync_shouldNotTrackUnknownMerchantTrialOffer() {
         // given
         GMAIL.mailbox(EmailFixtures.load("unknown-trial-offer.json"), EmailFixtures.load("unknown-trial-try-free.json"));

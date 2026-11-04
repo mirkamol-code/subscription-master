@@ -96,6 +96,19 @@ class BillingEmailAnalyzerTest {
         assertThat(analysis.trial().cycle()).isEqualTo(BillingFrequency.MONTHLY);
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Welcome to your free trial", "Your free trial is now active",
+            "Thanks for starting your free trial"})
+    void analyze_shouldDetectTrialFromUnknownSender_forEveryClearStartPhrase(String subject) {
+        // when
+        BillingEmailAnalysis analysis = underTest.analyze(EmailFixtures.authenticated(new GmailMessage("m-1", "t-1",
+                Instant.parse("2026-11-04T09:00:00Z"), "Acme Notes <hello@acmenotes.example>", subject, null,
+                "Hi Alex, enjoy Acme Notes Pro.")));
+
+        // then
+        assertThat(analysis.kind()).isEqualTo(EmailKind.TRIAL_STARTED);
+    }
+
     @Test
     void analyze_shouldNotTreatFreeTrialOfferAsTrial() {
         // when

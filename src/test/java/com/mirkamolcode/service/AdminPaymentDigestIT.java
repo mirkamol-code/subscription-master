@@ -74,6 +74,23 @@ class AdminPaymentDigestIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDigests_shouldSendOnce_whenTwoRunsOverlap() throws Exception {
+        // given
+        trackDue("Netflix", TODAY.plusDays(1), SubscriptionStatus.ACTIVE, "65000");
+        java.util.concurrent.ExecutorService runs = java.util.concurrent.Executors.newFixedThreadPool(2);
+
+        // when
+        java.util.List<java.util.concurrent.Future<?>> both = java.util.List.of(runs.submit(digestJob::sendDigests),
+                runs.submit(digestJob::sendDigests));
+        for (java.util.concurrent.Future<?> run : both)
+            run.get();
+        runs.shutdown();
+
+        // then
+        adminNotifications().jsonPath("$.totalElements").isEqualTo(1);
+    }
+
+    @Test
     void sendDigests_shouldSendOnlyOncePerDay() {
         // given
         trackDue("Netflix", TODAY.plusDays(1), SubscriptionStatus.ACTIVE, "65000");

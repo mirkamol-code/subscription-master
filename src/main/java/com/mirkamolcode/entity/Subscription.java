@@ -311,8 +311,7 @@ public class Subscription extends AuditableEntity {
     }
 
     public boolean isAwaitingConfirmation() {
-        return reviewReason == ReviewReason.SIMILAR_INVOICES || reviewReason == ReviewReason.SIMILAR_INVOICES_REPEATED
-                || reviewReason == ReviewReason.UNCONFIRMED_TRIAL;
+        return reviewReason != null && reviewReason.awaitsConfirmation();
     }
 
     public void confirmRecurring() {

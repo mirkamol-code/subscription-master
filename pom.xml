@@ -189,7 +189,6 @@
             <version>8.10.1</version>
         </dependency>
 
-        <!-- Prevent duplicate execution of scheduled jobs in multiple instances -->
 
 
         <!-- Excel file generation and processing (.xlsx) -->

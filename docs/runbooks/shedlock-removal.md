@@ -18,7 +18,13 @@ one, so two app instances never run at once. If the app is ever scaled out, sche
 
 ## Rollback to an image that still uses ShedLock
 
-1. Before starting the older image, recreate the table once (read-write):
+1. The older image doesn't know the `UNCONFIRMED_TRIAL` review reason (V23), so it can't load those rows. First keep
+   them flagged for review under a reason it knows:
+   ```sql
+   UPDATE subscriptions SET review_reason = NULL WHERE review_reason = 'UNCONFIRMED_TRIAL';
+   ```
+   `needs_review` stays true, so the user still sees them under Needs review.
+2. Before starting the older image, recreate the table once (read-write):
    ```sql
    CREATE TABLE IF NOT EXISTS shedlock (
        name VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -26,7 +32,7 @@ one, so two app instances never run at once. If the app is ever scaled out, sche
        locked_at TIMESTAMP NOT NULL,
        locked_by VARCHAR(255) NOT NULL);
    ```
-2. Deploy the older image, or revert the PR so CI deploys it. Flyway in the older image treats V23/V24 as future
+3. Deploy the older image, or revert the PR so CI deploys it. Flyway in the older image treats V23/V24 as future
    migrations and ignores them by default. If validation still fails, start it with
    `SPRING_FLYWAY_IGNORE_MIGRATION_PATTERNS=*:future`.
-3. The older image recreates no table itself, so step 1 must come first, or its scheduled jobs fail to acquire locks.
+4. The older image recreates no table itself, so step 2 must come first, or its scheduled jobs fail to acquire locks.

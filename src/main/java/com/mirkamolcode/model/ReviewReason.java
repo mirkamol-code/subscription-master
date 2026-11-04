@@ -15,4 +15,8 @@ public enum ReviewReason {
     public String note() {
         return note;
     }
+
+    public boolean awaitsConfirmation() {
+        return this == SIMILAR_INVOICES || this == SIMILAR_INVOICES_REPEATED || this == UNCONFIRMED_TRIAL;
+    }
 }
