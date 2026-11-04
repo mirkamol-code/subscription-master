@@ -21,8 +21,6 @@ public interface BillingEmailRepository extends JpaRepository<BillingEmail, Long
 
     long countBySubscriptionIdAndRecurrenceCandidateTrue(Long subscriptionId);
 
-    List<BillingEmail> findByUserIdAndMerchantKey(Long userId, String merchantKey);
-
     List<BillingEmail> findByUserIdAndAwaitingAccountTrueOrderByReceivedAtDesc(Long userId);
 
     List<BillingEmail> findBySubscriptionIdAndAccountGuessedTrue(Long subscriptionId);
