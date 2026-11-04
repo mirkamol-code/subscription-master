@@ -39,6 +39,8 @@ class BillingEmailAnalyzerTest {
         assertThat(analysis.charges().getFirst().paymentMethod())
                 .isEqualTo(new PaymentMethod(PaymentMethodType.CARD, null, null));
         assertThat(analysis.charges().getFirst().platform()).isNull();
+        assertThat(analysis.charges().getFirst().references())
+                .isEqualTo(new InvoiceReferences("000000000001", "K0000000001"));
     }
 
     @Test

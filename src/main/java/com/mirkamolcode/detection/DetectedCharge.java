@@ -7,11 +7,15 @@ public record DetectedCharge(
         String planName,
         BillingPlatform platform,
         PaymentMethod paymentMethod,
-        String invoiceReference,
+        InvoiceReferences references,
         ParsedBilling billing
 ) {
     static DetectedCharge direct(Merchant merchant, ParsedBilling billing) {
-        return new DetectedCharge(merchant, null, null, null, null, billing);
+        return new DetectedCharge(merchant, null, null, null, InvoiceReferences.none(), billing);
+    }
+
+    public String invoiceReference() {
+        return references.invoice();
     }
 
     public boolean isPayment() {

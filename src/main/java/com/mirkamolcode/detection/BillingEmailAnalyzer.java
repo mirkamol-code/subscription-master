@@ -57,7 +57,8 @@ public class BillingEmailAnalyzer {
             return BillingEmailAnalysis.irrelevant();
         ParsedBilling billing = complete(parsed, merchant, message);
         PaymentMethod paymentMethod = PaymentMethodParser.find(message.bodyText()).orElse(null);
-        return new BillingEmailAnalysis(kind, List.of(new DetectedCharge(merchant, null, null, paymentMethod, null, billing)), null);
+        return new BillingEmailAnalysis(kind, List.of(new DetectedCharge(merchant, null, null, paymentMethod,
+                InvoiceReferences.find(message.subject(), message.bodyText()), billing)), null);
     }
 
     private Optional<BillingEmailAnalysis> analyzePlatformInvoice(GmailMessage message) {
@@ -96,7 +97,7 @@ public class BillingEmailAnalyzer {
         Confidence confidence = knownCycle != null && pricesAddUp ? Confidence.HIGH : Confidence.LOW;
         ParsedBilling billing = new ParsedBilling(price.amount(), price.currency(), cycle, paidOn, nextBillingDate, confidence);
         return new DetectedCharge(merchant, item.planName(), platformParser.platform(), invoice.paymentMethod(),
-                invoice.invoiceReference(), billing);
+                new InvoiceReferences(invoice.invoiceReference(), null), billing);
     }
 
     private static boolean addsUpTo(List<LineItem> items, Money total) {
