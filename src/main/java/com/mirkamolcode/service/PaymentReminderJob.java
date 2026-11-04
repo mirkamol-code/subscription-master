@@ -1,7 +1,6 @@
 package com.mirkamolcode.service;
 
 import com.mirkamolcode.repository.SubscriptionRepository;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -28,7 +27,6 @@ public class PaymentReminderJob {
     }
 
     @Scheduled(cron = "${app.notifications.reminder-cron}")
-    @SchedulerLock(name = "paymentReminders", lockAtMostFor = "PT50M")
     public void sendDueReminders() {
         LocalDate utcToday = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
         for (Long subscriptionId : subscriptions.findReminderCandidateIds(utcToday.minusDays(1), utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK),

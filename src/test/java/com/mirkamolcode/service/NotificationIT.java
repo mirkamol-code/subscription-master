@@ -133,6 +133,23 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
+    void sendDueReminders_shouldNotifyOnce_whenTwoRunsOverlap() throws Exception {
+        // given
+        subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));
+        java.util.concurrent.ExecutorService runs = java.util.concurrent.Executors.newFixedThreadPool(2);
+
+        // when
+        List<java.util.concurrent.Future<?>> both = List.of(runs.submit(reminderJob::sendDueReminders), runs.submit(reminderJob::sendDueReminders));
+        for (java.util.concurrent.Future<?> run : both)
+            run.get();
+        runs.shutdown();
+
+        // then
+        notifications().jsonPath("$.totalElements").isEqualTo(1);
+        assertThat(GMAIL.sentRawMessages).hasSize(1);
+    }
+
+    @Test
     void sendDueReminders_shouldNotifyAgain_forTheNextBillingCycle() {
         // given
         Subscription netflix = subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));

@@ -1,7 +1,6 @@
 package com.mirkamolcode.service;
 
 import com.mirkamolcode.repository.SubscriptionRepository;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -27,7 +26,6 @@ public class SubscriptionStatusJob {
     }
 
     @Scheduled(cron = "${app.status.daily-rules-cron}")
-    @SchedulerLock(name = "subscriptionStatusRules", lockAtMostFor = "PT50M")
     public void applyDailyRules() {
         LocalDate latestLocalDate = LocalDate.ofInstant(clock.instant(), ZoneOffset.MAX);
         LocalDate overdueBefore = latestLocalDate.minusDays(statusService.getOverdueGraceDays());

@@ -209,7 +209,7 @@ To run the app in a container instead, put the same variables in `.env` and run 
 | Parsing | jsoup (HTML, schema.org JSON-LD, sanitizing) |
 | Notifications | Gmail API send, Web Push (`web-push`, BouncyCastle, VAPID) |
 | Database | PostgreSQL 16, Spring Data JPA, Flyway |
-| Scheduling | Spring Scheduler, ShedLock |
+| Scheduling | Spring Scheduler (single instance; jobs are idempotent) |
 | Currency | Central Bank of Uzbekistan API, Caffeine cache, circuit breaker |
 | Reports | Apache POI |
 | API docs | Springdoc OpenAPI / Swagger UI |
