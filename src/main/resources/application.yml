@@ -29,6 +29,13 @@ spring:
   jackson:
     mapper:
       accept-case-insensitive-enums: true
+      sort-properties-alphabetically: false
+    deserialization:
+      fail-on-null-for-primitives: false
+    datatype:
+      enum:
+        read-enums-using-to-string: false
+        write-enums-using-to-string: false
   security:
     oauth2:
       client:

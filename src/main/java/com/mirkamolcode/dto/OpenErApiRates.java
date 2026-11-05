@@ -11,7 +11,7 @@ import java.util.Map;
 public record OpenErApiRates(
         @JsonProperty("result") String result,
         @JsonProperty("error-type") String errorType,
-        @JsonProperty("time_last_update_unix") long updatedAtEpochSecond,
+        @JsonProperty("time_last_update_unix") Long updatedAtEpochSecond,
         @JsonProperty("rates") Map<String, BigDecimal> rates) {
 
     public boolean isSuccess() {

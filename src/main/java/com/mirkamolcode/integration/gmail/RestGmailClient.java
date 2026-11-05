@@ -1,9 +1,10 @@
 package com.mirkamolcode.integration.gmail;
 
-import com.fasterxml.jackson.core.StreamReadConstraints;
-import com.fasterxml.jackson.core.exc.StreamConstraintsException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.StreamReadConstraints;
+import tools.jackson.core.exc.StreamConstraintsException;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import com.mirkamolcode.exception.AttachmentTooLargeException;
 import com.mirkamolcode.exception.GoogleApiUnavailableException;
 import io.github.resilience4j.core.IntervalFunction;
@@ -24,7 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -54,22 +55,21 @@ public class RestGmailClient implements GmailClient {
         requestFactory.setReadTimeout(readTimeout);
         this.client = builder.baseUrl(baseUrl + "/gmail/v1/users/me")
                 .requestFactory(requestFactory)
-                .messageConverters(converters -> {
-                    converters.removeIf(MappingJackson2HttpMessageConverter.class::isInstance);
-                    converters.add(new MappingJackson2HttpMessageConverter(buildBoundedMapper(maxAttachmentBytes)));
-                })
+                .configureMessageConverters(converters -> converters
+                        .withJsonConverter(new JacksonJsonHttpMessageConverter(buildBoundedMapper(maxAttachmentBytes))))
                 .build();
         this.retry = retries.retry("gmail", buildRetryConfig(retryInitialBackoff));
         this.maxAttachmentBytes = maxAttachmentBytes;
     }
 
-    private static ObjectMapper buildBoundedMapper(long maxAttachmentBytes) {
-        ObjectMapper mapper = new ObjectMapper();
+    private static JsonMapper buildBoundedMapper(long maxAttachmentBytes) {
         long maxBase64Characters = maxAttachmentBytes / 3 * 4 + BASE64_SLACK;
-        mapper.getFactory().setStreamReadConstraints(StreamReadConstraints.builder()
-                .maxStringLength((int) Math.min(Integer.MAX_VALUE, maxBase64Characters))
-                .build());
-        return mapper;
+        JsonFactory factory = JsonFactory.builder()
+                .streamReadConstraints(StreamReadConstraints.builder()
+                        .maxStringLength((int) Math.min(Integer.MAX_VALUE, maxBase64Characters))
+                        .build())
+                .build();
+        return JsonMapper.builder(factory).build();
     }
 
     private static RetryConfig buildRetryConfig(Duration initialBackoff) {
@@ -86,7 +86,7 @@ public class RestGmailClient implements GmailClient {
                 .queryParam("q", "{query}")
                 .queryParam("maxResults", PAGE_SIZE), pageToken).build(query));
         List<String> ids = new ArrayList<>();
-        body.path("messages").forEach(message -> ids.add(message.path("id").asText()));
+        body.path("messages").forEach(message -> ids.add(message.path("id").asString()));
         return new GmailMessagePage(ids, readTextOrNull(body, "nextPageToken"));
     }
 
@@ -109,7 +109,7 @@ public class RestGmailClient implements GmailClient {
     public byte[] getAttachment(String accessToken, String messageId, String attachmentId) {
         JsonNode body = fetch(accessToken, uri -> uri.path("/messages/{messageId}/attachments/{attachmentId}")
                 .build(messageId, attachmentId));
-        String data = body.path("data").asText("");
+        String data = body.path("data").asString("");
         long size = Math.max(body.path("size").asLong(), estimateDecodedSize(data));
         if (size > maxAttachmentBytes)
             throw new AttachmentTooLargeException(size, maxAttachmentBytes);
@@ -132,13 +132,13 @@ public class RestGmailClient implements GmailClient {
         }
         List<String> added = new ArrayList<>();
         body.path("history").forEach(entry -> entry.path("messagesAdded")
-                .forEach(item -> added.add(item.path("message").path("id").asText())));
+                .forEach(item -> added.add(item.path("message").path("id").asString())));
         return new GmailHistoryPage(added, readTextOrNull(body, "nextPageToken"), readTextOrNull(body, "historyId"));
     }
 
     @Override
     public String fetchCurrentHistoryId(String accessToken) {
-        return fetch(accessToken, uri -> uri.path("/profile").build()).path("historyId").asText();
+        return fetch(accessToken, uri -> uri.path("/profile").build()).path("historyId").asString();
     }
 
     @Override
@@ -170,7 +170,7 @@ public class RestGmailClient implements GmailClient {
     }
 
     private static RuntimeException toException(HttpStatusCode status, JsonNode body) {
-        String reason = body == null ? "" : body.path("error").path("errors").path(0).path("reason").asText("");
+        String reason = body == null ? "" : body.path("error").path("errors").path(0).path("reason").asString("");
         String message = "Gmail API failed with " + status.value() + " " + reason;
         if (status.value() == 429 || (status.value() == 403 && RATE_LIMIT_REASONS.contains(reason)))
             return new GmailTransientException(message);
@@ -197,6 +197,6 @@ public class RestGmailClient implements GmailClient {
     }
 
     private static String readTextOrNull(JsonNode body, String field) {
-        return body.hasNonNull(field) ? body.get(field).asText() : null;
+        return body.hasNonNull(field) ? body.get(field).asString() : null;
     }
 }

@@ -30,7 +30,7 @@ public final class UserSpecifications {
 
     public static Specification<User> matchesSearch(String search) {
         if (search == null || search.isBlank())
-            return null;
+            return Specification.unrestricted();
         String pattern = "%" + escapeLike(search.trim().toLowerCase(Locale.ROOT)) + "%";
         return (root, q, b) -> b.or(
                 b.like(b.lower(root.get("email")), pattern, LIKE_ESCAPE),
@@ -38,21 +38,21 @@ public final class UserSpecifications {
     }
 
     public static Specification<User> joinedSince(Instant since) {
-        return since == null ? null : (root, q, b) -> b.greaterThanOrEqualTo(root.get("createdAt"), since);
+        return since == null ? Specification.unrestricted() : (root, q, b) -> b.greaterThanOrEqualTo(root.get("createdAt"), since);
     }
 
     public static Specification<User> loggedInSince(Instant since) {
-        return since == null ? null : (root, q, b) -> b.greaterThanOrEqualTo(root.get("lastLoginAt"), since);
+        return since == null ? Specification.unrestricted() : (root, q, b) -> b.greaterThanOrEqualTo(root.get("lastLoginAt"), since);
     }
 
     public static Specification<User> hasSubscriptionWithStatus(SubscriptionStatus status) {
-        return status == null ? null : (root, q, b) ->
+        return status == null ? Specification.unrestricted() : (root, q, b) ->
                 b.exists(visibleSubscriptionsOf(root, q, b, s -> b.equal(s.get("status"), status)));
     }
 
     public static Specification<User> hasSubscriptionWithMerchant(String merchantSlug) {
         if (merchantSlug == null || merchantSlug.isBlank())
-            return null;
+            return Specification.unrestricted();
         String slug = merchantSlug.trim().toLowerCase(Locale.ROOT);
         return (root, q, b) ->
                 b.exists(visibleSubscriptionsOf(root, q, b, s -> b.equal(s.get("merchantSlug"), slug)));

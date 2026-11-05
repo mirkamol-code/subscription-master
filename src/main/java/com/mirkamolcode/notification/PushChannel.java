@@ -1,7 +1,7 @@
 package com.mirkamolcode.notification;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.mirkamolcode.entity.NotificationSettings;
 import com.mirkamolcode.entity.PushSubscription;
 import com.mirkamolcode.entity.User;
@@ -15,10 +15,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 
 @Component
 public class PushChannel implements NotificationChannel {
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = new JsonMapper();
 
     private final PushSubscriptionRepository pushSubscriptions;
     private final PushSender pushSender;
@@ -58,7 +59,7 @@ public class PushChannel implements NotificationChannel {
         payload.put("type", message.type().name());
         try {
             return JSON.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException(e);
         }
     }

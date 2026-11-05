@@ -1,8 +1,9 @@
 package com.mirkamolcode.detection;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.mirkamolcode.integration.gmail.GmailMessage;
 import com.mirkamolcode.model.BillingFrequency;
 import com.mirkamolcode.model.CurrencyCode;
@@ -20,12 +21,15 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 
 @Component
 @Order(0)
 public class SchemaOrgParser implements EmailParser {
     private static final String JSON_LD = "application/ld+json";
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .build();
 
     @Override
     public boolean supports(GmailMessage message) {
@@ -45,7 +49,7 @@ public class SchemaOrgParser implements EmailParser {
         for (Element script : Jsoup.parse(html).select("script[type=" + JSON_LD + "]")) {
             try {
                 collectBillingNodes(JSON.readTree(script.data()), nodes);
-            } catch (JsonProcessingException ignored) {
+            } catch (JacksonException ignored) {
             }
         }
         return nodes;
@@ -56,7 +60,7 @@ public class SchemaOrgParser implements EmailParser {
             node.forEach(child -> collectBillingNodes(child, nodes));
             return;
         }
-        String type = node.path("@type").asText();
+        String type = node.path("@type").asString("");
         if ("Invoice".equals(type) || "Order".equals(type))
             nodes.add(node);
         if (node.has("@graph"))
@@ -64,16 +68,16 @@ public class SchemaOrgParser implements EmailParser {
     }
 
     private static Optional<ParsedBilling> toParsedBilling(JsonNode node) {
-        JsonNode price = "Invoice".equals(node.path("@type").asText()) ? node.path("totalPaymentDue") : node;
-        BigDecimal amount = parseDecimal(price.path("price").asText(price.path("value").asText(null)));
-        CurrencyCode currency = parseCurrency(price.path("priceCurrency").asText(price.path("currency").asText(null)));
+        JsonNode price = "Invoice".equals(node.path("@type").asString("")) ? node.path("totalPaymentDue") : node;
+        BigDecimal amount = parseDecimal(price.path("price").asString(price.path("value").asString(null)));
+        CurrencyCode currency = parseCurrency(price.path("priceCurrency").asString(price.path("currency").asString(null)));
         if (amount == null || currency == null)
             return Optional.empty();
-        boolean paid = node.path("paymentStatus").asText("").endsWith("PaymentComplete");
-        LocalDate dueDate = parseDate(node.path("paymentDueDate").asText(null));
-        LocalDate paymentDate = paid ? dueDate : parseDate(node.path("orderDate").asText(null));
+        boolean paid = node.path("paymentStatus").asString("").endsWith("PaymentComplete");
+        LocalDate dueDate = parseDate(node.path("paymentDueDate").asString(null));
+        LocalDate paymentDate = paid ? dueDate : parseDate(node.path("orderDate").asString(null));
         LocalDate nextBillingDate = paid ? null : dueDate;
-        return Optional.of(new ParsedBilling(amount, currency, parseCycle(node.path("billingPeriod").asText(null)),
+        return Optional.of(new ParsedBilling(amount, currency, parseCycle(node.path("billingPeriod").asString(null)),
                 paymentDate, nextBillingDate, Confidence.HIGH));
     }
 
