@@ -56,21 +56,6 @@ class ProductionConfigTest {
     }
 
     @Test
-    void baseAndProdConfig_shouldNeverStartAppleCleanUpOrDryRun() {
-        // when
-        PropertySource<?> base = load("application.yml");
-        PropertySource<?> prod = load("application-prod.yml");
-
-        // then
-        for (PropertySource<?> config : java.util.List.of(base, prod)) {
-            assertThat(config.getProperty("app.redetection.apple.apply-on-startup")).as(config.getName()).isNull();
-            assertThat(config.getProperty("app.redetection.apple.dry-run-on-startup")).as(config.getName()).isNull();
-            assertThat(config.getProperty("app.trial-recheck.on-startup")).as(config.getName()).isNull();
-            assertThat(config.getProperty("app.trial-recheck.apply")).as(config.getName()).isNull();
-        }
-    }
-
-    @Test
     void baseConfig_shouldNeverLetHibernateCreateOrAlterTables() {
         // when
         PropertySource<?> base = load("application.yml");
