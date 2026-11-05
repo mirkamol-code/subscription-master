@@ -181,7 +181,7 @@ A Billing email from Apple that waits, unrecorded, while the User still has a Le
 _Avoid_: Queued email, blocked email (Awaiting account is a different wait)
 
 **Apple clean-up**:
-The one-off rebuild of a Legacy Apple row into one Subscription per Line item from the User's original Apple emails. Its dry run only reports what would change; its apply step makes the change after a backup.
+The past one-off rebuild of a Legacy Apple row into one Subscription per Line item from the User's original Apple emails. It has run and its job is removed; nothing in the app rebuilds Legacy Apple rows any more.
 _Avoid_: Migration, re-sync, re-detection (when meaning the apply step)
 
 **Earlier Apple purchases**:
