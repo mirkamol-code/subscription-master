@@ -74,17 +74,13 @@ public class SubscriptionStatusService {
         ZoneId zone = subscription.getUser().getTimeZone();
         if (subscription.getEndsOn() != null)
             apply(subscription, StatusEvidence.scheduledEnd(subscription.getEndsOn().atStartOfDay(zone).toInstant()), null);
-        else if (!subscription.isAwaitingAmountReview() && !isLegacyAppleRow(subscription)
+        else if (!subscription.isAwaitingAmountReview()
                 && calculateUsersToday(subscription).isAfter(subscription.getNextPaymentDate().plusDays(overdueGraceDays)))
             apply(subscription, StatusEvidence.overdue(subscription.getNextPaymentDate().atStartOfDay(zone).toInstant()), null);
     }
 
     public int getOverdueGraceDays() {
         return overdueGraceDays;
-    }
-
-    private static boolean isLegacyAppleRow(Subscription subscription) {
-        return LegacyAppleRows.LEGACY_APPLE_KEY.equals(subscription.getMerchantKey());
     }
 
     private LocalDate calculateUsersToday(Subscription subscription) {

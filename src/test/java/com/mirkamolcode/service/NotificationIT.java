@@ -370,46 +370,6 @@ class NotificationIT extends AbstractTestConfig {
     }
 
     @Test
-    void applyDailyRules_shouldKeepLegacyAppleRowActive_andNotAlert_whileItsRenewalsAreHeld() {
-        // given
-        Subscription legacyApple = legacyAppleRowDueOn(LocalDate.of(2026, 11, 3));
-        Subscription gym = subscriptionDueOn("Gym", LocalDate.of(2026, 11, 3));
-
-        // when
-        statusJob.applyDailyRules();
-
-        // then
-        assertThat(subscriptionRepository.findById(legacyApple.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        webTestClient.get().uri(API + "/subscriptions/" + legacyApple.getId() + "/status-history").header("Authorization", bearer(tokens))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.length()").isEqualTo(0);
-        assertThat(subscriptionRepository.findById(gym.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.BILLING_REQUIRED);
-        notifications()
-                .jsonPath("$.totalElements").isEqualTo(1)
-                .jsonPath("$.content[0].subscriptionId").isEqualTo(gym.getId().intValue());
-        webTestClient.get().uri(API + "/statistics/summary").header("Authorization", bearer(tokens)).exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.monthlyTotalUzs").isEqualTo(51271.5);
-    }
-
-    @Test
-    void applyDailyRules_shouldStillCancelLegacyAppleRow_whenItsAccessEnds() {
-        // given
-        Subscription legacyApple = legacyAppleRowDueOn(LocalDate.of(2026, 11, 3));
-        legacyApple.applyStatus(SubscriptionStatus.ACTIVE, LocalDate.of(2026, 11, 3), Instant.parse("2026-10-20T00:00:00Z"));
-        subscriptionRepository.save(legacyApple);
-
-        // when
-        statusJob.applyDailyRules();
-
-        // then
-        assertThat(subscriptionRepository.findById(legacyApple.getId()).orElseThrow().getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
-    }
-
-    @Test
     void sendDueReminders_shouldNotRemind_whenCancellationIsScheduledBeforeRenewal() {
         // given
         Subscription netflix = subscriptionDueOn("Netflix", LocalDate.of(2026, 11, 13));
@@ -520,22 +480,6 @@ class NotificationIT extends AbstractTestConfig {
 
         // then
         notifications().jsonPath("$.totalElements").isEqualTo(0);
-    }
-
-    @Test
-    void sendDueReminders_shouldSkipLegacyAppleRow_butRemindOtherSubscriptions() {
-        // given
-        legacyAppleRowDueOn(LocalDate.of(2026, 11, 13));
-        Subscription unlinked = subscriptionDueOn("Gym", LocalDate.of(2026, 11, 13));
-
-        // when
-        reminderJob.sendDueReminders();
-
-        // then
-        notifications()
-                .jsonPath("$.totalElements").isEqualTo(1)
-                .jsonPath("$.content[0].type").isEqualTo("PAYMENT_DUE")
-                .jsonPath("$.content[0].subscriptionId").isEqualTo(unlinked.getId().intValue());
     }
 
     @Test
@@ -755,15 +699,6 @@ class NotificationIT extends AbstractTestConfig {
         User owner = userRepository.findById(userId).orElseThrow();
         return subscriptionRepository.save(Subscription.startTrial(owner, "Streamio", SubscriptionCategory.ENTERTAINMENT,
                 LocalDate.of(2026, 11, 1), trialEndsOn, null, null));
-    }
-
-    private Subscription legacyAppleRowDueOn(LocalDate nextPaymentDate) {
-        User owner = userRepository.findById(userId).orElseThrow();
-        Subscription legacy = new Subscription(owner, "Apple (App Store / iCloud)", new BigDecimal("3.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, SubscriptionStatus.ACTIVE, SubscriptionCategory.OTHER,
-                nextPaymentDate.minusMonths(1), nextPaymentDate);
-        legacy.linkMerchant(LegacyAppleRows.LEGACY_APPLE_KEY, "apple.com");
-        return subscriptionRepository.save(legacy);
     }
 
     private static String decodeHtml(String raw) {

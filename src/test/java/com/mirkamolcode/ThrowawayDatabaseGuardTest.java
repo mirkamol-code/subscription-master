@@ -36,9 +36,8 @@ class ThrowawayDatabaseGuardTest {
     void startup_shouldStopBeforeConnecting_whenDatabaseIsNotTheThrowawayOne() {
         // when / then
         assertThatThrownBy(() -> new SpringApplicationBuilder(SubscribeMasterApplication.class)
-                .profiles("test", "apple-dry-run")
-                .run("--spring.datasource.url=jdbc:postgresql://guard-check.invalid:5432/subscription_master_db",
-                        "--app.redetection.apple.exit-after-dry-run=false"))
+                .profiles("test")
+                .run("--spring.datasource.url=jdbc:postgresql://guard-check.invalid:5432/subscription_master_db"))
                 .hasRootCauseInstanceOf(IllegalStateException.class)
                 .rootCause().hasMessageContaining("throwaway");
     }

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white" alt="Java 21" />
-  <img src="https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot" />
+  <img src="https://img.shields.io/badge/Spring_Boot-4.1-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Google-OAuth2_%2B_Gmail_API-4285F4?logo=google&logoColor=white" alt="Google OAuth2 and Gmail API" />
   <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker" />
@@ -59,6 +59,11 @@ Every successful sign-in sets the User's `last_login_at` and records a login eve
 - Every subscription comes from at least one receipt with an amount, currency and date; its source Gmail messages are listed under `GET /subscriptions/{id}/emails`. Subscriptions cannot be added by hand.
 - Each email is classified (receipt, cancellation, payment failure, irrelevant) and parsed in this order: **schema.org JSON-LD → sender-specific parser → heuristics** for amounts, currencies (including `UZS 120 000`, `so'm`, `сум`), billing cycles and dates. Guessed values mark the subscription **Needs review**.
 - Promotions and one-off purchases (newsletters, bank offers, ride or shop receipts from unknown senders) are ignored on purpose: a missed subscription is better than a false one.
+- **Billing platforms** (Apple, Google Play, PayPal) bill other merchants' services on one invoice. Each recurring line item becomes its own subscription, billed through the platform; one-time purchases are skipped. The payment method is kept as card brand and last four digits only.
+- An invoice from an unknown merchant becomes a subscription only after two similar invoices about one billing cycle apart, and stays **Needs review** until the user confirms or hides it. A merchant the user has several customer accounts with gets one subscription per account; an email without a customer ID waits as **Awaiting account** until the user picks one.
+- **Free trials** are tracked without counting as spending and become active on the first paid invoice. The trial end is read from the email, or estimated from a stated length such as "7-day trial". A trial from an unknown sender needs the user's confirmation.
+- **Price changes**, announced by the merchant or seen on a newer invoice in the same currency, are recorded with the old price, the new price and the day it takes effect. Usage-based billing never counts as a price change.
+- Every subscription gets a category (chosen by the user, which always wins, or detected with a confidence level).
 - Emails from one merchant become one subscription with one payment per receipt. Re-running a sync never duplicates anything; a failing email is retried up to three times without blocking newer mail.
 - Hidden subscriptions stay hidden. A deleted detected subscription is only re-created by a receipt newer than the deletion.
 
@@ -66,6 +71,7 @@ Every successful sign-in sets the User's `last_login_at` and records a login eve
 
 | Status | When |
 |---|---|
+| `TRIAL` | A free-trial email arrived and no paid invoice yet. Never counts as a payment or current spending. |
 | `ACTIVE` | A receipt arrived, or a newer receipt follows a failure or cancellation. A cancellation with a future access end keeps it active until that day. |
 | `BILLING_REQUIRED` | A payment-failure email, or no receipt 5 days (`OVERDUE_GRACE_DAYS`) after the expected payment date. A receipt whose amount can't be read never counts as a payment: if it arrives from 3 days before (`RENEWAL_WINDOW_DAYS_BEFORE`) to 5 days after the due date, the subscription is marked **Needs review** ("Receipt found, amount unreadable.") instead of Billing required, until the user confirms the amount. |
 | `CANCELLED` | A cancellation email, the access end date arriving, or the user marking it cancelled. |
@@ -75,6 +81,7 @@ The newest evidence always wins, and every change is kept in the status history 
 ### Notifications
 
 - **Reminders** for active subscriptions due within the user's days-before window (default 3), sent from 09:00 local time, once per billing cycle and channel.
+- **Trial-ending reminders** in the same window when the trial end is known and the trial wasn't cancelled; an estimated end is reminded one day earlier.
 - **Status notifications** for `BILLING_REQUIRED` (urgent), cancellations, access ending, reactivation, and a deleted subscription that charges again. Old history replayed by the first sync does not raise alerts.
 - **Channels:** in-app inbox, email sent from the user's own Gmail to themselves (Gmail API, `gmail.send`), and Web Push with VAPID. Each can be switched off in the settings.
 
@@ -85,13 +92,13 @@ The newest evidence always wins, and every change is kept in the status history 
 | Auth | `GET /oauth2/authorization/google`, `POST /auth/exchange`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` |
 | Gmail | `GET /me/gmail`, `POST /gmail/sync`, `GET /gmail/sync-status`, `DELETE /me/gmail` (disconnect and delete data) |
 | Account | `DELETE /me` (delete the account and everything in it) |
-| Subscriptions | `GET /subscriptions` (filters, `?hidden=true`), `GET /subscriptions/all`, `GET /subscriptions/upcoming`, `GET /subscriptions/calendar`, `GET/PUT/DELETE /subscriptions/{id}` |
+| Subscriptions | `GET /subscriptions` (filters, `?hidden=true`), `GET /subscriptions/all`, `GET /subscriptions/upcoming`, `GET /subscriptions/calendar`, `GET/PUT/DELETE /subscriptions/{id}`, `POST /subscriptions/{id}/confirm` (confirm a subscription that needs review) |
 | Subscription details | `GET /{id}/history` (payments), `GET /{id}/emails`, `POST /{id}/emails/{emailId}/payment` (confirm an unreadable receipt's amount), `GET /{id}/status-history`, `PUT /{id}/status`, `POST /{id}/hide`, `POST /{id}/unhide` |
-| Emails | `GET /emails/{id}/attachments/{attachmentId}[?download=true]` (invoice PDF), `GET /emails/{id}/content[?images=true]` (sanitized HTML) |
+| Emails | `GET /emails/awaiting-account`, `POST /emails/{id}/account` (assign to a merchant account), `GET /emails/{id}/attachments/{attachmentId}[?download=true]` (invoice PDF), `GET /emails/{id}/content[?images=true]` (sanitized HTML) |
 | Notifications | `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/{id}/read`, `POST /notifications/read-all` |
 | Settings | `GET/PUT /settings/notifications` (email, in-app, push, daysBefore 1–30, timeZone) |
 | Web Push | `GET /push/vapid-public-key`, `POST /push/subscriptions`, `DELETE /push/subscriptions` |
-| Statistics and reports | `GET /statistics/summary`, `GET /statistics/monthly-dynamics`, `GET /reports/annual.csv`, `GET /reports/annual.xlsx`, `GET /currencies/rates`, `GET /admin/statistics/service-usage` |
+| Statistics and reports | `GET /statistics/summary`, `GET /statistics/monthly-dynamics`, `GET /reports/annual.csv?columns=`, `GET /reports/annual.xlsx?columns=`, `GET /currencies/rates`, `GET /admin/statistics/service-usage` |
 | Admin (role `ADMIN`) | `GET /admin/overview`, `GET /admin/users`, `GET /admin/users/{id}`, `GET /admin/users/{id}/logins`, `GET /admin/users/{id}/subscriptions`, `GET /admin/users/{id}/payments`, `PUT /admin/users/{id}/role`, `GET /admin/merchants`, `GET /admin/analytics/merchants?range=LAST_7_DAYS|LAST_30_DAYS|LAST_90_DAYS|ALL_TIME&category=`, `GET /admin/analytics/categories?range=`, `GET /admin/payments/due?from=&to=&merchant=&status=`, `GET /admin/payments/upcoming` |
 
 Full request and response schemas are in Swagger UI.
@@ -203,8 +210,8 @@ To run the app in a container instead, put the same variables in `.env` and run 
 
 | Category | Technologies |
 |---|---|
-| Language and framework | Java 21, Spring Boot 3.5, Spring MVC |
-| Security | Spring Security 6, OAuth2 Client (Google OIDC), JJWT, AES-256-GCM |
+| Language and framework | Java 21, Spring Boot 4.1, Spring MVC, Jackson 3 |
+| Security | Spring Security 7, OAuth2 Client (Google OIDC), JJWT, AES-256-GCM |
 | Google | Gmail API over `RestClient`, Resilience4j retry with backoff |
 | Parsing | jsoup (HTML, schema.org JSON-LD, sanitizing) |
 | Notifications | Gmail API send, Web Push (`web-push`, BouncyCastle, VAPID) |

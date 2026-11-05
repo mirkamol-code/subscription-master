@@ -30,8 +30,7 @@ public class PaymentReminderJob {
     @Scheduled(cron = "${app.notifications.reminder-cron}")
     public void sendDueReminders() {
         LocalDate utcToday = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
-        for (Long subscriptionId : subscriptions.findReminderCandidateIds(utcToday.minusDays(1), utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK),
-                LegacyAppleRows.LEGACY_APPLE_KEY)) {
+        for (Long subscriptionId : subscriptions.findReminderCandidateIds(utcToday.minusDays(1), utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK))) {
             try {
                 reminders.remindIfDue(subscriptionId);
             } catch (RuntimeException e) {
