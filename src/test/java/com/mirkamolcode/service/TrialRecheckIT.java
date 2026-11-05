@@ -76,7 +76,7 @@ class TrialRecheckIT extends AbstractTestConfig {
         UserCounts counts = underTest.run(false).get(user.getId());
 
         // then
-        assertThat(counts).isEqualTo(new UserCounts(1, 1, 0, 0));
+        assertThat(counts).isEqualTo(new UserCounts(1, 1, 0, 0, 0));
         assertThat(subscriptionRepository.findAll()).isEmpty();
         assertThat(kindOf(TRIAL)).isEqualTo("IRRELEVANT");
     }
@@ -87,7 +87,7 @@ class TrialRecheckIT extends AbstractTestConfig {
         UserCounts counts = underTest.run(true).get(user.getId());
 
         // then
-        assertThat(counts).isEqualTo(new UserCounts(1, 0, 1, 0));
+        assertThat(counts).isEqualTo(new UserCounts(1, 0, 1, 0, 0));
         Subscription trial = subscriptionRepository.findAllByUserIdAndMerchantKeyAndIsDeletedFalse(user.getId(), "acme-family-tree").getFirst();
         assertThat(trial.getStatus()).isEqualTo(SubscriptionStatus.TRIAL);
         assertThat(trial.getTrialEndsOn()).isEqualTo(LocalDate.of(2026, 11, 18));
@@ -114,8 +114,38 @@ class TrialRecheckIT extends AbstractTestConfig {
         UserCounts second = underTest.run(true).get(user.getId());
 
         // then
-        assertThat(second).isEqualTo(new UserCounts(0, 0, 0, 1));
+        assertThat(second).isEqualTo(new UserCounts(0, 0, 0, 1, 0));
         assertThat(subscriptionRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void run_shouldKeepGoing_whenOneEmailCannotBeRead() {
+        // given
+        GmailMessage reminder = EmailFixtures.load("trial-ends-date.json");
+        GMAIL.mailbox(NEWSLETTER, TRIAL, reminder);
+        GMAIL.failingIds.add(NEWSLETTER.id());
+
+        // when
+        UserCounts counts = underTest.run(true).get(user.getId());
+
+        // then
+        assertThat(counts).isEqualTo(new UserCounts(1, 0, 1, 0, 1));
+        assertThat(kindOf(TRIAL)).isEqualTo("TRIAL_STARTED");
+    }
+
+    @Test
+    void run_shouldIgnoreUnknownSenderTrialReminder_thatDoesNotConfirmAStart() {
+        // given
+        GmailMessage reminder = EmailFixtures.load("trial-ends-date.json");
+        GMAIL.mailbox(reminder);
+        storeAsIrrelevant(reminder);
+
+        // when
+        UserCounts counts = underTest.run(true).get(user.getId());
+
+        // then
+        assertThat(counts).isEqualTo(new UserCounts(0, 0, 0, 0, 0));
+        assertThat(kindOf(reminder)).isEqualTo("IRRELEVANT");
     }
 
     private void storeAsIrrelevant(GmailMessage message) {

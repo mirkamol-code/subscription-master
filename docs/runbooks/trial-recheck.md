@@ -13,14 +13,15 @@ No web server, no schedulers, no migrations; the process exits when done.
 docker run --rm --env-file .env -e SPRING_PROFILES_ACTIVE=prod,trial-recheck <image>
 ```
 Log line: `Trial re-check (dry run) for N users: found X, would record Y, recorded 0, skipped Z`.
-The database connection is read-only.
+The database connection is read-only. A user whose Google access was revoked is skipped with a warning (the app can't
+mark them disconnected on a read-only connection); the normal app still handles them.
 
 ## 2. Apply (only after reviewing the dry run, with the owner's approval)
 
 ```bash
 docker run --rm --env-file .env -e SPRING_PROFILES_ACTIVE=prod,trial-recheck,trial-recheck-apply <image>
 ```
-For each missed trial email it deletes the old `IRRELEVANT` row (it holds only the message ID and date) and records the
+It first queues each missed trial email in `failed_gmail_messages`, so nothing is lost even if the run stops. Then it deletes the old `IRRELEVANT` row (it holds only the message ID and date) and records the
 email again through the normal recorder: an unknown-merchant trial appears as a Free trial marked Needs review. If
 recording fails, the message is queued in `failed_gmail_messages` and the next normal sync retries it. Running it again
 finds nothing new.

@@ -33,12 +33,13 @@ public class TrialRecheckRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments arguments) {
         Collection<UserCounts> perUser = recheck.run(apply).values();
-        log.info("Trial re-check ({}) for {} users: found {}, would record {}, recorded {}, skipped {}",
+        log.info("Trial re-check ({}) for {} users: found {}, would record {}, recorded {}, skipped {}, failed {}",
                 apply ? "apply" : "dry run", perUser.size(),
                 perUser.stream().mapToInt(UserCounts::found).sum(),
                 perUser.stream().mapToInt(UserCounts::wouldRecord).sum(),
                 perUser.stream().mapToInt(UserCounts::recorded).sum(),
-                perUser.stream().mapToInt(UserCounts::skipped).sum());
+                perUser.stream().mapToInt(UserCounts::skipped).sum(),
+                perUser.stream().mapToInt(UserCounts::failed).sum());
         System.exit(SpringApplication.exit(context, () -> 0));
     }
 }

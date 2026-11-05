@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class PaymentReminderJob {
     private static final Logger log = LoggerFactory.getLogger(PaymentReminderJob.class);
     private static final int MAX_DAYS_BEFORE_WITH_ZONE_SLACK = 32;
+    private static final int ESTIMATED_TRIAL_REMINDER_LEAD_DAYS = 1;
 
     private final SubscriptionRepository subscriptions;
     private final PaymentReminderService reminders;
@@ -38,7 +39,7 @@ public class PaymentReminderJob {
             }
         }
         for (Long subscriptionId : subscriptions.findTrialReminderCandidateIds(utcToday.minusDays(1),
-                utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK + 1))) {
+                utcToday.plusDays(MAX_DAYS_BEFORE_WITH_ZONE_SLACK + ESTIMATED_TRIAL_REMINDER_LEAD_DAYS))) {
             try {
                 reminders.remindTrialEndingIfDue(subscriptionId);
             } catch (RuntimeException e) {
