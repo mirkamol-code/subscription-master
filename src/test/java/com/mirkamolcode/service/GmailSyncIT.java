@@ -3,6 +3,7 @@ package com.mirkamolcode.service;
 import com.mirkamolcode.AbstractTestConfig;
 import com.mirkamolcode.detection.EmailFixtures;
 import com.mirkamolcode.detection.EmailKind;
+import com.mirkamolcode.detection.MerchantResolver;
 import com.mirkamolcode.dto.AuthDtos.TokenResponse;
 import com.mirkamolcode.entity.BillingEmail;
 import com.mirkamolcode.entity.ExchangeRate;
@@ -43,8 +44,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cache.CacheManager;
@@ -700,79 +699,7 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldHoldNewAppleInvoices_whileLegacyAppleRowExists_andRecordThemOnceItIsGone() {
-        // given
-        User user = userRepository.findById(userId).orElseThrow();
-        Subscription legacy = new Subscription(user, "Apple (App Store / iCloud)", new BigDecimal("3.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, com.mirkamolcode.model.SubscriptionStatus.ACTIVE,
-                com.mirkamolcode.model.SubscriptionCategory.OTHER, LocalDate.of(2025, 11, 6));
-        legacy.linkMerchant("apple", "apple.com");
-        subscriptionRepository.save(legacy);
-        GmailMessage invoice = EmailFixtures.load("apple-telegram-invoice.json");
-        GMAIL.mailbox(invoice);
-
-        // when
-        underTest.sync(userId);
-
-        // then
-        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("apple");
-        assertThat(countRows("billing_emails")).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from failed_gmail_messages where gmail_message_id = ?", Integer.class,
-                invoice.id())).isEqualTo(1);
-
-        // when
-        legacy.markDeleted();
-        subscriptionRepository.save(legacy);
-        underTest.sync(userId);
-
-        // then
-        assertThat(subscription("telegram-messenger").getPrice()).isEqualByComparingTo("3.99");
-        assertThat(countRows("failed_gmail_messages")).isZero();
-    }
-
-    @Test
-    void sync_shouldHoldVerifiedAppleEmailWithoutInvoiceSubject_whileLegacyAppleRowExists_andRecordItOnceItIsGone() {
-        // given
-        Subscription legacy = saveLegacyAppleRow();
-        GmailMessage confirmation = appleSubscriptionConfirmation("apple-confirmation", "Apple <no_reply@email.apple.com>");
-        GMAIL.mailbox(confirmation);
-
-        // when
-        underTest.sync(userId);
-
-        // then
-        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("apple");
-        assertThat(heldAttempts(confirmation.id())).isEqualTo(1);
-
-        // when
-        legacy.markDeleted();
-        subscriptionRepository.save(legacy);
-        underTest.sync(userId);
-
-        // then
-        assertThat(subscription("apple-tv").getPrice()).isEqualByComparingTo("9.99");
-        assertThat(countRows("failed_gmail_messages")).isZero();
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"Apple <no_reply@apple-billing.com>", "Apple <no_reply@apple.com.example.net>", "Apple <no_reply@notapple.com>",
-            "\"no_reply@apple.com\" <billing@lookalike.example>"})
-    void sync_shouldNotHoldLookAlikeAppleSender_whileLegacyAppleRowExists(String from) {
-        // given
-        saveLegacyAppleRow();
-        GMAIL.mailbox(appleSubscriptionConfirmation("look-alike", from));
-
-        // when
-        underTest.sync(userId);
-
-        // then
-        assertThat(countRows("failed_gmail_messages")).isZero();
-        assertThat(jdbc.queryForList("select kind from billing_emails", String.class)).containsExactly("RECEIPT");
-        assertThat(paymentHistoryRepository.findBySubscriptionIdOrderByPaymentDateDesc(subscription("apple").getId())).isEmpty();
-    }
-
-    @Test
-    void sync_shouldNotCreateLegacyAppleRow_fromSenderNamedApple_soRealAppleInvoicesAreNotHeld() {
+    void sync_shouldNotCreateLegacyAppleRow_fromSenderNamedApple() {
         // given
         GMAIL.mailbox(EmailFixtures.load("apple-telegram-invoice.json"),
                 appleSubscriptionConfirmation("named-apple", "Apple <billing@apple-billing.com>"));
@@ -782,7 +709,7 @@ class GmailSyncIT extends AbstractTestConfig {
 
         // then
         assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey)
-                .doesNotContain(LegacyAppleRows.LEGACY_APPLE_KEY)
+                .doesNotContain(MerchantResolver.LEGACY_APPLE_KEY)
                 .contains("telegram-messenger");
         assertThat(countRows("failed_gmail_messages")).isZero();
     }
@@ -804,51 +731,7 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
-    void sync_shouldNotHoldAppleEmailThatFailsAuthentication_whileLegacyAppleRowExists() {
-        // given
-        saveLegacyAppleRow();
-        GmailMessage unverified = appleSubscriptionConfirmation("apple-unverified", "Apple <no_reply@email.apple.com>");
-        GMAIL.mailbox(new GmailMessage(unverified.id(), unverified.threadId(), unverified.receivedAt(), unverified.from(),
-                unverified.subject(), unverified.htmlBody(), unverified.textBody(), unverified.attachments(),
-                unverified.headers().withAuthenticationResults(
-                        "mx.google.com; dkim=fail header.i=@email.apple.com; spf=fail smtp.mailfrom=bounces@email.apple.com; dmarc=fail header.from=email.apple.com")));
-
-        // when
-        underTest.sync(userId);
-
-        // then
-        assertThat(countRows("failed_gmail_messages")).isZero();
-        assertThat(subscriptionsOfUser()).extracting(Subscription::getMerchantKey).containsExactly("apple");
-    }
-
-    @Test
-    void sync_shouldKeepHeldAppleEmailRetryable_acrossRepeatedSyncs_evenAfterEarlierFailures() {
-        // given
-        Subscription legacy = saveLegacyAppleRow();
-        GmailMessage invoice = EmailFixtures.load("apple-telegram-invoice.json");
-        GMAIL.mailbox(invoice);
-        jdbc.update("insert into failed_gmail_messages (user_id, gmail_message_id, attempts, last_error) values (?, ?, 3, 'earlier failure')",
-                userId, invoice.id());
-
-        // when
-        for (int sync = 0; sync < 5; sync++)
-            underTest.sync(userId);
-
-        // then
-        assertThat(heldAttempts(invoice.id())).isEqualTo(1);
-
-        // when
-        legacy.markDeleted();
-        subscriptionRepository.save(legacy);
-        underTest.sync(userId);
-
-        // then
-        assertThat(subscription("telegram-messenger").getPrice()).isEqualByComparingTo("3.99");
-        assertThat(countRows("failed_gmail_messages")).isZero();
-    }
-
-    @Test
-    void sync_shouldRecordVerifiedAppleEmailRightAway_whenUserHasNoLegacyAppleRow() {
+    void sync_shouldRecordVerifiedAppleEmailRightAway() {
         // given
         GMAIL.mailbox(appleSubscriptionConfirmation("apple-confirmation", "Apple <no_reply@email.apple.com>"));
 
@@ -1695,20 +1578,6 @@ class GmailSyncIT extends AbstractTestConfig {
     private static GmailMessage netflixTrial(String body) {
         return new GmailMessage("netflix-trial", "netflix-trial", Instant.parse("2026-11-04T09:00:00Z"),
                 "Netflix <info@account.netflix.com>", "Your free trial has started", null, body);
-    }
-
-    private Subscription saveLegacyAppleRow() {
-        User user = userRepository.findById(userId).orElseThrow();
-        Subscription legacy = new Subscription(user, "Apple (App Store / iCloud)", new BigDecimal("3.99"), CurrencyCode.USD,
-                BillingFrequency.MONTHLY, com.mirkamolcode.model.SubscriptionStatus.ACTIVE,
-                com.mirkamolcode.model.SubscriptionCategory.OTHER, LocalDate.of(2025, 11, 6));
-        legacy.linkMerchant(LegacyAppleRows.LEGACY_APPLE_KEY, "apple.com");
-        return subscriptionRepository.save(legacy);
-    }
-
-    private Integer heldAttempts(String gmailMessageId) {
-        return jdbc.queryForObject("select attempts from failed_gmail_messages where user_id = ? and gmail_message_id = ?",
-                Integer.class, userId, gmailMessageId);
     }
 
     private static GmailMessage appleSubscriptionConfirmation(String id, String from) {

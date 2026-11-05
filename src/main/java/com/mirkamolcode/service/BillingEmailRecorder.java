@@ -8,7 +8,6 @@ import com.mirkamolcode.detection.CategoryClassifier;
 import com.mirkamolcode.detection.MerchantResolver;
 import com.mirkamolcode.repository.PriceChangeRepository;
 import com.mirkamolcode.entity.PriceChange;
-import com.mirkamolcode.detection.AppleInvoiceParser;
 import com.mirkamolcode.detection.BillingEmailAnalysis;
 import com.mirkamolcode.detection.BillingEmailAnalyzer;
 import com.mirkamolcode.detection.Confidence;
@@ -25,9 +24,7 @@ import com.mirkamolcode.entity.User;
 import com.mirkamolcode.event.SubscriptionRetrackedEvent;
 import com.mirkamolcode.integration.gmail.GmailAttachment;
 import com.mirkamolcode.integration.gmail.GmailMessage;
-import com.mirkamolcode.exception.AppleCleanUpPendingException;
 import com.mirkamolcode.model.BillingFrequency;
-import com.mirkamolcode.model.BillingPlatform;
 import com.mirkamolcode.model.SubscriptionStatus;
 import com.mirkamolcode.repository.BillingEmailRepository;
 import com.mirkamolcode.repository.GmailConnectionRepository;
@@ -100,8 +97,6 @@ public class BillingEmailRecorder {
             return;
         User user = users.getReferenceById(userId);
         BillingEmailAnalysis analysis = analyzer.analyze(message);
-        if (isFromApple(message, analysis) && subscriptions.existsByUserIdAndMerchantKeyAndIsDeletedFalse(userId, LegacyAppleRows.LEGACY_APPLE_KEY))
-            throw new AppleCleanUpPendingException("Apple invoice waits until the user's legacy Apple subscription is cleaned up");
         if (analysis.kind() == EmailKind.IRRELEVANT) {
             billingEmails.save(BillingEmail.irrelevant(user, message.id(), message.receivedAt()));
             return;
@@ -179,16 +174,6 @@ public class BillingEmailRecorder {
             change.attachTo(subscription);
             subscription.noteLatestPriceChange(change);
         });
-    }
-
-    private static boolean isFromApple(GmailMessage message, BillingEmailAnalysis analysis) {
-        if (analysis.kind() == EmailKind.IRRELEVANT)
-            return false;
-        return message.isFromDomain(AppleInvoiceParser.APPLE_DOMAIN) || isBilledThroughApple(analysis);
-    }
-
-    private static boolean isBilledThroughApple(BillingEmailAnalysis analysis) {
-        return analysis.charges().stream().anyMatch(charge -> charge.platform() == BillingPlatform.APPLE);
     }
 
     private void recordRecurrenceCandidate(User user, BillingEmail email, GmailMessage message, DetectedCharge charge) {

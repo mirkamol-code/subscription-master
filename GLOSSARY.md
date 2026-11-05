@@ -173,12 +173,8 @@ _Avoid_: Field, report option
 ## Apple clean-up
 
 **Legacy Apple row**:
-A Subscription from before Billing platforms existed that lumps all of a User's Apple charges into one row.
+A Subscription from before Billing platforms existed that lumps all of a User's Apple charges into one row. None are left: the Apple clean-up rebuilt them all.
 _Avoid_: Old Apple subscription, Apple bundle
-
-**Held Apple email**:
-A Billing email from Apple that waits, unrecorded, while the User still has a Legacy Apple row, so the same charges are never counted twice.
-_Avoid_: Queued email, blocked email (Awaiting account is a different wait)
 
 **Apple clean-up**:
 The past one-off rebuild of a Legacy Apple row into one Subscription per Line item from the User's original Apple emails. It has run and its job is removed; nothing in the app rebuilds Legacy Apple rows any more.

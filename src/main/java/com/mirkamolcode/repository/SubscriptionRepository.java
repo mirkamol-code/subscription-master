@@ -28,18 +28,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findAllByUserIdAndMerchantKeyAndIsDeletedFalse(Long userId, String merchantKey);
 
-    boolean existsByUserIdAndMerchantKeyAndIsDeletedFalse(Long userId, String merchantKey);
-
     @Query("""
             select s.id from Subscription s
              where s.isDeleted = false and s.isHidden = false and s.endsOn is null
                and s.status = com.mirkamolcode.model.SubscriptionStatus.ACTIVE
                and s.nextPaymentDate between :from and :to
-               and (s.merchantKey is null or s.merchantKey <> :excludedMerchantKey)
              order by s.id
             """)
-    List<Long> findReminderCandidateIds(@Param("from") LocalDate from, @Param("to") LocalDate to,
-                                        @Param("excludedMerchantKey") String excludedMerchantKey);
+    List<Long> findReminderCandidateIds(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     @Query("""
             select s.id from Subscription s

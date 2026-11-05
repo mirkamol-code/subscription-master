@@ -42,12 +42,6 @@ public class FailedGmailMessageTracker {
         failures.save(failure);
     }
 
-    public void recordHold(Long userId, String gmailMessageId, String reason) {
-        FailedGmailMessage failure = findOrCreate(userId, gmailMessageId);
-        failure.recordHold(reason);
-        failures.save(failure);
-    }
-
     private FailedGmailMessage findOrCreate(Long userId, String gmailMessageId) {
         return failures.findByUserIdAndGmailMessageId(userId, gmailMessageId)
                 .orElseGet(() -> new FailedGmailMessage(users.getReferenceById(userId), gmailMessageId));
