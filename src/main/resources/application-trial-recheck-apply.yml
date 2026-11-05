@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    hikari:
+      read-only: false
+
+app:
+  trial-recheck:
+    apply: true

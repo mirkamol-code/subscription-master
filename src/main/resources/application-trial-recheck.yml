@@ -1,0 +1,21 @@
+spring:
+  main:
+    web-application-type: none
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+  datasource:
+    hikari:
+      read-only: true
+      maximum-pool-size: 2
+
+app:
+  scheduling:
+    enabled: false
+  exchange-rates:
+    refresh-on-startup: false
+  trial-recheck:
+    on-startup: true
+    apply: false
