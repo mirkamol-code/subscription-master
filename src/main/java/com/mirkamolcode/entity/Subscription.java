@@ -3,6 +3,7 @@ package com.mirkamolcode.entity;
 import com.mirkamolcode.detection.CategoryGuess;
 import com.mirkamolcode.detection.Confidence;
 import com.mirkamolcode.detection.Money;
+import com.mirkamolcode.detection.TrialDetails;
 import com.mirkamolcode.model.CategoryConfidence;
 import com.mirkamolcode.model.CategorySource;
 import com.mirkamolcode.detection.PaymentMethod;
@@ -59,6 +60,9 @@ public class Subscription extends AuditableEntity {
     private LocalDate nextPaymentDate;
 
     private LocalDate trialEndsOn;
+
+    @Column(nullable = false)
+    private boolean trialEndEstimated;
 
     @Column(name = "is_read_only", nullable = false)
     private boolean readOnly;
@@ -189,6 +193,32 @@ public class Subscription extends AuditableEntity {
         }
     }
 
+    public void refineTrial(TrialDetails details) {
+        if (!isTrial())
+            return;
+        boolean isExplicitEnd = details.endsOn() != null && !details.endsOnEstimated();
+        if (isExplicitEnd && (trialEndsOn == null || trialEndEstimated))
+            setTrialEnd(details.endsOn(), false);
+        else if (details.endsOn() != null && trialEndsOn == null)
+            setTrialEnd(details.endsOn(), details.endsOnEstimated());
+        if (price == null && details.priceAfterTrial() != null) {
+            price = details.priceAfterTrial().amount();
+            currency = details.priceAfterTrial().currency();
+        }
+        if (frequency == null && details.cycle() != null)
+            frequency = details.cycle();
+    }
+
+    private void setTrialEnd(LocalDate endsOn, boolean estimated) {
+        this.trialEndsOn = endsOn;
+        this.nextPaymentDate = endsOn;
+        this.trialEndEstimated = estimated;
+    }
+
+    public boolean isTrialEndEstimated() {
+        return trialEndEstimated;
+    }
+
     public boolean isTrial() {
         return status == SubscriptionStatus.TRIAL;
     }
@@ -267,6 +297,7 @@ public class Subscription extends AuditableEntity {
         this.lastPaymentDate = paidOn;
         this.nextPaymentDate = nextPaymentDate != null ? nextPaymentDate : cycle.addTo(paidOn);
         this.trialEndsOn = null;
+        this.trialEndEstimated = false;
         if (reviewReason == ReviewReason.UNCONFIRMED_TRIAL)
             clearReview();
     }

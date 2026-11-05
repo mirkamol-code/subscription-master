@@ -30,6 +30,8 @@ public interface BillingEmailRepository extends JpaRepository<BillingEmail, Long
 
     boolean existsByUserIdAndGmailMessageId(Long userId, String gmailMessageId);
 
+    Optional<BillingEmail> findByUserIdAndGmailMessageId(Long userId, String gmailMessageId);
+
     List<BillingEmail> findByUserIdAndMerchantKeyAndSubscriptionIsNullAndKindInOrderByReceivedAtAsc(
             Long userId, String merchantKey, Collection<EmailKind> kinds);
 

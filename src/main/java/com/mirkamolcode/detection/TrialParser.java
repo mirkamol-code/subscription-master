@@ -4,7 +4,9 @@ import com.mirkamolcode.model.BillingFrequency;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class TrialParser {
@@ -16,8 +18,28 @@ final class TrialParser {
     private TrialParser() {
     }
 
-    static TrialDetails parse(String body, Pattern trialEnds, LocalDate receivedOn) {
-        return new TrialDetails(DateFinder.findDateAfter(body, trialEnds, receivedOn), findOnlyPositivePrice(body), findOnlyCycle(body));
+    private static final Pattern STATED_LENGTH = Pattern.compile(
+            "(?i)\\b(?<count>\\d{1,3}|one|two|three|four)[- ](?<unit>day|week|month)s?(?:[- ]long)?(?: free)? trial\\b");
+    private static final Map<String, Integer> NUMBER_WORDS = Map.of("one", 1, "two", 2, "three", 3, "four", 4);
+
+    static TrialDetails parse(String body, Pattern trialEnds, LocalDate receivedOn, boolean startConfirmed) {
+        LocalDate statedEnd = DateFinder.findDateAfter(body, trialEnds, receivedOn);
+        LocalDate estimatedEnd = statedEnd == null && startConfirmed ? estimateEnd(body, receivedOn) : null;
+        return new TrialDetails(statedEnd != null ? statedEnd : estimatedEnd, estimatedEnd != null, findOnlyPositivePrice(body),
+                findOnlyCycle(body), startConfirmed);
+    }
+
+    private static LocalDate estimateEnd(String body, LocalDate startedOn) {
+        Matcher length = STATED_LENGTH.matcher(body);
+        if (!length.find())
+            return null;
+        String count = length.group("count").toLowerCase(Locale.ROOT);
+        int amount = NUMBER_WORDS.containsKey(count) ? NUMBER_WORDS.get(count) : Integer.parseInt(count);
+        return switch (length.group("unit").toLowerCase(Locale.ROOT)) {
+            case "day" -> startedOn.plusDays(amount);
+            case "week" -> startedOn.plusWeeks(amount);
+            default -> startedOn.plusMonths(amount);
+        };
     }
 
     private static Money findOnlyPositivePrice(String body) {

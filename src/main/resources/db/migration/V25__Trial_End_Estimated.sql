@@ -1,0 +1,1 @@
+ALTER TABLE subscriptions ADD COLUMN trial_end_estimated BOOLEAN NOT NULL DEFAULT FALSE;

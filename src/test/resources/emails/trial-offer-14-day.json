@@ -1,0 +1,67 @@
+{
+  "id": "19e0trial000offer14",
+  "threadId": "19e0trial000offer14",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Hi Alex,\nStart your free trial today. Enjoy a 14-day trial of Acme Family Tree, ",
+  "historyId": "300001",
+  "internalDate": "1793520000000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@example.com"
+      },
+      {
+        "name": "From",
+        "value": "Acme Family Tree <familytree@email.acmefamilytree.example>"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@email.acmefamilytree.example; spf=pass smtp.mailfrom=bounces@email.acmefamilytree.example; dmarc=pass header.from=email.acmefamilytree.example"
+      },
+      {
+        "name": "To",
+        "value": "Alex Doe <alex.doe@example.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Start your 14-day free trial"
+      },
+      {
+        "name": "Date",
+        "value": "Sun, 01 Nov 2026 08:00:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative; boundary=\"000000000000boundary\""
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 95,
+          "data": "SGkgQWxleCwKU3RhcnQgeW91ciBmcmVlIHRyaWFsIHRvZGF5LiBFbmpveSBhIDE0LWRheSB0cmlhbCBvZiBBY21lIEZhbWlseSBUcmVlLCBjYW5jZWwgYW55dGltZS4"
+        }
+      }
+    ]
+  }
+}

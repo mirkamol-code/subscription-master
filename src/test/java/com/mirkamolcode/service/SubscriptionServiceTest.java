@@ -322,7 +322,7 @@ class SubscriptionServiceTest {
                 subscription.getCurrency(), subscription.getFrequency(), subscription.getStatus(),
                 subscription.getCategory(), subscription.getCategorySource(), subscription.getCategoryConfidence(), subscription.getStartDate(), subscription.getNextPaymentDate(),
                 subscription.getMerchantKey(), subscription.isNeedsReview(), subscription.getReviewReason(), subscription.getReviewNote(), subscription.isHidden(),
-                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getTrialEndsOn(), subscription.getVersion(),
+                subscription.getLastPaymentDate(), subscription.getLogoDomain(), subscription.getEndsOn(), subscription.getTrialEndsOn(), subscription.isTrialEndEstimated(), subscription.getVersion(),
                 null, null, null, null);
     }
 }

@@ -65,6 +65,8 @@ class ProductionConfigTest {
         for (PropertySource<?> config : java.util.List.of(base, prod)) {
             assertThat(config.getProperty("app.redetection.apple.apply-on-startup")).as(config.getName()).isNull();
             assertThat(config.getProperty("app.redetection.apple.dry-run-on-startup")).as(config.getName()).isNull();
+            assertThat(config.getProperty("app.trial-recheck.on-startup")).as(config.getName()).isNull();
+            assertThat(config.getProperty("app.trial-recheck.apply")).as(config.getName()).isNull();
         }
     }
 

@@ -1,0 +1,67 @@
+{
+  "id": "19e0trial00014day",
+  "threadId": "19e0trial00014day",
+  "labelIds": [
+    "INBOX",
+    "CATEGORY_UPDATES"
+  ],
+  "snippet": "Thanks for starting your free trial, Alex.\nYour 14-day trial of Acme Family Tree",
+  "historyId": "300001",
+  "internalDate": "1793782440000",
+  "sizeEstimate": 8123,
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/alternative",
+    "filename": "",
+    "headers": [
+      {
+        "name": "Delivered-To",
+        "value": "alex.doe@example.com"
+      },
+      {
+        "name": "From",
+        "value": "Acme Family Tree <familytree@email.acmefamilytree.example>"
+      },
+      {
+        "name": "Authentication-Results",
+        "value": "mx.google.com; dkim=pass header.i=@email.acmefamilytree.example; spf=pass smtp.mailfrom=bounces@email.acmefamilytree.example; dmarc=pass header.from=email.acmefamilytree.example"
+      },
+      {
+        "name": "To",
+        "value": "Alex Doe <alex.doe@example.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Thanks for starting your free trial"
+      },
+      {
+        "name": "Date",
+        "value": "Wed, 04 Nov 2026 08:54:00 +0000"
+      },
+      {
+        "name": "Content-Type",
+        "value": "multipart/alternative; boundary=\"000000000000boundary\""
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "text/plain",
+        "filename": "",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "text/plain; charset=UTF-8"
+          }
+        ],
+        "body": {
+          "size": 368,
+          "data": "VGhhbmtzIGZvciBzdGFydGluZyB5b3VyIGZyZWUgdHJpYWwsIEFsZXguCllvdXIgMTQtZGF5IHRyaWFsIG9mIEFjbWUgRmFtaWx5IFRyZWUgaXMgbm93IGFjdGl2ZSwgc28gZ2V0IHN0YXJ0ZWQgd2l0aCB1bmNvdmVyaW5nIHlvdXIgZmFtaWx5IHN0b3J5IQpTdGFydCBleHBsb3JpbmcKT3JkZXIgTnVtYmVyOiAwMDAwMDAwMDEKV29ybGQgRXhwbG9yZXIgTWVtYmVyc2hpcCAkMC4wMCoKVG90YWwgJDAuMDAKKkFmdGVyIHlvdXIgdHJpYWwsIHlvdXIgbWVtYmVyc2hpcCBjb250aW51ZXMgYXQgJDI0Ljk5IHBlciBtb250aCB1bmxlc3MgeW91IGNhbmNlbC4KR2V0IHRoZSBhcHAKVHJ5IG91ciBhcHAsIGF2YWlsYWJsZSBvbiBpT1MgYW5kIEFuZHJvaWQ"
+        }
+      }
+    ]
+  }
+}

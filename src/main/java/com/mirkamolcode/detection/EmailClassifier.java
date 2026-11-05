@@ -27,6 +27,7 @@ public class EmailClassifier {
     private final Pattern trialStarted;
     private final Pattern trialStartedConfirmed;
     private final Pattern trialOffer;
+    private final Pattern trialSubject;
     private final Pattern trialEnds;
     private final Pattern paymentFailed;
     private final Pattern promotion;
@@ -50,6 +51,7 @@ public class EmailClassifier {
         this.trialStarted = anyPhrase(keywords.trialStarted());
         this.trialStartedConfirmed = anyPhrase(keywords.trialStartedConfirmed());
         this.trialOffer = anyPhrase(keywords.trialOffer());
+        this.trialSubject = anyPhrase(keywords.trialSubject());
         this.trialEnds = anyPhrase(keywords.trialEnds());
         this.paymentFailed = anyPhrase(keywords.paymentFailed());
         this.promotion = anyPhrase(keywords.promotion());
@@ -100,7 +102,7 @@ public class EmailClassifier {
     }
 
     public TrialDetails findTrialDetails(GmailMessage message) {
-        return TrialParser.parse(message.bodyText(), trialEnds, message.receivedOnUtc());
+        return TrialParser.parse(message.bodyText(), trialEnds, message.receivedOnUtc(), confirmsTrialStart(message));
     }
 
     public boolean mentionsFreePlan(GmailMessage message) {
@@ -140,7 +142,8 @@ public class EmailClassifier {
                 && !paymentDue.matcher(subject).find()
                 && (receiptSubject.matcher(subject).find() || subscriptionSubject.matcher(subject).find()
                 || cancellation.matcher(subject).find() || paymentFailed.matcher(subject).find()
-                || priceChange.matcher(subject).find() || trialStarted.matcher(subject).find());
+                || priceChange.matcher(subject).find() || trialStarted.matcher(subject).find()
+                || trialStartedConfirmed.matcher(subject).find() || trialSubject.matcher(subject).find());
     }
 
     private static boolean matchesSubjectOrBody(Pattern pattern, GmailMessage message) {

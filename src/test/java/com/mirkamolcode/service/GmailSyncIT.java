@@ -1080,6 +1080,76 @@ class GmailSyncIT extends AbstractTestConfig {
     }
 
     @Test
+    void sync_shouldTrackTrialWithEstimatedEnd_fromStatedLength() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("trial-started-14-day.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        webTestClient.get().uri(API + "/subscriptions/" + subscription("acme-family-tree").getId()).header("Authorization", bearer(tokens))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("TRIAL")
+                .jsonPath("$.trialEndsOn").isEqualTo("2026-11-18")
+                .jsonPath("$.trialEndEstimated").isEqualTo(true)
+                .jsonPath("$.price").isEqualTo(24.99);
+    }
+
+    @Test
+    void sync_shouldReplaceEstimatedTrialEnd_withExplicitDateFromLaterEmail() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("trial-started-14-day.json"));
+        underTest.sync(userId);
+        GmailMessage reminder = EmailFixtures.load("trial-ends-date.json");
+        GMAIL.deliver(reminder);
+        GMAIL.historyAdds(reminder.id());
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).hasSize(1);
+        Subscription trial = subscription("acme-family-tree");
+        assertThat(trial.getTrialEndsOn()).isEqualTo(LocalDate.of(2026, 11, 16));
+        assertThat(trial.isTrialEndEstimated()).isFalse();
+    }
+
+    @Test
+    void sync_shouldKeepExplicitTrialEnd_whenLaterEmailOnlyStatesLength() {
+        // given
+        GMAIL.mailbox(new GmailMessage("acme-explicit", "acme-explicit", Instant.parse("2026-11-04T08:00:00Z"),
+                "Acme Family Tree <familytree@email.acmefamilytree.example>", "Thanks for starting your free trial", null,
+                "Thanks for starting your free trial, Alex. Your trial ends on November 20, 2026."));
+        underTest.sync(userId);
+        GmailMessage later = copy(EmailFixtures.load("trial-started-14-day.json"), "acme-later", "2026-11-06T08:54:00Z", "Alex", "Alex");
+        GMAIL.deliver(later);
+        GMAIL.historyAdds(later.id());
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        Subscription trial = subscription("acme-family-tree");
+        assertThat(trial.getTrialEndsOn()).isEqualTo(LocalDate.of(2026, 11, 20));
+        assertThat(trial.isTrialEndEstimated()).isFalse();
+    }
+
+    @Test
+    void sync_shouldNotCreateTrial_fromUnconfirmedReminderAlone() {
+        // given
+        GMAIL.mailbox(EmailFixtures.load("trial-ends-date.json"), EmailFixtures.load("trial-offer-14-day.json"));
+
+        // when
+        underTest.sync(userId);
+
+        // then
+        assertThat(subscriptionsOfUser()).isEmpty();
+    }
+
+    @Test
     void sync_shouldNotTrackUnknownMerchantTrialOffer() {
         // given
         GMAIL.mailbox(EmailFixtures.load("unknown-trial-offer.json"), EmailFixtures.load("unknown-trial-try-free.json"));
