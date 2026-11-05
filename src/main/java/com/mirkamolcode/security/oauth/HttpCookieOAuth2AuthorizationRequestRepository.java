@@ -1,7 +1,7 @@
 package com.mirkamolcode.security.oauth;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.mirkamolcode.security.TokenCipher;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,10 +12,11 @@ import java.util.Arrays;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.security.jackson.SecurityJacksonModules;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 
 @Component
 public class HttpCookieOAuth2AuthorizationRequestRepository implements AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
@@ -28,7 +29,9 @@ public class HttpCookieOAuth2AuthorizationRequestRepository implements Authoriza
 
     public HttpCookieOAuth2AuthorizationRequestRepository(TokenCipher cipher) {
         this.cipher = cipher.derive(KEY_PURPOSE);
-        this.mapper = new ObjectMapper().registerModules(SecurityJackson2Modules.getModules(getClass().getClassLoader()));
+        this.mapper = JsonMapper.builder()
+                .addModules(SecurityJacksonModules.getModules(getClass().getClassLoader()))
+                .build();
     }
 
     @Override
@@ -62,7 +65,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository implements Authoriza
     private String serialize(OAuth2AuthorizationRequest authorizationRequest) {
         try {
             return cipher.encrypt(mapper.writeValueAsString(authorizationRequest));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Could not store OAuth2 authorization request", e);
         }
     }
@@ -70,7 +73,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository implements Authoriza
     private OAuth2AuthorizationRequest deserialize(String value) {
         try {
             return mapper.readValue(cipher.decrypt(value), OAuth2AuthorizationRequest.class);
-        } catch (JsonProcessingException | IllegalStateException e) {
+        } catch (JacksonException | IllegalStateException e) {
             return null;
         }
     }

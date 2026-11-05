@@ -1,12 +1,13 @@
 package com.mirkamolcode.integration.gmail;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class GmailMessageMapperTest {
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = new JsonMapper();
 
     @Test
     void toMessage_shouldMapListAndAuthenticationHeaders() throws Exception {

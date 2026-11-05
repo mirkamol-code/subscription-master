@@ -51,8 +51,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AttachmentTooLargeException.class)
     public ResponseEntity<ErrorResponse> attachmentTooLarge(AttachmentTooLargeException e) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(ErrorResponse.of(HttpStatus.UNPROCESSABLE_ENTITY.value(), "ATTACHMENT_TOO_LARGE", "Unprocessable Entity", e.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+                .body(ErrorResponse.of(HttpStatus.UNPROCESSABLE_CONTENT.value(), "ATTACHMENT_TOO_LARGE", "Unprocessable Entity", e.getMessage()));
     }
 
     @ExceptionHandler(SyncAlreadyRunningException.class)

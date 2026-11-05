@@ -1,6 +1,6 @@
 package com.mirkamolcode.integration.gmail;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -17,8 +17,8 @@ public final class GmailMessageMapper {
         Bodies bodies = new Bodies();
         collectParts(payload, bodies);
         return new GmailMessage(
-                json.path("id").asText(),
-                json.path("threadId").asText(),
+                json.path("id").asString(),
+                json.path("threadId").asString(),
                 Instant.ofEpochMilli(json.path("internalDate").asLong()),
                 header(payload, "From"),
                 header(payload, "Subject"),
@@ -32,16 +32,16 @@ public final class GmailMessageMapper {
     }
 
     private static void collectParts(JsonNode part, Bodies bodies) {
-        String mimeType = part.path("mimeType").asText();
-        String filename = part.path("filename").asText("");
+        String mimeType = part.path("mimeType").asString();
+        String filename = part.path("filename").asString("");
         JsonNode body = part.path("body");
         if (!filename.isEmpty() && body.hasNonNull("attachmentId")) {
-            bodies.attachments.add(new GmailAttachment(body.get("attachmentId").asText(), filename, mimeType, body.path("size").asLong()));
+            bodies.attachments.add(new GmailAttachment(body.get("attachmentId").asString(), filename, mimeType, body.path("size").asLong()));
         } else if (body.hasNonNull("data")) {
             if ("text/plain".equals(mimeType) && bodies.text == null)
-                bodies.text = decode(body.get("data").asText());
+                bodies.text = decode(body.get("data").asString());
             else if ("text/html".equals(mimeType) && bodies.html == null)
-                bodies.html = decode(body.get("data").asText());
+                bodies.html = decode(body.get("data").asString());
         }
         for (JsonNode child : part.path("parts"))
             collectParts(child, bodies);
@@ -49,8 +49,8 @@ public final class GmailMessageMapper {
 
     private static String header(JsonNode payload, String name) {
         for (JsonNode header : payload.path("headers"))
-            if (name.equalsIgnoreCase(header.path("name").asText()))
-                return header.path("value").asText();
+            if (name.equalsIgnoreCase(header.path("name").asString()))
+                return header.path("value").asString();
         return null;
     }
 

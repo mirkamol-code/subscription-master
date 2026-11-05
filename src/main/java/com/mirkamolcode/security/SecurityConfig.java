@@ -1,6 +1,6 @@
 package com.mirkamolcode.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.mirkamolcode.dto.ErrorResponse;
 import com.mirkamolcode.security.jwt.JwtAuthenticationFilter;
 import com.mirkamolcode.security.oauth.GoogleLoginFailureHandler;
