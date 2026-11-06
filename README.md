@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lockup-dark.svg" />
+    <img src="docs/brand/lockup-light.svg" alt="Subscription Master" width="420" />
+  </picture>
+</p>
+
 # Subscription Master
 
 <p align="center">

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#0F0F14" />
+  <!-- Icon Group White -->
+  <g transform="translate(40, 25) scale(0.48)">
+    <path d="M 256 64 A 192 192 0 1 1 104 380" fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round"/>
+    <polygon points="256,36 296,80 236,96" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round"/>
+    <circle cx="256" cy="180" r="14" fill="#FFFFFF" />
+    <path d="M 220 220 C 220 185 292 185 292 220 C 292 250 316 276 322 300 L 190 300 C 196 276 220 250 220 220 Z" fill="#FFFFFF"/>
+    <circle cx="256" cy="326" r="14" fill="#FFFFFF" />
+    <path d="M 240 250 L 252 262 L 274 240" fill="none" stroke="#0F0F14" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- Wordmark White -->
+  <text x="320" y="166" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif" font-size="52" fill="#FFFFFF">
+    <tspan font-weight="500">Subscription</tspan> <tspan font-weight="800">Master</tspan>
+  </text>
+</svg>

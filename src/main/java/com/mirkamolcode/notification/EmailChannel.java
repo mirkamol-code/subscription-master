@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
@@ -32,12 +33,15 @@ public class EmailChannel implements NotificationChannel {
     private final GmailConnectionRepository connections;
     private final GmailClient gmail;
     private final GmailAccessor gmailAccessor;
+    private final String logoUrl;
     private final String template;
 
-    public EmailChannel(GmailConnectionRepository connections, GmailClient gmail, GmailAccessor gmailAccessor) {
+    public EmailChannel(GmailConnectionRepository connections, GmailClient gmail, GmailAccessor gmailAccessor,
+                        @Value("${app.frontend-base-url}") String frontendBaseUrl) {
         this.connections = connections;
         this.gmail = gmail;
         this.gmailAccessor = gmailAccessor;
+        this.logoUrl = HtmlUtils.htmlEscape(frontendBaseUrl + "/email-logo.png");
         this.template = loadTemplate();
     }
 
@@ -73,6 +77,7 @@ public class EmailChannel implements NotificationChannel {
 
     private String renderHtml(NotificationMessage message) {
         return template
+                .replace("{{logoUrl}}", logoUrl)
                 .replace("{{accent}}", message.severity() == NotificationSeverity.URGENT ? URGENT_ACCENT : INFO_ACCENT)
                 .replace("{{title}}", HtmlUtils.htmlEscape(message.title()))
                 .replace("{{body}}", HtmlUtils.htmlEscape(message.body()))
