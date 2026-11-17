@@ -21,7 +21,7 @@ public class JwtService {
 
     public JwtService(@Value("${app.jwt.secret}") String secret, @Value("${app.jwt.access-token-minutes}") long minutes, @Value("${app.jwt.refresh-token-days}") long days) {
         if (secret.getBytes(StandardCharsets.UTF_8).length < 32)
-            throw new IllegalArgumentException("JWT secret must be at least 32 bytes");
+            throw new IllegalArgumentException("JWT_SECRET must be at least 32 bytes");
         key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         accessTtl = Duration.ofMinutes(minutes);
         refreshTtl = Duration.ofDays(days);

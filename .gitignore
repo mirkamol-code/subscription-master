@@ -4,3 +4,7 @@ target/
 .env
 work/
 .DS_Store
+
+# Local working files, not for publishing
+schema-drawdb.sql
+docs/system-design/

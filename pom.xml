@@ -12,8 +12,15 @@
     <artifactId>subscribe-master</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>SubScribe Master</name>
-    <description>Secure subscription management backend</description>
+    <name>Subscription Master</name>
+    <description>Finds subscriptions and free trials in Gmail, tracks their status and reminds users before they are charged.</description>
+    <url>https://github.com/mirkamol-code/subscription-master</url>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
     <properties>
         <java.version>21</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>

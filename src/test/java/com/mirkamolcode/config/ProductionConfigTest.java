@@ -51,8 +51,23 @@ class ProductionConfigTest {
         PropertySource<?> prod = load("application-prod.yml");
 
         // then
-        required.forEach((property, variable) ->
-                assertThat(String.valueOf(prod.getProperty(property))).as(property).isEqualTo("${" + variable + "}"));
+        assertRequiredWithoutFallback(prod, required);
+    }
+
+    @Test
+    void baseConfig_shouldRequireSecretsAndDatabaseCredentials_withoutPublicFallbackValues() {
+        // given
+        Map<String, String> required = Map.of(
+                "spring.datasource.username", "SPRING_DATASOURCE_USERNAME",
+                "spring.datasource.password", "SPRING_DATASOURCE_PASSWORD",
+                "app.jwt.secret", "JWT_SECRET",
+                "app.security.token-encryption-key", "TOKEN_ENCRYPTION_KEY");
+
+        // when
+        PropertySource<?> base = load("application.yml");
+
+        // then
+        assertRequiredWithoutFallback(base, required);
     }
 
     @Test
@@ -62,6 +77,11 @@ class ProductionConfigTest {
 
         // then
         assertThat(base.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
+    }
+
+    private static void assertRequiredWithoutFallback(PropertySource<?> config, Map<String, String> required) {
+        required.forEach((property, variable) ->
+                assertThat(String.valueOf(config.getProperty(property))).as(property).isEqualTo("${" + variable + "}"));
     }
 
     static PropertySource<?> load(String resource) {

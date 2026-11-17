@@ -8,8 +8,8 @@ spring:
   application:
     name: subscribe-master
   datasource:
-    username: ${SPRING_DATASOURCE_USERNAME:mirkamol}
-    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     # Local dev default  → localhost:5222
     # Docker production  → jdbc:postgresql://db:5432/subscription_master_db
@@ -52,8 +52,7 @@ spring:
               - https://www.googleapis.com/auth/gmail.send
 app:
   jwt:
-    # MUST be overridden via JWT_SECRET env-var in production (≥32 chars)
-    secret: ${JWT_SECRET:secret-key-must-be-at-least-32-bytes}
+    secret: ${JWT_SECRET}
     access-token-minutes: 15
     refresh-token-days: 30
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
