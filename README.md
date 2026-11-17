@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Google-OAuth2_%2B_Gmail_API-4285F4?logo=google&logoColor=white" alt="Google OAuth2 and Gmail API" />
   <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?logo=githubactions&logoColor=white" alt="GitHub Actions CI/CD" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License" /></a>
 </p>
 
 **A backend that finds your subscriptions in Gmail, tracks their status, and reminds you before you are charged.**
@@ -22,7 +23,8 @@ Users sign in with Google. Subscription Master reads billing emails (receipts, i
 
 | Resource | Link |
 |---|---|
-| Production | [subscriptionmaster.app](https://subscriptionmaster.app) |
+| Production (official hosted instance) | [subscriptionmaster.app](https://subscriptionmaster.app) |
+| Frontend (React + TypeScript) | [mirkamol-code/subscription-master-frontend](https://github.com/mirkamol-code/subscription-master-frontend) |
 | Swagger UI | [subscriptionmaster.app/api/swagger-ui](https://subscriptionmaster.app/api/swagger-ui/index.html) |
 | Health | [subscriptionmaster.app/api/actuator/health](https://subscriptionmaster.app/api/actuator/health) |
 
@@ -36,7 +38,10 @@ All endpoints live under the `/api` context path.
 - [Environment variables](#environment-variables)
 - [Google Cloud Console setup](#google-cloud-console-setup)
 - [Run and test locally](#run-and-test-locally)
+- [Self-hosting](#self-hosting)
 - [Tech stack](#tech-stack)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## How it works
 
@@ -129,10 +134,11 @@ Copy [`.env.example`](.env.example) to `.env` and fill it in.
 | `GOOGLE_CLIENT_ID` | yes | OAuth 2.0 client ID from Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | yes | OAuth 2.0 client secret |
 | `TOKEN_ENCRYPTION_KEY` | yes | 32-byte base64 key for refresh tokens at rest (`openssl rand -base64 32`) |
-| `JWT_SECRET` | yes in production | JWT signing secret, at least 32 bytes |
+| `JWT_SECRET` | yes | JWT signing secret, at least 32 bytes (`openssl rand -base64 48`) |
 | `GOOGLE_REDIRECT_URI` | no | Defaults to `{baseUrl}/api/login/oauth2/code/google`; set it when behind a proxy |
 | `FRONTEND_BASE_URL` | no | Where login redirects with the one-time code; default `http://localhost:5173` |
-| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | docker-compose | PostgreSQL connection; Amazon RDS in production (local defaults provided for `mvn spring-boot:run`) |
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | yes | PostgreSQL credentials; there are no built-in defaults |
+| `SPRING_DATASOURCE_URL` | no | PostgreSQL URL, default `jdbc:postgresql://localhost:5222/subscription_master_db`; Amazon RDS in production |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | docker-compose-db-only | Local development database container |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | no | Web Push keys; push is disabled while empty (`npx web-push generate-vapid-keys`) |
 | `VAPID_SUBJECT` | no | Contact for push services, default `mailto:admin@subscriptionmaster.app` |
@@ -213,6 +219,21 @@ mvn clean verify
 
 To run the app in a container instead, put the same variables in `.env` and run `docker compose up --build -d`. `docker-compose.yml` has no database of its own: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` must point to one (Amazon RDS in production).
 
+## Self-hosting
+
+You can run your own copy. You bring your own Google Cloud project, OAuth client, database and secrets; nothing is shared with the official instance.
+
+1. **Google project and OAuth client:** follow [Google Cloud Console setup](#google-cloud-console-setup), using your own domain in the redirect URI.
+2. **Google's limits apply to your deployment, not this repository.** `gmail.readonly` is a restricted scope: in *Testing* mode only up to 100 listed test users can sign in, and their tokens expire every 7 days. Opening your instance to the public requires Google's app verification and a yearly CASA security assessment, done by you for your own app.
+3. **Configuration:** set every variable marked *yes* in [Environment variables](#environment-variables). There are no fallback secrets or database credentials: the app refuses to start without `JWT_SECRET` and `TOKEN_ENCRYPTION_KEY`, and cannot connect to PostgreSQL until `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` are set.
+4. **Run:** build the image (`docker compose up --build -d`) next to a PostgreSQL 16 database. Run exactly **one** app container: scheduled jobs assume a single instance.
+5. **Frontend:** deploy [subscription-master-frontend](https://github.com/mirkamol-code/subscription-master-frontend) and set `FRONTEND_BASE_URL` to its address.
+6. **Maintainer-specific files you can replace or ignore:**
+   - `.github/workflows/deploy.yml` deploys the official instance to the maintainer's EC2 host.
+   - `nginx/nginx.conf` uses the official domains.
+
+The software is provided under the MIT License, without warranty. You are responsible for the security and privacy of the data your instance stores.
+
 ## Tech stack
 
 | Category | Technologies |
@@ -229,3 +250,11 @@ To run the app in a container instead, put the same variables in `.env` and run 
 | API docs | Springdoc OpenAPI / Swagger UI |
 | Testing | JUnit 5, AssertJ, Mockito, Testcontainers, WireMock |
 | Delivery | Docker, Docker Compose, Jib, Nginx, AWS EC2, GitHub Actions |
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report security problems privately as described in [SECURITY.md](SECURITY.md), never in a public issue.
+
+## License
+
+[MIT](LICENSE) © 2026 Mirkamol
